@@ -1,0 +1,44 @@
+# Acceptance ledger
+
+## Verified locally
+
+- [x] New repository, feature branch and repository-supported setup.
+- [x] Strict lint, TypeScript, formatting, coverage gates and build.
+- [x] Actual standalone stdio MCP handshake, tool listing and inline panel resource.
+- [x] Explicit one-time chat/profile binding and failure isolation in simulated-host tests.
+- [x] Built hook plus MCP resolver on one exact real recorded Ultra turn.
+- [x] Bundled CLI metadata inspection and unresolved admission blocking dispatch.
+- [x] Local marketplace package recognized by the bundled development parser.
+
+These checks are supporting evidence. They do not satisfy the live Desktop gate.
+
+## Gate 1: incomplete
+
+| Required observation                  | Current evidence / blocker                                                              |
+| ------------------------------------- | --------------------------------------------------------------------------------------- |
+| Desktop local stdio startup           | Standalone stdio passed; Desktop environment/substitution unverified.                   |
+| Desktop side-panel rendering          | Computer-use access to `com.openai.codex` is denied.                                    |
+| Correct chat binding                  | Protocol and simulated-host tests passed; two live chats unverified.                    |
+| Exact-turn Ultra / Plan detection     | Fixtures and one recorded Ultra turn passed; native hook timing/trust unverified.       |
+| Bounded read-only worker/result       | No worker turn dispatched while admission is unverified.                                |
+| Correct account/profile/model         | CLI catalog/account metadata read; match to selected Desktop lead unverified.           |
+| Effective restrictions/capacity       | Supported readback route identified; dedicated profile/managed policy not yet verified. |
+| Waiting without excess lead inference | No workflow wait/runtime implemented; live behavior unverified.                         |
+
+The development package parser reports the plugin uninstalled and disabled and
+zero hooks. That does not establish why hook discovery is absent. Do not claim
+native hook loading works.
+
+## Later slices: not started behind Gate 1
+
+- [ ] General dynamic runtime, immutable starts, QuickJS, journal, replay and recovery.
+- [ ] Multiple workflows, fair scheduling, resource leases and isolated controls.
+- [ ] Verified bounded workers and durable lead handoffs.
+- [ ] Selective cost-aware authoring policy and arbitrary workflow examples.
+- [ ] Complete panel, results, usage and pending work.
+- [ ] Live Desktop, general and isolated coding-to-ready-PR QA.
+- [ ] Frozen routing/quality/cost comparison.
+- [ ] Feature-ready self-review, push, ready PR and remote readback.
+
+Preserve this probe and exact evidence. Do not substitute private IPC, a hosted
+service, Codex Pilot or broader permissions to bypass the required host gate.

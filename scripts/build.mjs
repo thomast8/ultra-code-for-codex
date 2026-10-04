@@ -1,0 +1,38 @@
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { URL } from 'node:url';
+import { build } from 'esbuild';
+import './check-runtime.mjs';
+
+const output = new URL('../plugin/dist/', import.meta.url);
+await mkdir(output, { recursive: true });
+const ui = await build({
+  entryPoints: ['src/ui/panel.tsx'],
+  bundle: true,
+  write: false,
+  platform: 'browser',
+  format: 'iife',
+  target: 'es2022',
+  minify: true,
+});
+const javascript = ui.outputFiles[0].text.replaceAll('</script', '<\\/script');
+const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ultra Code</title><style>body{font:14px system-ui,sans-serif;margin:0;padding:20px;color:#202124}main{max-width:520px}button{padding:10px 14px;border:0;border-radius:7px;background:#2457d6;color:white;font:inherit}button:disabled{opacity:.5}p{line-height:1.5}</style></head><body><div id="root"></div><script>${javascript}</script></body></html>`;
+await writeFile(new URL('panel.html', output), html);
+await build({
+  entryPoints: ['src/mcp/entry.ts'],
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node26',
+  outfile: new URL('mcp-entry.js', output).pathname,
+});
+
+const hookEntry = new URL('../src/activation/hook-entry.ts', import.meta.url);
+await readFile(hookEntry);
+await build({
+  entryPoints: [hookEntry.pathname],
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node26',
+  outfile: new URL('hook-entry.js', output).pathname,
+});
