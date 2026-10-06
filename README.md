@@ -1,5 +1,8 @@
 # Ultra Code for Codex
 
+Personal local Codex orchestration compatibility probe; full runtime remains gated.
+
+Repository: `ultra-code-for-codex`.
 A local compatibility probe for a general, adaptive Codex orchestration plugin.
 **The full orchestration runtime is not implemented.** It remains gated on live
 Desktop integration and verified worker capabilities.
@@ -10,7 +13,10 @@ There is no Codex Pilot, private Desktop IPC or hosted service dependency.
 
 ## Local setup and checks
 
-Node **26.10.0**, `just`, and the bundled Codex CLI **0.160.0** are required.
+Node **26.10.0** and `just` are required. Protocol generation and backend QA
+are pinned to bundled CLI **0.160.0**. The installed CLI is now **0.160.1**;
+its generated bindings match, but its observed session identity metadata needs
+separate adapter validation. Unsupported log versions remain unknown.
 
 ```sh
 just setup
@@ -50,6 +56,32 @@ incomplete result until real host observations are recorded. A successful local
 stdio check is not a Desktop UI pass.
 
 Installation must preserve unrelated plugins and hooks. Hook trust is a separate
-Codex review flow. No global integration has been installed by this branch.
+Codex review flow. Installation does not automatically trust the hook.
 Routing evaluation is unavailable until the Desktop gate and honest usage
 accounting pass; `just evaluate-routing` fails without making model calls.
+
+## Install and use the probe
+
+Build from this checkout before registering the local marketplace:
+
+```sh
+just setup
+just build
+/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace add /Users/thomastiotto/GitRepos/ultra-code-for-codex
+/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin add ultra-code-for-codex@ultra-code-for-codex-local
+```
+
+In Codex, open a new chat and ask **“Open the Ultra Code panel for this chat.”**
+You can also select Ultra Code for Codex from the Plugins and MCPs menu. Review
+the plugin's `UserPromptSubmit` hook in Codex's normal hook trust UI. On a
+supported exact-turn record, choose **Show this chat's workflows** in the panel
+and let the lead bind its nonce. If metadata is unsupported or unavailable,
+the binding must fail with an explicit reason.
+
+This version tests context and panel integration only. It cannot run workflows,
+spawn workers or produce a PR. Selecting Ultra does not enable a missing runtime.
+The panel reports that limitation explicitly.
+
+After source changes, run `just build` and repeat `codex plugin add` with the
+same selector to refresh the installed copy. Close and reopen the panel after
+refresh. Do not edit the generated plugin cache.
