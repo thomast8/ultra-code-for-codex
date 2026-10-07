@@ -1,5 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { closeSync, mkdirSync, openSync } from 'node:fs';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
@@ -12,9 +15,25 @@ const PROBE_LIMIT =
 export type ContextResolver = (contextKey: string, dataDir: string) => Promise<LeadContext>;
 export type PanelHtmlLoader = () => Promise<string>;
 
-interface PendingBinding {
-  state: 'pending' | 'binding' | 'bound' | 'failed';
-  owner?: string;
+const bindingSchema = z.object({
+  nonce: z.string(),
+  state: z.enum(['pending', 'binding', 'bound', 'failed']),
+  owner: z.string().nullable(),
+});
+type PendingBinding = z.infer<typeof bindingSchema>;
+
+function openBindings(dataDir: string): DatabaseSync {
+  const directory = join(dataDir, 'panel');
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const path = join(directory, 'bindings.sqlite');
+  closeSync(openSync(path, 'a', 0o600));
+  const database = new DatabaseSync(path, { timeout: 5_000 });
+  database.exec(`CREATE TABLE IF NOT EXISTS bindings (
+    nonce TEXT PRIMARY KEY,
+    state TEXT NOT NULL CHECK (state IN ('pending', 'binding', 'bound', 'failed')),
+    owner TEXT
+  )`);
+  return database;
 }
 
 export function createPanelServer(
@@ -22,8 +41,13 @@ export function createPanelServer(
   dataDir: string,
   loadPanelHtml: PanelHtmlLoader = () => readFile(new URL('./panel.html', import.meta.url), 'utf8'),
 ): McpServer {
-  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.2' });
-  const bindings = new Map<string, PendingBinding>();
+  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.3' });
+  const bindings = openBindings(dataDir);
+  const close = server.server.onclose;
+  server.server.onclose = () => {
+    close?.();
+    if (bindings.isOpen) bindings.close();
+  };
 
   registerPanelView(server, bindings, loadPanelHtml);
 
@@ -37,7 +61,7 @@ export function createPanelServer(
       _meta: { ui: { resourceUri: PANEL_URI } },
     },
     async ({ contextKey, nonce }) => {
-      return bindPanel(bindings.get(nonce), contextKey, resolveContext, dataDir);
+      return bindPanel(bindings, nonce, contextKey, resolveContext, dataDir);
     },
   );
 
@@ -47,7 +71,7 @@ export function createPanelServer(
 
 function registerPanelView(
   server: McpServer,
-  bindings: Map<string, PendingBinding>,
+  bindings: DatabaseSync,
   loadPanelHtml: PanelHtmlLoader,
 ) {
   server.registerResource(
@@ -80,7 +104,7 @@ function registerPanelView(
     },
     async () => {
       const nonce = randomBytes(24).toString('base64url');
-      bindings.set(nonce, { state: 'pending' });
+      bindings.prepare("INSERT INTO bindings (nonce, state) VALUES (?, 'pending')").run(nonce);
       return {
         content: [
           {
@@ -145,18 +169,26 @@ function registerContextTool(server: McpServer, resolveContext: ContextResolver,
 }
 
 async function bindPanel(
-  binding: PendingBinding | undefined,
+  bindings: DatabaseSync,
+  nonce: string,
   contextKey: string,
   resolveContext: ContextResolver,
   dataDir: string,
 ) {
-  if (!binding) return failure('Unknown or expired panel nonce. Open the panel again.');
+  const row = bindings
+    .prepare('SELECT nonce, state, owner FROM bindings WHERE nonce = ?')
+    .get(nonce);
+  if (!row) return failure('Unknown or expired panel nonce. Open the panel again.');
+  const binding = bindingSchema.parse(row);
   if (binding.state === 'bound')
     return checkExistingBinding(binding, contextKey, resolveContext, dataDir);
-  if (binding.state !== 'pending')
-    return failure('This panel nonce has already been used. Open the panel again.');
-  binding.state = 'binding';
-  return createBinding(binding, contextKey, resolveContext, dataDir);
+  const claim = bindings
+    .prepare(
+      "UPDATE bindings SET state = 'binding' WHERE nonce = ? AND state = 'pending' RETURNING nonce",
+    )
+    .get(nonce);
+  if (!claim) return failure('This panel nonce has already been used. Open the panel again.');
+  return createBinding(bindings, binding, contextKey, resolveContext, dataDir);
 }
 
 async function checkExistingBinding(
@@ -178,6 +210,7 @@ async function checkExistingBinding(
 }
 
 async function createBinding(
+  bindings: DatabaseSync,
   binding: PendingBinding,
   contextKey: string,
   resolveContext: ContextResolver,
@@ -186,17 +219,24 @@ async function createBinding(
   try {
     const context = await resolveContext(contextKey, dataDir);
     if (!isVerified(context)) {
-      binding.state = 'failed';
+      bindings
+        .prepare("UPDATE bindings SET state = 'failed' WHERE nonce = ? AND state = 'binding'")
+        .run(binding.nonce);
       return failure(context.resolutionReason || 'This chat context is not verified.');
     }
-    binding.owner = ownerOf(context);
-    binding.state = 'bound';
+    bindings
+      .prepare(
+        "UPDATE bindings SET state = 'bound', owner = ? WHERE nonce = ? AND state = 'binding'",
+      )
+      .run(ownerOf(context), binding.nonce);
     return boundResult(
       context,
       `Panel bound to verified chat ${context.sessionId}, turn ${context.turnId}.`,
     );
   } catch (error) {
-    binding.state = 'failed';
+    bindings
+      .prepare("UPDATE bindings SET state = 'failed' WHERE nonce = ? AND state = 'binding'")
+      .run(binding.nonce);
     return failure(errorMessage(error));
   }
 }

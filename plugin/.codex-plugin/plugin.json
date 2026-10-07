@@ -1,6 +1,6 @@
 {
   "name": "ultra-code-for-codex",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Local Codex compatibility proof for exact-turn context and an explicitly chat-bound MCP panel.",
   "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",

@@ -1,5 +1,8 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import type { LeadContext } from '../src/activation/types.js';
@@ -20,8 +23,13 @@ const context: LeadContext = {
 async function connected(
   resolveContext: (key: string, dataDir: string) => Promise<LeadContext>,
   loadPanelHtml = async () => '<main>panel test</main>',
+  dataDir?: string,
 ) {
-  const server = createPanelServer(resolveContext, '/codex', loadPanelHtml);
+  const server = createPanelServer(
+    resolveContext,
+    dataDir ?? (await mkdtemp(join(tmpdir(), 'ultra-panel-test-'))),
+    loadPanelHtml,
+  );
   const client = new Client({ name: 'test-client', version: '1.0.0' });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
@@ -172,5 +180,93 @@ describe('unverified panel contexts', () => {
       reason: unknown.resolutionReason,
     });
     await Promise.all([client.close(), server.close()]);
+  });
+});
+
+describe('panel binding across server instances', () => {
+  it('binds a nonce from another server and retains ownership after reopening', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ultra-panel-shared-'));
+    const opened = await connected(async () => context, undefined, dataDir);
+    const nonce = await nonceFrom(opened.client);
+    const binder = await connected(async () => context, undefined, dataDir);
+    const result = await binder.client.callTool({
+      name: 'ultra_panel_bind',
+      arguments: { nonce, contextKey: 'verified-a' },
+    });
+    expect(result.isError).not.toBe(true);
+    expect(result.structuredContent).toMatchObject({ bound: true, sessionId: context.sessionId });
+    await Promise.all([
+      opened.client.close(),
+      opened.server.close(),
+      binder.client.close(),
+      binder.server.close(),
+    ]);
+    const reopened = await connected(async () => context, undefined, dataDir);
+    const retry = await reopened.client.callTool({
+      name: 'ultra_panel_bind',
+      arguments: { nonce, contextKey: 'verified-a' },
+    });
+    expect(retry.isError).not.toBe(true);
+    await Promise.all([reopened.client.close(), reopened.server.close()]);
+  });
+});
+
+describe('cross-server ownership', () => {
+  it('allows one claimant and rejects another chat or profile', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ultra-panel-claims-'));
+    const panel = await connected(async () => context, undefined, dataDir);
+    const nonce = await nonceFrom(panel.client);
+    let complete: ((value: LeadContext) => void) | undefined;
+    let started: (() => void) | undefined;
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const first = await connected(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+          started?.();
+        }),
+      undefined,
+      dataDir,
+    );
+    const other = await connected(
+      async () => ({ ...context, sessionId: 'session-b' }),
+      undefined,
+      dataDir,
+    );
+    const claim = first.client.callTool({
+      name: 'ultra_panel_bind',
+      arguments: { nonce, contextKey: 'a' },
+    });
+    await entered;
+    const rejected = await other.client.callTool({
+      name: 'ultra_panel_bind',
+      arguments: { nonce, contextKey: 'b' },
+    });
+    expect(rejected.isError).toBe(true);
+    complete?.(context);
+    expect((await claim).isError).not.toBe(true);
+    const rebound = await other.client.callTool({
+      name: 'ultra_panel_bind',
+      arguments: { nonce, contextKey: 'b' },
+    });
+    expect(rebound.isError).toBe(true);
+    const differentProfile = await connected(async () => context);
+    const foreign = await differentProfile.client.callTool({
+      name: 'ultra_panel_bind',
+      arguments: { nonce, contextKey: 'a' },
+    });
+    expect(foreign.isError).toBe(true);
+    await Promise.all([
+      panel.client.close(),
+      panel.server.close(),
+      first.client.close(),
+      first.server.close(),
+      other.client.close(),
+      other.server.close(),
+      differentProfile.client.close(),
+      differentProfile.server.close(),
+    ]);
   });
 });

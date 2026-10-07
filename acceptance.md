@@ -11,22 +11,24 @@
 - [x] Installed/enabled 0.1.2: public MCP discovery returns three tools with no error.
 - [x] User confirmed the Codex Desktop Tools-menu entry is visible.
 - [x] Native chat MCP tool resolves the current exact hook context.
+- [x] Installed-process nonce binding survives separate issuing/binding processes.
+- [x] Cross-server ownership, concurrent claims and profile-isolation regressions.
 - [x] Built-hook process QA: safe failure diagnostics, Ultra gating and Plan reminder.
 
 These checks are supporting evidence. They do not satisfy the live Desktop gate.
 
 ## Gate 1: incomplete
 
-| Required observation                  | Current evidence / blocker                                                              |
-| ------------------------------------- | --------------------------------------------------------------------------------------- |
-| Desktop local stdio startup           | Native chat MCP call and public discovery passed; rendering unverified.                 |
-| Desktop side-panel rendering          | Computer-use access to `com.openai.codex` is denied.                                    |
-| Correct chat binding                  | Protocol and simulated-host tests passed; two live chats unverified.                    |
-| Exact-turn Ultra / Plan detection     | Fixtures/recorded Ultra/current native context passed; live mode transitions pending.   |
-| Bounded read-only worker/result       | No worker turn dispatched while admission is unverified.                                |
-| Correct account/profile/model         | CLI catalog/account metadata read; match to selected Desktop lead unverified.           |
-| Effective restrictions/capacity       | Supported readback route identified; dedicated profile/managed policy not yet verified. |
-| Waiting without excess lead inference | No workflow wait/runtime implemented; live behavior unverified.                         |
+| Required observation                  | Current evidence / blocker                                                                 |
+| ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Desktop local stdio startup           | Native chat MCP call and public discovery passed; rendering unverified.                    |
+| Desktop side-panel rendering          | Computer-use access to `com.openai.codex` is denied.                                       |
+| Correct chat binding                  | Native button reached lead; cross-process fix QA passed; fresh button/two-chat QA pending. |
+| Exact-turn Ultra / Plan detection     | Fixtures/recorded Ultra/current native context passed; live mode transitions pending.      |
+| Bounded read-only worker/result       | No worker turn dispatched while admission is unverified.                                   |
+| Correct account/profile/model         | CLI catalog/account metadata read; match to selected Desktop lead unverified.              |
+| Effective restrictions/capacity       | Supported readback route identified; dedicated profile/managed policy not yet verified.    |
+| Waiting without excess lead inference | No workflow wait/runtime implemented; live behavior unverified.                            |
 
 The original portable package exposed zero hooks. A controlled bundled 0.160.1
 comparison discovers the plugin-owned hook through the legacy manifest.

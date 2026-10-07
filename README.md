@@ -46,7 +46,8 @@ Generated types are excluded only from manual-code style and coverage gates.
 - Worker execution remains unavailable until effective capabilities are verified.
 
 The MCP tools currently expose `ultra_context`, `ultra_panel`, and
-`ultra_panel_bind`. They do not start workflows. Bindings are in-process;
+`ultra_panel_bind`. They do not start workflows. Panel nonces and verified ownership are shared in
+a private SQLite store under this profile's plugin data directory;
 workflow durability, the scheduler, QuickJS execution, lead handoffs, usage
 accounting and routing calibration belong to later gated slices.
 
@@ -90,7 +91,9 @@ The menu entry was confirmed visible in Codex Desktop on 2026-10-07; full panel
 rendering and binding QA remain separate. Review the plugin's
 `UserPromptSubmit` hook in Codex's normal hook trust UI. On a
 supported exact-turn record, choose **Show this chat's workflows** in the panel
-and let the lead bind its nonce. If metadata is unsupported or unavailable,
+and let the lead bind its nonce. Version 0.1.3 permits the panel and lead to use
+separate MCP server instances without losing that nonce. Panels opened before
+this update must be reopened to issue a fresh nonce. If metadata is unsupported or unavailable,
 the binding must fail with an explicit reason.
 
 On verified Ultra turns, the hook emits selective delegation policy. Non-Ultra

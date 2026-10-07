@@ -110,7 +110,26 @@ publication follow only after this gate passes.
 
 ## State boundaries
 
-The probe exposes context registration and panel binding only. Panel bindings
-are in-process and do not claim workflow durability. There are no workflows,
+The probe exposes context registration and panel binding only. Panel nonces and verified ownership
+are stored in a private profile-specific SQLite database; this does not claim
+workflow durability. A nonce claimed by an interrupted binder stays blocked,
+and reopening the panel creates a new one. There are no workflows,
 scheduler, QuickJS execution or publication adapters yet. No model-cost savings
 or complete feature QA has been established.
+
+## Cross-instance panel binding correction
+
+The first native panel button message reached this chat, but binding returned
+“Unknown or expired panel nonce.” A regression reproduced the failure across
+two MCP server instances: each had a separate in-memory nonce map.
+
+Version 0.1.3 shares nonce state through the profile's plugin data directory and
+claims each nonce atomically. Ownership remains the verified instance/session;
+a different chat or profile cannot reuse it. Existing bound same-chat retries
+remain idempotent after process restart. Unknown contexts consume the nonce.
+
+Installed-process QA used three real MCP subprocesses and the exact native-hook
+context: the issuing process exited, another bound its nonce, and a third
+verified the same-chat resolution. Database permissions were 0600. The original
+in-memory nonce was not recreated or adopted; the native panel needs reopening
+for end-to-end button-flow revalidation.
