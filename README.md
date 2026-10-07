@@ -63,6 +63,13 @@ Codex review flow. Installation does not automatically trust the hook. The activ
 at `plugin/.codex-plugin/portable.plugin.json`. The portable format currently
 fails to expose hooks in the installed Codex host. `plugin/.mcp.json` is the
 active MCP declaration; `plugin/mcp.json` preserves the original portable one.
+The legacy MCP loader does not expand `${PLUGIN_ROOT}` or `${PLUGIN_DATA}`.
+Its launcher therefore uses supported plugin-relative `cwd: "."`, then derives
+this installation's data directory from the verified Codex cache layout. No
+profile is selected through the most recent session or a default home path.
+`node scripts/check-mcp.mjs` exercises that declared launcher in an isolated
+cache, rather than bypassing it with an independently supplied command.
+
 Routing evaluation is unavailable until the Desktop gate and honest usage
 accounting pass; `just evaluate-routing` fails without making model calls.
 
@@ -78,8 +85,9 @@ just build
 ```
 
 In Codex, open a new chat and ask **“Open the Ultra Code panel for this chat.”**
-The panel advertises a documented thread entrypoint; its appearance in the
-Plugins and MCPs menu still requires Desktop verification. Review the plugin's
+Select **Open Ultra Code panel** from **More tools > Plugins and MCPs**.
+The menu entry was confirmed visible in Codex Desktop on 2026-10-07; full panel
+rendering and binding QA remain separate. Review the plugin's
 `UserPromptSubmit` hook in Codex's normal hook trust UI. On a
 supported exact-turn record, choose **Show this chat's workflows** in the panel
 and let the lead bind its nonce. If metadata is unsupported or unavailable,

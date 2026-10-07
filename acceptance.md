@@ -8,7 +8,9 @@
 - [x] Explicit one-time chat/profile binding and failure isolation in simulated-host tests.
 - [x] Built hook plus MCP resolver on one exact real recorded Ultra turn.
 - [x] Bundled CLI metadata inspection and unresolved admission blocking dispatch.
-- [x] Installed/enabled 0.1.1 readback: MCP server and plugin-owned hook discovered.
+- [x] Installed/enabled 0.1.2: public MCP discovery returns three tools with no error.
+- [x] User confirmed the Codex Desktop Tools-menu entry is visible.
+- [x] Native chat MCP tool resolves the current exact hook context.
 - [x] Built-hook process QA: safe failure diagnostics, Ultra gating and Plan reminder.
 
 These checks are supporting evidence. They do not satisfy the live Desktop gate.
@@ -17,10 +19,10 @@ These checks are supporting evidence. They do not satisfy the live Desktop gate.
 
 | Required observation                  | Current evidence / blocker                                                              |
 | ------------------------------------- | --------------------------------------------------------------------------------------- |
-| Desktop local stdio startup           | Actual chat MCP call and installed stdio passed; UI rendering unverified.               |
+| Desktop local stdio startup           | Native chat MCP call and public discovery passed; rendering unverified.                 |
 | Desktop side-panel rendering          | Computer-use access to `com.openai.codex` is denied.                                    |
 | Correct chat binding                  | Protocol and simulated-host tests passed; two live chats unverified.                    |
-| Exact-turn Ultra / Plan detection     | Fixtures and one recorded Ultra turn passed; native hook timing/trust unverified.       |
+| Exact-turn Ultra / Plan detection     | Fixtures/recorded Ultra/current native context passed; live mode transitions pending.   |
 | Bounded read-only worker/result       | No worker turn dispatched while admission is unverified.                                |
 | Correct account/profile/model         | CLI catalog/account metadata read; match to selected Desktop lead unverified.           |
 | Effective restrictions/capacity       | Supported readback route identified; dedicated profile/managed policy not yet verified. |
@@ -28,8 +30,8 @@ These checks are supporting evidence. They do not satisfy the live Desktop gate.
 
 The original portable package exposed zero hooks. A controlled bundled 0.160.1
 comparison discovers the plugin-owned hook through the legacy manifest.
-Installed hook is enabled but untrusted. Native dispatch and Tools-menu visibility require live host
-verification; tool discovery alone does not establish them.
+Installed hook is trusted and the current exact native handle resolves. The user confirmed Tools-menu visibility. Panel rendering and binding still require
+live host verification; tool discovery alone does not establish them.
 
 ## Later slices: not started behind Gate 1
 

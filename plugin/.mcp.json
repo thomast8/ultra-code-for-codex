@@ -2,11 +2,12 @@
   "mcpServers": {
     "ultra-code": {
       "command": "node",
-      "args": ["${PLUGIN_ROOT}/dist/mcp-entry.js"],
-      "env": {
-        "CODEX_PLUGIN_DATA": "${PLUGIN_DATA}"
-      },
-      "cwd": "${PLUGIN_ROOT}"
+      "args": [
+        "--input-type=module",
+        "-e",
+        "import { basename, resolve } from 'node:path';\nconst cache = resolve('../../..');\nif (basename(cache) !== 'cache') throw new Error('Ultra Code requires an installed plugin cache');\nconst owner = basename(resolve('..')) + '-' + basename(resolve('../..'));\nprocess.env.CODEX_PLUGIN_DATA = process.env.PLUGIN_DATA = resolve(cache, '../data', owner);\nawait import('./dist/mcp-entry.js');"
+      ],
+      "cwd": "."
     }
   }
 }

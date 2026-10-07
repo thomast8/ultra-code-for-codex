@@ -44,6 +44,26 @@ normal installation of 0.1.1 returned installed/enabled state, one
 that hook enabled but **untrusted**, with no hook errors. Native dispatch remains
 pending the user's normal hook review.
 
+A subsequent live `mcpServerStatus/list` check found 0.1.1 startup failed with
+`No such file or directory`: the legacy MCP loader preserves root/data variable
+placeholders literally. Version 0.1.2 uses the loader's supported relative cwd
+and a Node launcher that derives the matching profile's plugin data directory
+from the installed cache. This layout is tied to the verified 0.160.1 store
+adapter; unsupported cache layouts fail instead of choosing another profile.
+
+Installed 0.1.2 readback returns all three tools, the panel thread entrypoint and
+no tools error. The current exact native-hook context resolves through that
+installed launcher, and the inline panel resource returns successfully.
+`hooks/list` now reports the hook **trusted**. The user confirmed the menu entry visible in Codex Desktop on 2026-10-07.
+The native MCP tool also resolved this chat's exact current hook handle. Native
+Ultra/Plan transition coverage and visual panel/binding QA remain incomplete.
+
+Figma comparison: its plugin declares a connected app in `.app.json`; its
+`open_figma_mcp_app_in_thread` tool advertises `ui.resourceUri` and global/thread
+entrypoints. Codex's installed menu code accepts both connected-app and local
+MCP entries. Our thread metadata matches that contract. We did not copy Figma's
+hosted transport or authentication boundary.
+
 The panel uses the installed MCP App SDK's registration helper, including its
 legacy resource URI alias, and the documented `thread` entrypoint. This verifies
 advertised tool metadata, not appearance in the Codex Tools menu.

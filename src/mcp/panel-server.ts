@@ -22,7 +22,7 @@ export function createPanelServer(
   dataDir: string,
   loadPanelHtml: PanelHtmlLoader = () => readFile(new URL('./panel.html', import.meta.url), 'utf8'),
 ): McpServer {
-  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.1' });
+  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.2' });
   const bindings = new Map<string, PendingBinding>();
 
   registerPanelView(server, bindings, loadPanelHtml);
