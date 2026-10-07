@@ -53,6 +53,7 @@ describe('hook process entry', () => {
   it('bridges hook output and failures through the process interface', async () => {
     const { dataDir, transcriptPath } = await makeFixture();
     const output: string[] = [];
+    const diagnostics: string[] = [];
     const input = JSON.stringify({
       hook_event_name: 'UserPromptSubmit',
       session_id: sessionId,
@@ -66,6 +67,7 @@ describe('hook process entry', () => {
       })(),
       env: { CODEX_PLUGIN_DATA: dataDir },
       stdout: { write: (value: string) => output.push(value) },
+      stderr: { write: (value: string) => diagnostics.push(value) },
       exitCode: 0,
     };
     await runHookEntry(createProcessHookIO(host));
@@ -77,22 +79,26 @@ describe('hook process entry', () => {
 
   it('sets process exitCode for malformed input without writing stdout', async () => {
     const output: string[] = [];
+    const diagnostics: string[] = [];
     const host = {
       stdin: (async function* () {
         yield '{';
       })(),
       env: {},
       stdout: { write: (value: string) => output.push(value) },
+      stderr: { write: (value: string) => diagnostics.push(value) },
       exitCode: 0,
     };
     await runHookEntry(createProcessHookIO(host));
     expect({ exitCode: host.exitCode, output }).toEqual({ exitCode: 1, output: [] });
+    expect(diagnostics).toEqual(['Ultra Code hook failed: Invalid hook JSON input\n']);
   });
 });
 
 describe('direct hook execution guard', () => {
   it('runs only for its matching script URL and delegates stdin handling', async () => {
     const written: string[] = [];
+    const diagnostics: string[] = [];
     let exitCode = 0;
     async function* stdin(): AsyncGenerator<string> {
       yield '{';
@@ -101,6 +107,7 @@ describe('direct hook execution guard', () => {
       stdin: stdin(),
       environment: {},
       writeStdout: (value: string) => written.push(value),
+      writeStderr: (value: string) => diagnostics.push(value),
       setExitCode: (value: number) => (exitCode = value),
     };
     const script = '/tmp/activation-hook-entry.js';
@@ -122,6 +129,7 @@ describe('hook stdin decoding', () => {
       transcript_path: transcriptPath,
     });
     const written: string[] = [];
+    const diagnostics: string[] = [];
     let exitCode = 0;
     async function* stdin(): AsyncGenerator<Uint8Array> {
       const bytes = Buffer.from(input);
@@ -133,6 +141,7 @@ describe('hook stdin decoding', () => {
       stdin: stdin(),
       environment: { CODEX_PLUGIN_DATA: dataDir },
       writeStdout: (value) => written.push(value),
+      writeStderr: (value) => diagnostics.push(value),
       setExitCode: (value) => (exitCode = value),
     });
     expect(exitCode).toBe(0);
@@ -145,6 +154,7 @@ describe('hook stdin decoding', () => {
     'sets failure status without output for invalid hook input',
     async (input) => {
       const written: string[] = [];
+      const diagnostics: string[] = [];
       let exitCode = 0;
       async function* stdin(): AsyncGenerator<string> {
         yield input;
@@ -153,9 +163,112 @@ describe('hook stdin decoding', () => {
         stdin: stdin(),
         environment: {},
         writeStdout: (value) => written.push(value),
+        writeStderr: (value) => diagnostics.push(value),
         setExitCode: (value) => (exitCode = value),
       });
       expect({ exitCode, written }).toEqual({ exitCode: 1, written: [] });
     },
   );
+});
+
+describe('safe failure diagnostics', () => {
+  it.each([
+    ['{"credential":"sentinel-secret",', {}, 'Invalid hook JSON input'],
+    ['{}', {}, 'Unexpected hook event'],
+    [
+      JSON.stringify({
+        hook_event_name: 'UserPromptSubmit',
+        session_id: sessionId,
+        turn_id: turnId,
+        cwd,
+      }),
+      {},
+      'Plugin data directory is unavailable or ambiguous',
+    ],
+    [
+      JSON.stringify({
+        hook_event_name: 'UserPromptSubmit',
+        session_id: sessionId,
+        turn_id: turnId,
+        cwd,
+      }),
+      { PLUGIN_DATA: '/tmp' },
+      'Missing absolute transcript_path',
+    ],
+  ])('reports the failure without exposing input', async (input, environment, reason) => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    let exitCode = 0;
+    await runHookEntry({
+      stdin: (async function* () {
+        yield input;
+      })(),
+      environment,
+      writeStdout: (value) => stdout.push(value),
+      writeStderr: (value) => stderr.push(value),
+      setExitCode: (value) => {
+        exitCode = value;
+      },
+    });
+    expect({ stdout, stderr, exitCode }).toEqual({
+      stdout: [],
+      stderr: [`Ultra Code hook failed: ${reason}\n`],
+      exitCode: 1,
+    });
+    expect(stderr.join('')).not.toContain('sentinel-secret');
+  });
+});
+
+describe('filesystem and transport diagnostics', () => {
+  it('reports storage failures without exposing the filesystem path', async () => {
+    const { dataDir, transcriptPath } = await makeFixture();
+    await writeFile(dataDir, 'sentinel-secret');
+    const stderr: string[] = [];
+    let exitCode = 0;
+    await runHookEntry({
+      stdin: (async function* () {
+        yield JSON.stringify({
+          hook_event_name: 'UserPromptSubmit',
+          session_id: sessionId,
+          turn_id: turnId,
+          cwd,
+          transcript_path: transcriptPath,
+        });
+      })(),
+      environment: { PLUGIN_DATA: dataDir },
+      writeStdout: () => {
+        throw new Error('Unexpected success');
+      },
+      writeStderr: (value) => stderr.push(value),
+      setExitCode: (value) => {
+        exitCode = value;
+      },
+    });
+    expect(exitCode).toBe(1);
+    expect(stderr).toEqual(['Ultra Code hook failed: Filesystem error (ENOTDIR during mkdir)\n']);
+    expect(stderr.join('')).not.toContain(dataDir);
+  });
+
+  it('sanitizes unexpected stdin failures', async () => {
+    const stderr: string[] = [];
+    let exitCode = 0;
+    await runHookEntry({
+      stdin: (async function* () {
+        yield '{';
+        throw new Error('sentinel-secret');
+      })(),
+      environment: {},
+      writeStdout: () => {
+        throw new Error('Unexpected success');
+      },
+      writeStderr: (value) => stderr.push(value),
+      setExitCode: (value) => {
+        exitCode = value;
+      },
+    });
+    expect({ stderr, exitCode }).toEqual({
+      stderr: ['Ultra Code hook failed: Unexpected hook failure\n'],
+      exitCode: 1,
+    });
+  });
 });

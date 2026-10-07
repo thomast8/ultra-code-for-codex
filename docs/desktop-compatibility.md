@@ -34,12 +34,19 @@ IPC, another UI automation technology, a hosted service or broader permissions.
 
 ## Package readback
 
-The bundled `plugin/read` development endpoint recognized marketplace
-`ultra-code-for-codex-local` and the `ultra-code` MCP server. It reported this
-package as uninstalled and disabled, with zero reported hooks. Hook discovery
-and trust therefore remain unverified; that readback does not establish the
-cause. The manifest follows the current documented `extensions.com.openai.hooks`
-path. Do not treat package parsing as installed hook execution.
+The original portable manifest exposed the `ultra-code` MCP server but zero
+hooks. A controlled comparison on bundled CLI 0.160.1 discovered the hook using
+Codex's legacy `.codex-plugin/plugin.json` manifest and `.mcp.json` declaration.
+Version 0.1.1 uses that layout and preserves the original portable files.
+Discovery is separate from trust and native execution. On 2026-10-07,
+normal installation of 0.1.1 returned installed/enabled state, one
+`userPromptSubmit` hook and the `ultra-code` MCP server. `hooks/list` reported
+that hook enabled but **untrusted**, with no hook errors. Native dispatch remains
+pending the user's normal hook review.
+
+The panel uses the installed MCP App SDK's registration helper, including its
+legacy resource URI alias, and the documented `thread` entrypoint. This verifies
+advertised tool metadata, not appearance in the Codex Tools menu.
 
 A manual invocation of the built hook against one explicitly identified real
 recorded turn returned verified `gpt-6.1-sol`, `ultra`, and `default` metadata
@@ -51,7 +58,7 @@ native `UserPromptSubmit` timing or hook trust flow.
 After `just setup` and `just check`, use the bundled CLI for installation:
 
 ```sh
-/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace add /Users/thomastiotto/GitRepos/ultra-code-for-codex
+/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace add "$(pwd)"
 /Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin add ultra-code-for-codex@ultra-code-for-codex-local
 ```
 

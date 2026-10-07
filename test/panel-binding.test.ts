@@ -44,8 +44,9 @@ describe('panel chat binding', () => {
     const panelTool = listed.tools.find((tool) => tool.name === 'ultra_panel');
     expect(panelTool?._meta?.ui).toEqual({ resourceUri: 'ui://ultra-code/panel.html' });
     expect(panelTool?._meta?.['openai/ui']).toEqual({
-      entrypoints: [{ type: 'thread', title: 'Ultra Code' }],
+      entrypoints: [{ type: 'thread' }],
     });
+    expect(panelTool?._meta?.['ui/resourceUri']).toBe('ui://ultra-code/panel.html');
     const bindingTool = listed.tools.find((tool) => tool.name === 'ultra_panel_bind');
     expect(bindingTool?._meta?.ui).toEqual({ resourceUri: 'ui://ultra-code/panel.html' });
     const resource = await client.readResource({ uri: 'ui://ultra-code/panel.html' });

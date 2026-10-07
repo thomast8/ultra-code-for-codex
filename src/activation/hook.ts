@@ -1,4 +1,4 @@
-import { registerContext } from './registry.js';
+import { registerContext, resolveContext } from './registry.js';
 import type { HookInput, HookOutput } from './types.js';
 
 function pluginDataDirectory(environment: NodeJS.ProcessEnv): string {
@@ -38,11 +38,17 @@ export async function runUserPromptHook(
   environment: NodeJS.ProcessEnv,
 ): Promise<HookOutput> {
   const input = parseHookInput(value);
-  const { contextKey } = await registerContext(input, pluginDataDirectory(environment));
+  const dataDir = pluginDataDirectory(environment);
+  const { contextKey } = await registerContext(input, dataDir);
+  const context = await resolveContext(contextKey, dataDir);
+  const active = context.resolutionStatus === 'verified' && context.effort === 'ultra';
+  const policy = active
+    ? 'Ultra policy active: delegate only bounded independent work that justifies its total cost. Keep intent, decisions, integration and completion with the selected lead. Plan Mode is read-only. This probe cannot start workflows.'
+    : 'Ultra policy inactive: effort is not verified as ultra. Explicit invocation remains subject to verified capabilities and existing authority.';
   return {
     hookSpecificOutput: {
       hookEventName: 'UserPromptSubmit',
-      additionalContext: `Exact-turn context handle: ${contextKey}. If Ultra is activated for this turn, call ultra_context with this exact handle. Preserve the lead model and effort recorded for this turn. If the tool reports unknown context, do not activate Ultra from that record.`,
+      additionalContext: `Exact-turn context handle: ${contextKey}. Call ultra_context with this exact handle. Preserve the selected lead model and effort. ${policy}`,
     },
   };
 }

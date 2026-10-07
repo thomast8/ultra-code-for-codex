@@ -344,11 +344,40 @@ describe('UserPromptSubmit hook', () => {
       );
       expect(output.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
       expect(output.hookSpecificOutput.additionalContext).toContain('ultra_context');
-      expect(output.hookSpecificOutput.additionalContext).toContain('exact handle');
+      expect(output.hookSpecificOutput.additionalContext).toContain('this exact handle');
       expect(output.hookSpecificOutput.additionalContext).not.toContain('gpt-6');
     },
   );
+});
 
+describe('verified Ultra policy', () => {
+  it.each(['default', 'plan'])('activates Ultra policy for verified %s turns', async (mode) => {
+    const dataDir = await tempDir();
+    const sourcePath = await transcript(
+      records('0.160.1').replace('"medium"', '"ultra"').replace('"default"', JSON.stringify(mode)),
+    );
+    const output = await runUserPromptHook(
+      { hook_event_name: 'UserPromptSubmit', ...input, transcript_path: sourcePath },
+      { PLUGIN_DATA: dataDir },
+    );
+    expect(output.hookSpecificOutput.additionalContext).toContain('Ultra policy active:');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Plan Mode is read-only');
+  });
+
+  it.each(['0.160.1', '0.161.0'])('does not activate unverified Ultra in %s', async (version) => {
+    const dataDir = await tempDir();
+    const sourcePath = await transcript(
+      version === '0.161.0' ? records(version).replace('"medium"', '"ultra"') : records(version),
+    );
+    const output = await runUserPromptHook(
+      { hook_event_name: 'UserPromptSubmit', ...input, transcript_path: sourcePath },
+      { PLUGIN_DATA: dataDir },
+    );
+    expect(output.hookSpecificOutput.additionalContext).toContain('Ultra policy inactive:');
+  });
+});
+
+describe('hook environment', () => {
   it('rejects conflicting plugin data directory aliases', async () => {
     await expect(
       runUserPromptHook(
@@ -381,7 +410,7 @@ describe('UserPromptSubmit hook', () => {
         { hook_event_name: 'UserPromptSubmit', ...input, transcript_path: sourcePath },
         { [alias]: dataDir },
       );
-      expect(output.hookSpecificOutput.additionalContext).toContain('exact handle');
+      expect(output.hookSpecificOutput.additionalContext).toContain('this exact handle');
     },
   );
 });

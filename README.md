@@ -14,9 +14,10 @@ There is no Codex Pilot, private Desktop IPC or hosted service dependency.
 ## Local setup and checks
 
 Node **26.10.0** and `just` are required. Protocol generation and backend QA
-are pinned to bundled CLI **0.160.0**. The installed CLI is now **0.160.1**;
-its generated bindings match, but its observed session identity metadata needs
-separate adapter validation. Unsupported log versions remain unknown.
+are pinned to bundled CLI **0.160.1**. The log adapter accepts **0.160.0** and
+**0.160.1** root-chat records, with exact session, turn and cwd matching.
+Descendant sessions with different thread/root IDs remain ineligible for lead
+activation. Unsupported log versions remain unknown.
 
 ```sh
 just setup
@@ -36,6 +37,7 @@ Generated types are excluded only from manual-code style and coverage gates.
 
 ## Implemented probe
 
+- Codex legacy plugin packaging with a discoverable plugin-owned activation hook.
 - Plugin-owned exact-turn context registration with opaque handles.
 - Versioned log adapter, explicit unknown metadata, Ultra and Plan Mode metadata.
 - Local stdio MCP server and inline React MCP App resource.
@@ -56,7 +58,11 @@ incomplete result until real host observations are recorded. A successful local
 stdio check is not a Desktop UI pass.
 
 Installation must preserve unrelated plugins and hooks. Hook trust is a separate
-Codex review flow. Installation does not automatically trust the hook.
+Codex review flow. Installation does not automatically trust the hook. The active manifest is
+`plugin/.codex-plugin/plugin.json`; the original portable manifest is preserved
+at `plugin/.codex-plugin/portable.plugin.json`. The portable format currently
+fails to expose hooks in the installed Codex host. `plugin/.mcp.json` is the
+active MCP declaration; `plugin/mcp.json` preserves the original portable one.
 Routing evaluation is unavailable until the Desktop gate and honest usage
 accounting pass; `just evaluate-routing` fails without making model calls.
 
@@ -67,16 +73,20 @@ Build from this checkout before registering the local marketplace:
 ```sh
 just setup
 just build
-/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace add /Users/thomastiotto/GitRepos/ultra-code-for-codex
+/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin marketplace add "$(pwd)"
 /Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin add ultra-code-for-codex@ultra-code-for-codex-local
 ```
 
 In Codex, open a new chat and ask **“Open the Ultra Code panel for this chat.”**
-You can also select Ultra Code for Codex from the Plugins and MCPs menu. Review
-the plugin's `UserPromptSubmit` hook in Codex's normal hook trust UI. On a
+The panel advertises a documented thread entrypoint; its appearance in the
+Plugins and MCPs menu still requires Desktop verification. Review the plugin's
+`UserPromptSubmit` hook in Codex's normal hook trust UI. On a
 supported exact-turn record, choose **Show this chat's workflows** in the panel
 and let the lead bind its nonce. If metadata is unsupported or unavailable,
 the binding must fail with an explicit reason.
+
+On verified Ultra turns, the hook emits selective delegation policy. Non-Ultra
+or unknown metadata does not activate that policy. Plan Mode stays read-only.
 
 This version tests context and panel integration only. It cannot run workflows,
 spawn workers or produce a PR. Selecting Ultra does not enable a missing runtime.

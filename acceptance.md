@@ -8,7 +8,8 @@
 - [x] Explicit one-time chat/profile binding and failure isolation in simulated-host tests.
 - [x] Built hook plus MCP resolver on one exact real recorded Ultra turn.
 - [x] Bundled CLI metadata inspection and unresolved admission blocking dispatch.
-- [x] Local marketplace package recognized by the bundled development parser.
+- [x] Installed/enabled 0.1.1 readback: MCP server and plugin-owned hook discovered.
+- [x] Built-hook process QA: safe failure diagnostics, Ultra gating and Plan reminder.
 
 These checks are supporting evidence. They do not satisfy the live Desktop gate.
 
@@ -16,7 +17,7 @@ These checks are supporting evidence. They do not satisfy the live Desktop gate.
 
 | Required observation                  | Current evidence / blocker                                                              |
 | ------------------------------------- | --------------------------------------------------------------------------------------- |
-| Desktop local stdio startup           | Standalone stdio passed; Desktop environment/substitution unverified.                   |
+| Desktop local stdio startup           | Actual chat MCP call and installed stdio passed; UI rendering unverified.               |
 | Desktop side-panel rendering          | Computer-use access to `com.openai.codex` is denied.                                    |
 | Correct chat binding                  | Protocol and simulated-host tests passed; two live chats unverified.                    |
 | Exact-turn Ultra / Plan detection     | Fixtures and one recorded Ultra turn passed; native hook timing/trust unverified.       |
@@ -25,9 +26,10 @@ These checks are supporting evidence. They do not satisfy the live Desktop gate.
 | Effective restrictions/capacity       | Supported readback route identified; dedicated profile/managed policy not yet verified. |
 | Waiting without excess lead inference | No workflow wait/runtime implemented; live behavior unverified.                         |
 
-The development package parser reports the plugin uninstalled and disabled and
-zero hooks. That does not establish why hook discovery is absent. Do not claim
-native hook loading works.
+The original portable package exposed zero hooks. A controlled bundled 0.160.1
+comparison discovers the plugin-owned hook through the legacy manifest.
+Installed hook is enabled but untrusted. Native dispatch and Tools-menu visibility require live host
+verification; tool discovery alone does not establish them.
 
 ## Later slices: not started behind Gate 1
 

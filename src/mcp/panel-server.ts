@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import type { LeadContext } from '../activation/types.js';
 
 const PANEL_URI = 'ui://ultra-code/panel.html';
@@ -21,12 +22,13 @@ export function createPanelServer(
   dataDir: string,
   loadPanelHtml: PanelHtmlLoader = () => readFile(new URL('./panel.html', import.meta.url), 'utf8'),
 ): McpServer {
-  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.0' });
+  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.1' });
   const bindings = new Map<string, PendingBinding>();
 
   registerPanelView(server, bindings, loadPanelHtml);
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'ultra_panel_bind',
     {
       title: 'Bind Ultra Code panel',
@@ -63,7 +65,8 @@ function registerPanelView(
     }),
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'ultra_panel',
     {
       title: 'Open Ultra Code panel',
@@ -72,7 +75,7 @@ function registerPanelView(
       inputSchema: {},
       _meta: {
         ui: { resourceUri: PANEL_URI },
-        'openai/ui': { entrypoints: [{ type: 'thread', title: 'Ultra Code' }] },
+        'openai/ui': { entrypoints: [{ type: 'thread' }] },
       },
     },
     async () => {
