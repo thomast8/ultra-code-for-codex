@@ -16,29 +16,31 @@
 - [x] Built-hook process QA: safe failure diagnostics, Ultra gating and Plan reminder.
 - [x] Automatic binding in the installed stdio process using this chat’s real exact-hook handle, with no extra model turn.
 - [x] Original-panel refresh, duplicate-request, stale-response and automatic-opening UI regressions.
+- [x] Native automatic opening renders bound without a button or extra message; the current manual side panel refreshes queued-to-bound after a separate lead call.
 - [x] Probe self-review: private read-only nonce status, ownership checks and fail-closed error rendering; reproduced error-result finding fixed.
 
 These checks are supporting evidence. They do not satisfy the live Desktop gate.
 
 ## Gate 1: incomplete
 
-| Required observation                  | Current evidence / blocker                                                                                             |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Desktop local stdio startup           | Native chat MCP call, public discovery and rendered MCP App passed.                                                    |
-| Desktop side-panel rendering          | Verified through the supported MCP Apps browser surface and user screenshot.                                           |
-| Correct chat binding                  | Native same-chat binding passed; 0.1.4 installed-process auto binding passed; native refreshed UI/two-chat QA pending. |
-| Exact-turn Ultra / Plan detection     | Fixtures/recorded Ultra/current native context passed; live mode transitions pending.                                  |
-| Bounded read-only worker/result       | No worker turn dispatched while admission is unverified.                                                               |
-| Correct account/profile/model         | CLI catalog/account metadata read; match to selected Desktop lead unverified.                                          |
-| Effective restrictions/capacity       | Supported readback route identified; dedicated profile/managed policy not yet verified.                                |
-| Waiting without excess lead inference | No workflow wait/runtime implemented; live behavior unverified.                                                        |
+| Required observation                  | Current evidence / blocker                                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Desktop local stdio startup           | Native chat MCP call, public discovery and rendered MCP App passed.                                     |
+| Desktop side-panel rendering          | Verified through the supported MCP Apps browser surface and user screenshot.                            |
+| Correct chat binding                  | Native automatic inline opening and manual side-panel refresh passed in this chat; two-chat QA pending. |
+| Exact-turn Ultra / Plan detection     | Fixtures/recorded Ultra/current native context passed; live mode transitions pending.                   |
+| Bounded read-only worker/result       | No worker turn dispatched while admission is unverified.                                                |
+| Correct account/profile/model         | CLI catalog/account metadata read; match to selected Desktop lead unverified.                           |
+| Effective restrictions/capacity       | Supported readback route identified; dedicated profile/managed policy not yet verified.                 |
+| Waiting without excess lead inference | No workflow wait/runtime implemented; live behavior unverified.                                         |
 
 The original portable package exposed zero hooks. A controlled bundled 0.160.1
 comparison discovers the plugin-owned hook through the legacy manifest.
 Installed hook is trusted and the current exact native handle resolves. The user confirmed Tools-menu visibility. Native panel rendering and same-chat binding passed on 2026-10-09. The original
-side panel remained waiting after binding. The refreshed active-turn view still
-loaded the old script after installation; 0.1.4 UI verification needs a fresh
-native load. Tool discovery alone does not establish these observations.
+side panel initially remained waiting after binding and retained the old bundle
+during refresh. A later native load used 0.1.4: the automatic result rendered
+bound without a button, and manual side panel tab 3 changed from queued to bound
+after a separate lead call, without reopening or receiving that call’s result. Tool discovery alone does not establish these observations.
 
 ## Later slices: not started behind Gate 1
 

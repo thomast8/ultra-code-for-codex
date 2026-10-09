@@ -164,3 +164,11 @@ Public standalone app-server discovery already reported installed 0.1.4. This is
 a current-turn cache boundary, not evidence that the updated UI passed native QA.
 A fresh native load must show automatic binding and original-panel status updates
 before those behaviours can be marked Desktop-verified.
+
+Later in the same chat, the native `ultra_panel` call with the verified handle
+returned bound plus its nonce, and the user screenshot showed the new inline
+view with no binding button. The manual side panel was a different pending nonce.
+The supported MCP Apps surface observed tab 3 queued with its button disabled;
+a separate native lead binding call changed that same tab to bound and removed
+the button without reopening. These observations verify the two updated UI flows
+in this chat; two-chat ownership and fresh-version activation remain separate.
