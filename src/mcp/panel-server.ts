@@ -41,7 +41,7 @@ export function createPanelServer(
   dataDir: string,
   loadPanelHtml: PanelHtmlLoader = () => readFile(new URL('./panel.html', import.meta.url), 'utf8'),
 ): McpServer {
-  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.3' });
+  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.4' });
   const bindings = openBindings(dataDir);
   const close = server.server.onclose;
   server.server.onclose = () => {
@@ -49,7 +49,8 @@ export function createPanelServer(
     if (bindings.isOpen) bindings.close();
   };
 
-  registerPanelView(server, bindings, loadPanelHtml);
+  registerPanelView(server, bindings, loadPanelHtml, resolveContext, dataDir);
+  registerPanelStatus(server, bindings);
 
   registerAppTool(
     server,
@@ -73,6 +74,8 @@ function registerPanelView(
   server: McpServer,
   bindings: DatabaseSync,
   loadPanelHtml: PanelHtmlLoader,
+  resolveContext: ContextResolver,
+  dataDir: string,
 ) {
   server.registerResource(
     'ultra-panel',
@@ -95,16 +98,23 @@ function registerPanelView(
     {
       title: 'Open Ultra Code panel',
       description:
-        'Open the local Ultra Code panel. The user must explicitly bind it to this chat.',
-      inputSchema: {},
+        'Open the local Ultra Code panel. Supply this turn’s verified contextKey to bind automatically. Omit it only for a manual launch requiring chat binding.',
+      inputSchema: { contextKey: z.string().min(1).optional() },
       _meta: {
         ui: { resourceUri: PANEL_URI },
         'openai/ui': { entrypoints: [{ type: 'thread' }] },
       },
     },
-    async () => {
+    async ({ contextKey }) => {
       const nonce = randomBytes(24).toString('base64url');
       bindings.prepare("INSERT INTO bindings (nonce, state) VALUES (?, 'pending')").run(nonce);
+      if (contextKey) {
+        const result = await bindPanel(bindings, nonce, contextKey, resolveContext, dataDir);
+        return {
+          ...result,
+          structuredContent: { ...result.structuredContent, bindingNonce: nonce },
+        };
+      }
       return {
         content: [
           {
@@ -117,6 +127,30 @@ function registerPanelView(
           capabilityAvailability: 'unavailable',
           capabilityReason: PROBE_LIMIT,
         },
+      };
+    },
+  );
+}
+
+function registerPanelStatus(server: McpServer, bindings: DatabaseSync) {
+  registerAppTool(
+    server,
+    'ultra_panel_status',
+    {
+      title: 'Read Ultra Code panel binding',
+      description: 'Read this panel nonce state without binding it or exposing chat metadata.',
+      inputSchema: { nonce: z.string().min(1) },
+      _meta: { ui: { visibility: ['app'] } },
+    },
+    async ({ nonce }) => {
+      const row = bindings
+        .prepare('SELECT nonce, state, owner FROM bindings WHERE nonce = ?')
+        .get(nonce);
+      if (!row) return failure('Unknown or expired panel nonce. Open the panel again.');
+      const { state } = bindingSchema.parse(row);
+      return {
+        content: [{ type: 'text', text: `Panel binding state: ${state}.` }],
+        structuredContent: { state },
       };
     },
   );

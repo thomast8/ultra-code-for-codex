@@ -133,3 +133,34 @@ context: the issuing process exited, another bound its nonce, and a third
 verified the same-chat resolution. Database permissions were 0600. The original
 in-memory nonce was not recreated or adopted; the native panel needs reopening
 for end-to-end button-flow revalidation.
+
+## Side-panel binding refresh correction
+
+Native QA on 2026-10-09 confirmed that Codex queues app messages during an active
+lead turn and dispatches them after that turn ends. These messages are not
+steering commands. A separate binding tool result rendered a new inline view;
+the original side panel remained waiting even though its nonce was bound.
+
+Version 0.1.4 automatically binds agent-opened panels when `ultra_panel` receives
+the verified lead `contextKey`. The result contains its nonce and binding outcome;
+the UI renders it directly with no binding button or extra chat message. Missing
+context remains a manual launch; invalid context fails rather than inferring a
+session. The same ownership and atomic claim rules apply.
+
+Version 0.1.4 also adds an app-only nonce-status read. The panel polls pending binding
+state through the normal MCP App bridge without model calls and stops on a
+terminal state or unmount. The read returns only the state, never chat, profile
+or turn metadata. Repeated requests are disabled while one is pending.
+
+This fix does not change the worker admission gate or add workflow execution.
+The installed Desktop CLI is now 0.162.0-alpha.17.2; fresh root-chat logs of that
+version remain unsupported by the existing 0.160.0/0.160.1 activation adapter.
+The current longstanding chat continues to resolve its recorded exact-turn
+metadata. Use the still-installed Node 26.10.0 for the pinned repository checks.
+
+The first refreshed native panel still loaded the old UI during the active turn:
+its script contained neither `ultra_panel_status` nor the new queued label.
+Public standalone app-server discovery already reported installed 0.1.4. This is
+a current-turn cache boundary, not evidence that the updated UI passed native QA.
+A fresh native load must show automatic binding and original-panel status updates
+before those behaviours can be marked Desktop-verified.

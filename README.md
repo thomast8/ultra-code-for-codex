@@ -41,12 +41,13 @@ Generated types are excluded only from manual-code style and coverage gates.
 - Plugin-owned exact-turn context registration with opaque handles.
 - Versioned log adapter, explicit unknown metadata, Ultra and Plan Mode metadata.
 - Local stdio MCP server and inline React MCP App resource.
-- One-time explicit panel binding without choosing the latest global session.
+- Automatic binding from a verified lead handle; explicit fallback for manual panels.
 - Secret-safe bundled app-server admission inspection and denied server requests.
 - Worker execution remains unavailable until effective capabilities are verified.
 
-The MCP tools currently expose `ultra_context`, `ultra_panel`, and
-`ultra_panel_bind`. They do not start workflows. Panel nonces and verified ownership are shared in
+The lead tools expose `ultra_context`, `ultra_panel`, and `ultra_panel_bind`.
+An app-only `ultra_panel_status` reads the existing panel nonce state without
+revealing chat metadata or using a model call. They do not start workflows. Panel nonces and verified ownership are shared in
 a private SQLite store under this profile's plugin data directory;
 workflow durability, the scheduler, QuickJS execution, lead handoffs, usage
 accounting and routing calibration belong to later gated slices.
@@ -85,16 +86,21 @@ just build
 /Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex plugin add ultra-code-for-codex@ultra-code-for-codex-local
 ```
 
-In Codex, open a new chat and ask **“Open the Ultra Code panel for this chat.”**
-Select **Open Ultra Code panel** from **More tools > Plugins and MCPs**.
-The menu entry was confirmed visible in Codex Desktop on 2026-10-07; full panel
-rendering and binding QA remain separate. Review the plugin's
-`UserPromptSubmit` hook in Codex's normal hook trust UI. On a
-supported exact-turn record, choose **Show this chat's workflows** in the panel
-and let the lead bind its nonce. Version 0.1.3 permits the panel and lead to use
-separate MCP server instances without losing that nonce. Panels opened before
-this update must be reopened to issue a fresh nonce. If metadata is unsupported or unavailable,
-the binding must fail with an explicit reason.
+Ask **“Open the Ultra Code panel for this chat.”** The lead resolves its current
+hook handle with `ultra_context` and passes the same `contextKey` to `ultra_panel`.
+Version 0.1.4 verifies and binds the panel before returning it; the bound panel
+shows no binding button and submits no extra chat message. Review the plugin's
+`UserPromptSubmit` hook through Codex's normal trust UI when required.
+
+A manual **More tools > Plugins and MCPs > Open Ultra Code panel** launch has no
+verified lead handle. Only that fallback asks **Show this chat's workflows** and
+queues one request for the lead. The original panel reads nonce status directly
+once a second and stops when binding finishes. Repeated pending requests are
+disabled. The panel and lead may use separate MCP server instances.
+
+Close old panels and reopen after refreshing the plugin. An active Desktop turn
+can retain its old MCP server and UI; a fresh turn is needed to revalidate the
+installed update. Unsupported or unavailable exact-turn metadata fails explicitly.
 
 On verified Ultra turns, the hook emits selective delegation policy. Non-Ultra
 or unknown metadata does not activate that policy. Plan Mode stays read-only.

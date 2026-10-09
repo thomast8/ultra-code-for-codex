@@ -15,7 +15,7 @@ await mkdir(pluginRoot, { recursive: true });
 await cp(resolve('plugin/dist'), join(pluginRoot, 'dist'), { recursive: true });
 const { mcpServers } = JSON.parse(await readFile('plugin/.mcp.json', 'utf8'));
 const config = mcpServers['ultra-code'];
-const client = new Client({ name: 'ultra-code-protocol-qa', version: '0.1.2' });
+const client = new Client({ name: 'ultra-code-protocol-qa', version: '0.1.4' });
 const transport = new StdioClientTransport({
   command: config.command,
   args: config.args,
@@ -28,9 +28,17 @@ try {
   const tools = await client.listTools();
   const panel = tools.tools.find((tool) => tool.name === 'ultra_panel');
   assert.ok(panel, 'ultra_panel was not registered');
+  const statusTool = tools.tools.find((tool) => tool.name === 'ultra_panel_status');
+  assert.deepEqual(statusTool?._meta?.ui?.visibility, ['app']);
   const opened = await client.callTool({ name: 'ultra_panel', arguments: {} });
   assert.equal(opened.isError, undefined);
   assert.equal(typeof opened.structuredContent?.bindingNonce, 'string');
+  const status = () =>
+    client.callTool({
+      name: 'ultra_panel_status',
+      arguments: { nonce: opened.structuredContent.bindingNonce },
+    });
+  assert.deepEqual((await status()).structuredContent, { state: 'pending' });
   const uri = panel._meta?.ui?.resourceUri;
   assert.equal(typeof uri, 'string');
   const resource = await client.readResource({ uri });
@@ -41,6 +49,7 @@ try {
     arguments: { nonce: opened.structuredContent.bindingNonce, contextKey: 'invalid' },
   });
   assert.equal(unbound.isError, true, 'Invalid context must not bind a panel');
+  assert.deepEqual((await status()).structuredContent, { state: 'failed' });
   console.log(
     JSON.stringify({
       status: 'passed',
