@@ -8,7 +8,7 @@
 - [x] Explicit one-time chat/profile binding and failure isolation in simulated-host tests.
 - [x] Built hook plus MCP resolver on one exact real recorded Ultra turn.
 - [x] Bundled CLI metadata inspection and unresolved admission blocking dispatch.
-- [x] Installed 0.1.4: public MCP discovery returns three lead tools and one app-only status tool with no startup error.
+- [x] Installed 0.1.5: public MCP discovery returns three lead tools and one app-only status tool with no startup error.
 - [x] User confirmed the Codex Desktop Tools-menu entry is visible.
 - [x] Native chat MCP tool resolves the current exact hook context.
 - [x] Installed-process nonce binding survives separate issuing/binding processes.
@@ -18,6 +18,8 @@
 - [x] Original-panel refresh, duplicate-request, stale-response and automatic-opening UI regressions.
 - [x] Native automatic opening renders bound without a button or extra message; the current manual side panel refreshes queued-to-bound after a separate lead call.
 - [x] Probe self-review: private read-only nonce status, ownership checks and fail-closed error rendering; reproduced error-result finding fixed.
+- [x] Saved-chat restoration: SDK metadata/restart/isolation regressions and the actual installed 0.1.5 stdio server with explicit metadata.
+- [ ] Native 0.1.5 close/reopen QA: the live attempt still used cached 0.1.4 servers.
 
 These checks are supporting evidence. They do not satisfy the live Desktop gate.
 

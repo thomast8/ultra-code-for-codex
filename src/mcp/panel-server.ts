@@ -7,6 +7,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import type { LeadContext } from '../activation/types.js';
+import { restorePanelOwner } from './panel-owner.js';
 
 const PANEL_URI = 'ui://ultra-code/panel.html';
 const PROBE_LIMIT =
@@ -41,7 +42,7 @@ export function createPanelServer(
   dataDir: string,
   loadPanelHtml: PanelHtmlLoader = () => readFile(new URL('./panel.html', import.meta.url), 'utf8'),
 ): McpServer {
-  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.4' });
+  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.5' });
   const bindings = openBindings(dataDir);
   const close = server.server.onclose;
   server.server.onclose = () => {
@@ -105,7 +106,7 @@ function registerPanelView(
         'openai/ui': { entrypoints: [{ type: 'thread' }] },
       },
     },
-    async ({ contextKey }) => {
+    async ({ contextKey }, extra) => {
       const nonce = randomBytes(24).toString('base64url');
       bindings.prepare("INSERT INTO bindings (nonce, state) VALUES (?, 'pending')").run(nonce);
       if (contextKey) {
@@ -113,6 +114,19 @@ function registerPanelView(
         return {
           ...result,
           structuredContent: { ...result.structuredContent, bindingNonce: nonce },
+        };
+      }
+      const sessionId = restorePanelOwner(bindings, nonce, dataDir, extra._meta);
+      if (sessionId) {
+        return {
+          content: [{ type: 'text', text: 'Panel restored to this chat’s saved binding.' }],
+          structuredContent: {
+            bindingNonce: nonce,
+            bound: true,
+            sessionId,
+            capabilityAvailability: 'unavailable',
+            capabilityReason: PROBE_LIMIT,
+          },
         };
       }
       return {

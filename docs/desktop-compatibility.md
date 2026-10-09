@@ -172,3 +172,17 @@ The supported MCP Apps surface observed tab 3 queued with its button disabled;
 a separate native lead binding call changed that same tab to bound and removed
 the button without reopening. These observations verify the two updated UI flows
 in this chat; two-chat ownership and fresh-version activation remain separate.
+
+## Manual panel reopen correction
+
+Fix the Ultra Code panel losing its saved chat binding when reopened from the Tools menu.
+
+Before: every manual open created an unbound nonce, even after the same chat had already completed binding. Closing and reopening asked for another queued chat message.
+
+After: version 0.1.5 uses the Desktop tool request's routed chat ID to restore an existing verified binding in the current profile. For example, reopening chat A restores A; opening another chat does not select A's saved binding. Missing or conflicting metadata keeps the explicit fallback. Agent-requested panels still bind from the exact-turn context handle.
+
+Restoration makes no claim about the current turn, Ultra effort, Plan Mode or workflow authority. No browser storage, global last-chat lookup or extra model call is used.
+
+Validation: 41 focused panel tests passed, including 17 reopen fixtures covering restart, chat/profile isolation, malformed identity and incomplete binding states. Strict lint, TypeScript, formatting and build passed. The built manifest's actual stdio launch passed; installed and built server hashes match.
+
+Desktop QA remains pending for 0.1.5. The user's close/reopen attempt still ran cached 0.1.4 servers, verified by process working-directory version readback. No active chats were interrupted to force refresh. Workflow execution remains behind the existing capability gate.

@@ -92,11 +92,20 @@ Version 0.1.4 verifies and binds the panel before returning it; the bound panel
 shows no binding button and submits no extra chat message. Review the plugin's
 `UserPromptSubmit` hook through Codex's normal trust UI when required.
 
-A manual **More tools > Plugins and MCPs > Open Ultra Code panel** launch has no
-verified lead handle. Only that fallback asks **Show this chat's workflows** and
-queues one request for the lead. The original panel reads nonce status directly
-once a second and stops when binding finishes. Repeated pending requests are
-disabled. The panel and lead may use separate MCP server instances.
+After a chat has been verified and bound once, version 0.1.5 restores its saved
+binding when opened from **More tools > Plugins and MCPs > Open Ultra Code panel**
+and Desktop supplies matching routed thread metadata. No button or extra chat
+message is needed. Another chat, missing/conflicting metadata, or a nonstandard
+plugin data directory retains the explicit **Show this chat's workflows** fallback.
+
+Refreshing the installed plugin does not prove Desktop refreshed a running MCP
+server. Closing only the panel can retain the old server; verify a fresh server
+load before assessing updated behavior. Panel binding does not enable workflow
+execution or establish current-turn Ultra metadata.
+
+The original panel reads nonce status directly once a second and stops when
+binding finishes. Repeated pending requests are disabled. The panel and lead
+may use separate MCP server instances.
 
 Close old panels and reopen after refreshing the plugin. An active Desktop turn
 can retain its old MCP server and UI; a fresh turn is needed to revalidate the
