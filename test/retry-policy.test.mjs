@@ -16,3 +16,7 @@ test('preserves positive retry counts', () => {
   assert.deepEqual(resolveRetryPolicy({ maxRetries: 1 }), { maxRetries: 1 });
   assert.deepEqual(resolveRetryPolicy({ maxRetries: 7 }), { maxRetries: 7 });
 });
+
+test('preserves zero retries', () => {
+  assert.deepEqual(resolveRetryPolicy({ maxRetries: 0 }), { maxRetries: 0 });
+});
