@@ -395,7 +395,7 @@ describe('hook environment', () => {
       runUserPromptHook(
         { hook_event_name: 'UserPromptSubmit', ...input, transcript_path: null },
         {
-          CODEX_PLUGIN_DATA: '/plugin-data',
+          CODEX_PLUGIN_DATA: await tempDir(),
         },
       ),
     ).rejects.toThrow('Missing absolute transcript_path');
