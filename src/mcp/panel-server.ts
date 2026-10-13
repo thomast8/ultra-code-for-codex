@@ -8,7 +8,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import type { LeadContext } from '../activation/types.js';
-import { assertRoutedContext, restorePanelOwner } from './panel-owner.js';
+import { assertRoutedContext, requestMetadataKind, restorePanelOwner } from './panel-owner.js';
 import type { DaemonCall } from '../local/client.js';
 import { registerWorkflowTools } from './workflow-tools.js';
 import { withRuntimeCapability, withContextCapabilities } from './capability.js';
@@ -244,6 +244,7 @@ function registerContextTool(
         capabilityAvailability: z.enum(['available', 'unavailable']),
         capabilityReason: z.string(),
         executionCapabilities: z.unknown().optional(),
+        requestMetadataKind: z.enum(['absent', 'generic', 'routed']),
       },
     },
     async ({ contextKey }, extra) => {
@@ -258,6 +259,7 @@ function registerContextTool(
             content: [{ type: 'text', text: `${message} ${PROBE_LIMIT}` }],
             structuredContent: {
               ...context,
+              requestMetadataKind: requestMetadataKind(extra._meta),
               capabilityAvailability: 'unavailable',
               capabilityReason: PROBE_LIMIT,
             },

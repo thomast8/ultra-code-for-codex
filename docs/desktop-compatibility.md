@@ -233,3 +233,18 @@ Startup diagnostics retain a bounded stderr tail but expose only recognized
 failure categories and TOML locations, never raw configuration values or paths.
 A real bundled-CLI invalid-policy launch produced an actionable configuration
 error without a model call.
+
+## Generic MCP request metadata
+
+The restarted native 0.2.1 panel stayed bound and retained all five runs, but
+lead context/status requests failed routing validation. The adapter incorrectly
+required chat identities for every present metadata bag. The installed MCP SDK
+adds progress-only metadata when callers request progress notifications; an
+actual stdio request reproduced the failure while the ordinary request passed.
+
+Version 0.2.2 accepts generic extension metadata with an exact current handle.
+Recognized routing fields retain the existing strict alias and session checks,
+and generic metadata cannot restore a manually opened panel. The response
+reports only the metadata category, allowing native QA to classify the actual
+request without logging identifiers, arbitrary keys or values. Native release
+QA remains pending the supported installation and app restart.

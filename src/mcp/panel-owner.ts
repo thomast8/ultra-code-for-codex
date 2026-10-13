@@ -7,8 +7,22 @@ const threadIdentity = z
   .object({ thread_id: z.uuid(), threadId: z.uuid() })
   .refine((metadata) => metadata.thread_id === metadata.threadId);
 
+export function requestMetadataKind(metadata: unknown): 'absent' | 'generic' | 'routed' {
+  if (metadata === undefined) return 'absent';
+  if (
+    metadata !== null &&
+    typeof metadata === 'object' &&
+    !Array.isArray(metadata) &&
+    !Object.hasOwn(metadata, 'thread_id') &&
+    !Object.hasOwn(metadata, 'threadId')
+  )
+    return 'generic';
+  return 'routed';
+}
+
 export function assertRoutedContext(metadata: unknown, sessionId: string): void {
-  if (metadata === undefined) return;
+  // MCP progress and extension metadata do not establish chat routing.
+  if (requestMetadataKind(metadata) !== 'routed') return;
   const identity = threadIdentity.safeParse(metadata);
   if (!identity.success)
     throw new Error('Routed chat identity is missing, invalid, or conflicting');

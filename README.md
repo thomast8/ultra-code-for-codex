@@ -52,8 +52,8 @@ root/data placeholders. Unsupported layouts fail instead of selecting a profile.
 
 Build and repeat `codex plugin add` after updating this checkout. An already running
 MCP server can retain its previous build; confirm the live version before assessing
-an update. If Desktop retains the previous connection, finish the current turn
-and use a fresh turn to verify the refresh. An already-open panel can also need
+an update. If Desktop retains the previous connection across turns, fully quit
+and reopen the app hosting this chat. An already-open panel can also need
 closing and reopening to load its new UI. Saved chat bindings and workflows stay
 in the plugin data directory. Do not edit the generated plugin cache. The daemon uses the pinned Node
 executable recorded by the local build, so rebuild after moving that executable.

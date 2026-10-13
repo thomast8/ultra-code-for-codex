@@ -118,6 +118,8 @@ it('rejects a foreign profile owner even when its nonce is stored in the current
 
 it.each([
   {},
+  { progressToken: 7 },
+  { extension: 'private-value' },
   { thread_id: sessionId },
   { threadId: sessionId },
   { thread_id: sessionId, threadId: otherSessionId },
@@ -126,9 +128,12 @@ it.each([
 ])('keeps manual binding for absent, malformed or conflicting host identity: %j', async (_meta) => {
   const { profile, dataDir } = await fixture();
   await seedBinding(dataDir, context(profile));
-  const panel = await connect(dataDir, async () => context(profile));
+  const resolver = vi.fn(async () => context(profile));
+  const panel = await connect(dataDir, resolver);
   const opened = await panel.client.callTool({ name: 'ultra_panel', arguments: {}, _meta });
   expect(opened.structuredContent).not.toHaveProperty('bound');
+  expect(opened.structuredContent).not.toHaveProperty('sessionId');
+  expect(resolver).not.toHaveBeenCalled();
   expect(
     (
       await panel.client.callTool({

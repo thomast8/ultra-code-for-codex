@@ -51,7 +51,8 @@ old run stays incomplete; a retry is a new linked run, never an automatic write.
 
 - [x] Install 0.2.0 and verify the actual running MCP/daemon versions.
 - [x] Installed 0.2.1 MCP and shared daemon readback: available runtime, exact Ultra context, four preserved QA runs, isolated app-only pause/resume/cancel, and stable terminal timestamp.
-- [ ] Native Desktop refresh of this turn's cached 0.2.0 MCP connection to 0.2.1.
+- [x] Native Veridue restart loaded 0.2.1: three client process directories, daemon version, and a new native panel tab confirmed automatic binding with all five retained runs.
+- [ ] Native 0.2.2 metadata compatibility and a fresh complete worker-to-lead workflow.
 - [x] Real research/comparison/coding workflows completed through native MCP tools; the lead inspected evidence and resolved acceptance.
 - [x] Native multi-run controls: computer-use pause; user-assisted resume/cancel/reopen; backend readback and reopened native DOM agree. Binding and results persisted.
 - [x] Isolated coding fixture: checks, nine-case independent regression, review, push and ready [PR #2](https://github.com/thomast8/ultra-code-for-codex/pull/2) readback. It remains unmerged.
@@ -106,13 +107,28 @@ chat directory. Local AF_UNIX sandbox QA separately confirmed that read-only and
 writing worker policies deny connection to the private daemon socket, despite
 same-user file readability. No production credential was used in that probe.
 
-The current Desktop turn still retains an old 0.2.0 MCP connection after the
-standard CLI installation removed that version's cache. The installed 0.2.1
-stdio process and daemon are verified; this is separate from refreshing the
-active Desktop connection. A fresh turn is needed to verify that host refresh.
-Native multi-workflow rendering/control/reopen QA above was performed on 0.2.0.
+Restarting the actual app hosting this chat, Codex Veridue, loaded native 0.2.1
+clients. Closing and reopening then restored binding and all five workflows.
+A fresh turn alone did not refresh the old client. Native context-bearing tools
+still rejected the request metadata, so this did not qualify orchestration as
+fully healthy. Native multi-workflow execution QA above was performed on 0.2.0.
 
 Final review fixes also passed an actual invalid-config bundled-CLI diagnostic
 check and a real-clock 60,002 ms binding timeout/status retry through the local
 MCP server and SQLite. The latter used a simulated accepted host message and
 made no model call; it does not claim native message-delivery timeout QA.
+
+## MCP metadata compatibility correction
+
+Version 0.2.2 distinguishes generic request metadata from routed chat identity.
+An actual SDK-generated progress-only request reproduced the 0.2.1 failure.
+For example, a progress token no longer requires chat-ID aliases when the lead
+supplies its verified current-turn handle. Any recognized routing field still
+requires both valid matching aliases and the exact same session. Superseded
+handles remain rejected, and manual restoration still requires verified routed
+identity plus an existing owner in the same profile.
+
+The context response exposes only an absent/generic/routed classification; no
+raw metadata keys or values are returned. Focused SDK and handler tests, static
+gates and the real packaged stdio launch passed. Native 0.2.2 workflow QA remains
+pending installation and host refresh.
