@@ -7,6 +7,15 @@ const threadIdentity = z
   .object({ thread_id: z.uuid(), threadId: z.uuid() })
   .refine((metadata) => metadata.thread_id === metadata.threadId);
 
+export function assertRoutedContext(metadata: unknown, sessionId: string): void {
+  if (metadata === undefined) return;
+  const identity = threadIdentity.safeParse(metadata);
+  if (!identity.success)
+    throw new Error('Routed chat identity is missing, invalid, or conflicting');
+  if (identity.data.thread_id !== sessionId)
+    throw new Error('Context handle does not belong to the routed chat');
+}
+
 export function restorePanelOwner(
   bindings: DatabaseSync,
   nonce: string,

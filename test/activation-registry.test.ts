@@ -1,9 +1,10 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveContext } from '../src/activation/registry.js';
+import { registerContext, resolveContext } from '../src/activation/registry.js';
 import type { LeadContext, StoredContext } from '../src/activation/types.js';
+import { compatibilityLog, fixtureInput } from './activation-compatibility-fixture.js';
 
 const contextKey = 'uctx_01a1090e-4f83-7a73-8500-f87c808e0e85';
 const directories: string[] = [];
@@ -78,5 +79,42 @@ describe('registry polling and corruption', () => {
     await expect(resolveContext(contextKey, dataDir, { timeoutMs: 0 })).rejects.toMatchObject({
       code: 'EISDIR',
     });
+  });
+});
+
+describe('activation compatibility refresh', () => {
+  it('requires a new exact-source registration and leaves old unknown handles unchanged', async () => {
+    const { dataDir, file } = await makeStore();
+    const previous = {
+      ...verifiedContext(),
+      model: 'unknown',
+      effort: 'unknown',
+      collaborationMode: 'unknown',
+      resolutionStatus: 'unknown',
+      resolutionReason: 'Unsupported Codex log version for codex-turn-context-v1',
+    } as const;
+    await writeFile(file, JSON.stringify(record(previous)));
+    const transcriptPath = join(dataDir, 'sessions', 'current.jsonl');
+    await mkdir(join(dataDir, 'sessions'));
+    await writeFile(transcriptPath, compatibilityLog());
+    const refreshed = await registerContext(
+      { ...fixtureInput, transcript_path: transcriptPath },
+      dataDir,
+    );
+    expect(refreshed.contextKey).not.toBe(contextKey);
+    await expect(resolveContext(refreshed.contextKey, dataDir)).resolves.toMatchObject({
+      instanceId: await realpath(dataDir),
+      sessionId: fixtureInput.session_id,
+      turnId: fixtureInput.turn_id,
+      model: 'gpt-6-astra',
+      effort: 'ultra',
+      collaborationMode: 'default',
+      resolutionStatus: 'verified',
+    });
+    await expect(resolveContext(contextKey, dataDir)).resolves.toEqual(previous);
+    const otherProfile = await makeStore();
+    await expect(
+      resolveContext(refreshed.contextKey, otherProfile.dataDir, { timeoutMs: 0 }),
+    ).rejects.toThrow('Exact-turn context is unavailable');
   });
 });

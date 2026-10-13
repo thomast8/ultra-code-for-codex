@@ -391,3 +391,25 @@ it('does not claim an inline error result is bound', async () => {
   expect(status()).toBe('Binding rejected');
   expect((bindButton() as HTMLButtonElement).disabled).toBe(true);
 });
+
+it('times out queued polling and retries status without sending another message', async () => {
+  render(createElement(Panel));
+  await emitNonce();
+  await act(async () => fireEvent.click(bindButton()));
+  await act(async () => vi.advanceTimersByTimeAsync(59_999));
+  expect(screen.queryByRole('button', { name: 'Retry binding status' })).toBeNull();
+  await act(async () => vi.advanceTimersByTimeAsync(1));
+  expect(status()).toContain('still queued after one minute');
+  expect((bindButton() as HTMLButtonElement).disabled).toBe(true);
+  const reads = appState.instance?.reads.length;
+  await act(async () => vi.advanceTimersByTimeAsync(120_000));
+  expect(appState.instance?.reads).toHaveLength(reads ?? 0);
+  await act(async () =>
+    fireEvent.click(screen.getByRole('button', { name: 'Retry binding status' })),
+  );
+  expect(status()).toContain('request queued');
+  appState.readResult = { structuredContent: { state: 'bound' } };
+  await tick();
+  expect(status()).toContain('This chat is bound');
+  expect(appState.instance?.sent).toHaveLength(1);
+});

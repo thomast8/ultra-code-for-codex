@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 const cli = '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex';
 const version = execFileSync(cli, ['--version'], { encoding: 'utf8' }).trim();
-if (version !== 'codex-cli 0.160.1') {
+if (version !== 'codex-cli 0.162.0-alpha.17.2') {
   throw new Error(`Unsupported bundled CLI version: ${version}`);
 }
 const output = resolve('src/codex/generated');

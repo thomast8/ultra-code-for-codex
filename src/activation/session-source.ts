@@ -4,7 +4,7 @@ import { StringDecoder } from 'node:string_decoder';
 import type { HookInput, LeadContext } from './types.js';
 
 export const PARSER_ADAPTER_VERSION = 'codex-turn-context-v1';
-export const SUPPORTED_CLI_VERSIONS = ['0.160.0', '0.160.1'] as const;
+export const SUPPORTED_CLI_VERSIONS = ['0.160.0', '0.160.1', '0.162.0-alpha.17.2'] as const;
 
 type JsonObject = Record<string, unknown>;
 const MAX_METADATA_LINE = 64 * 1024;

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { URL } from 'node:url';
 import { build } from 'esbuild';
 import './check-runtime.mjs';
@@ -36,3 +36,26 @@ await build({
   target: 'node26',
   outfile: new URL('hook-entry.js', output).pathname,
 });
+
+await build({
+  entryPoints: ['src/daemon-entry.ts'],
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node26',
+  banner: {
+    js: "import { createRequire as ultraRequire } from 'node:module'; const require = ultraRequire(import.meta.url);",
+  },
+  outfile: new URL('daemon-entry.js', output).pathname,
+});
+await copyFile(
+  new URL(
+    '../node_modules/@jitl/quickjs-wasmfile-release-sync/dist/emscripten-module.wasm',
+    import.meta.url,
+  ),
+  new URL('quickjs.wasm', output),
+);
+await writeFile(
+  new URL('runtime.json', output),
+  JSON.stringify({ nodeExecutable: process.execPath }),
+);

@@ -1,14 +1,15 @@
 {
   "name": "ultra-code-for-codex",
-  "version": "0.1.5",
-  "description": "Local Codex compatibility proof for exact-turn context and an explicitly chat-bound MCP panel.",
+  "version": "0.2.1",
+  "description": "Local adaptive Codex workflows with bounded workers, durable results and a chat-bound panel.",
   "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Ultra Code for Codex",
-    "shortDescription": "Exact-turn Codex context and an explicitly bound panel.",
-    "longDescription": "A local compatibility proof that registers exact-turn activation context and lets the user explicitly bind a lightweight panel to one chat.",
+    "shortDescription": "Selective workflows and durable results beside your chat.",
+    "longDescription": "Keep the selected chat model as lead while bounded workers execute independent tasks. Track multiple workflows, evidence, usage and lead decisions in a local panel.",
     "category": "Developer tools",
     "defaultPrompt": ["Open the Ultra Code panel for this chat."]
-  }
+  },
+  "skills": "./skills/"
 }

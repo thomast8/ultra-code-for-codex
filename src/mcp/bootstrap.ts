@@ -1,7 +1,8 @@
 import { isAbsolute, resolve } from 'node:path';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
-import { resolveContext } from '../activation/registry.js';
+import { resolveCurrentContext } from '../activation/registry.js';
+import { createDaemonClient } from '../local/client.js';
 import { createPanelServer, type ContextResolver, type PanelHtmlLoader } from './panel-server.js';
 
 export function pluginDataDirectory(environment: NodeJS.ProcessEnv): string {
@@ -20,10 +21,11 @@ export function pluginDataDirectory(environment: NodeJS.ProcessEnv): string {
 export async function startPanel(
   environment: NodeJS.ProcessEnv,
   transport: Transport = new StdioServerTransport(),
-  resolver: ContextResolver = resolveContext,
+  resolver: ContextResolver = resolveCurrentContext,
   loadPanelHtml?: PanelHtmlLoader,
 ) {
-  const server = createPanelServer(resolver, pluginDataDirectory(environment), loadPanelHtml);
+  const dataDir = pluginDataDirectory(environment);
+  const server = createPanelServer(resolver, dataDir, loadPanelHtml, createDaemonClient(dataDir));
   await server.connect(transport);
   return server;
 }

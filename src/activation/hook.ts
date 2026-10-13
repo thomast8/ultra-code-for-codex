@@ -1,3 +1,4 @@
+import { pendingWorkNotice } from './pending-work.js';
 import { registerContext, resolveContext } from './registry.js';
 import type { HookInput, HookOutput } from './types.js';
 
@@ -43,12 +44,13 @@ export async function runUserPromptHook(
   const context = await resolveContext(contextKey, dataDir);
   const active = context.resolutionStatus === 'verified' && context.effort === 'ultra';
   const policy = active
-    ? 'Ultra policy active: delegate only bounded independent work that justifies its total cost. Keep intent, decisions, integration and completion with the selected lead. Plan Mode is read-only. This probe cannot start workflows.'
+    ? 'Ultra policy active: delegate bounded independent work worth total cost; lead owns intent and delivery. Plan Mode is read-only. Read the ultra-code skill.'
     : 'Ultra policy inactive: effort is not verified as ultra. Explicit invocation remains subject to verified capabilities and existing authority.';
+  const pending = pendingWorkNotice(dataDir, context);
   return {
     hookSpecificOutput: {
       hookEventName: 'UserPromptSubmit',
-      additionalContext: `Exact-turn context handle: ${contextKey}. Call ultra_context with this exact handle. Preserve the selected lead model and effort. ${policy}`,
+      additionalContext: `${contextKey}: ultra_context with this exact handle. Keep lead model/effort. ${policy}${pending ? ` ${pending}` : ''}`,
     },
   };
 }

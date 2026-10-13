@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import packageMetadata from '../../package.json' with { type: 'json' };
 import { readFile } from 'node:fs/promises';
 import { closeSync, mkdirSync, openSync } from 'node:fs';
 import { join } from 'node:path';
@@ -7,7 +8,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import type { LeadContext } from '../activation/types.js';
-import { restorePanelOwner } from './panel-owner.js';
+import { assertRoutedContext, restorePanelOwner } from './panel-owner.js';
+import type { DaemonCall } from '../local/client.js';
+import { registerWorkflowTools } from './workflow-tools.js';
+import { withRuntimeCapability, withContextCapabilities } from './capability.js';
 
 const PANEL_URI = 'ui://ultra-code/panel.html';
 const PROBE_LIMIT =
@@ -15,6 +19,14 @@ const PROBE_LIMIT =
 
 export type ContextResolver = (contextKey: string, dataDir: string) => Promise<LeadContext>;
 export type PanelHtmlLoader = () => Promise<string>;
+
+function resolveForCaller(resolver: ContextResolver, metadata: unknown): ContextResolver {
+  return async (key, dataDir) => {
+    const context = await resolver(key, dataDir);
+    assertRoutedContext(metadata, context.sessionId);
+    return context;
+  };
+}
 
 const bindingSchema = z.object({
   nonce: z.string(),
@@ -41,8 +53,9 @@ export function createPanelServer(
   resolveContext: ContextResolver,
   dataDir: string,
   loadPanelHtml: PanelHtmlLoader = () => readFile(new URL('./panel.html', import.meta.url), 'utf8'),
+  runtime?: DaemonCall,
 ): McpServer {
-  const server = new McpServer({ name: 'ultra-code-for-codex', version: '0.1.5' });
+  const server = new McpServer({ name: 'ultra-code-for-codex', version: packageMetadata.version });
   const bindings = openBindings(dataDir);
   const close = server.server.onclose;
   server.server.onclose = () => {
@@ -50,7 +63,7 @@ export function createPanelServer(
     if (bindings.isOpen) bindings.close();
   };
 
-  registerPanelView(server, bindings, loadPanelHtml, resolveContext, dataDir);
+  registerPanelView(server, bindings, loadPanelHtml, resolveContext, dataDir, runtime);
   registerPanelStatus(server, bindings);
 
   registerAppTool(
@@ -62,22 +75,31 @@ export function createPanelServer(
       inputSchema: { contextKey: z.string().min(1), nonce: z.string().min(1) },
       _meta: { ui: { resourceUri: PANEL_URI } },
     },
-    async ({ contextKey, nonce }) => {
-      return bindPanel(bindings, nonce, contextKey, resolveContext, dataDir);
+    async ({ contextKey, nonce }, extra) => {
+      const bound = await bindPanel(
+        bindings,
+        nonce,
+        contextKey,
+        resolveForCaller(resolveContext, extra._meta),
+        dataDir,
+      );
+      return withRuntimeCapability(
+        {
+          ...bound,
+          structuredContent: { ...bound.structuredContent, bindingNonce: nonce },
+        },
+        runtime,
+      );
     },
   );
 
-  registerContextTool(server, resolveContext, dataDir);
+  registerContextTool(server, resolveContext, dataDir, runtime);
+  if (runtime)
+    registerWorkflowTools({ server, bindings, resolver: resolveContext, dataDir, call: runtime });
   return server;
 }
 
-function registerPanelView(
-  server: McpServer,
-  bindings: DatabaseSync,
-  loadPanelHtml: PanelHtmlLoader,
-  resolveContext: ContextResolver,
-  dataDir: string,
-) {
+function registerPanelResource(server: McpServer, loadPanelHtml: PanelHtmlLoader): void {
   server.registerResource(
     'ultra-panel',
     PANEL_URI,
@@ -92,6 +114,17 @@ function registerPanelView(
       ],
     }),
   );
+}
+
+function registerPanelView(
+  server: McpServer,
+  bindings: DatabaseSync,
+  loadPanelHtml: PanelHtmlLoader,
+  resolveContext: ContextResolver,
+  dataDir: string,
+  runtime?: DaemonCall,
+) {
+  registerPanelResource(server, loadPanelHtml);
 
   registerAppTool(
     server,
@@ -110,7 +143,16 @@ function registerPanelView(
       const nonce = randomBytes(24).toString('base64url');
       bindings.prepare("INSERT INTO bindings (nonce, state) VALUES (?, 'pending')").run(nonce);
       if (contextKey) {
-        const result = await bindPanel(bindings, nonce, contextKey, resolveContext, dataDir);
+        const result = await withRuntimeCapability(
+          await bindPanel(
+            bindings,
+            nonce,
+            contextKey,
+            resolveForCaller(resolveContext, extra._meta),
+            dataDir,
+          ),
+          runtime,
+        );
         return {
           ...result,
           structuredContent: { ...result.structuredContent, bindingNonce: nonce },
@@ -118,30 +160,36 @@ function registerPanelView(
       }
       const sessionId = restorePanelOwner(bindings, nonce, dataDir, extra._meta);
       if (sessionId) {
-        return {
-          content: [{ type: 'text', text: 'Panel restored to this chat’s saved binding.' }],
+        return withRuntimeCapability(
+          {
+            content: [{ type: 'text', text: 'Panel restored to this chat’s saved binding.' }],
+            structuredContent: {
+              bindingNonce: nonce,
+              bound: true,
+              sessionId,
+              capabilityAvailability: 'unavailable',
+              capabilityReason: PROBE_LIMIT,
+            },
+          },
+          runtime,
+        );
+      }
+      return withRuntimeCapability(
+        {
+          content: [
+            {
+              type: 'text',
+              text: `${PROBE_LIMIT} Ask the user to choose “Show this chat’s workflows” to bind this panel.`,
+            },
+          ],
           structuredContent: {
             bindingNonce: nonce,
-            bound: true,
-            sessionId,
             capabilityAvailability: 'unavailable',
             capabilityReason: PROBE_LIMIT,
           },
-        };
-      }
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `${PROBE_LIMIT} Ask the user to choose “Show this chat’s workflows” to bind this panel.`,
-          },
-        ],
-        structuredContent: {
-          bindingNonce: nonce,
-          capabilityAvailability: 'unavailable',
-          capabilityReason: PROBE_LIMIT,
         },
-      };
+        runtime,
+      );
     },
   );
 }
@@ -170,7 +218,12 @@ function registerPanelStatus(server: McpServer, bindings: DatabaseSync) {
   );
 }
 
-function registerContextTool(server: McpServer, resolveContext: ContextResolver, dataDir: string) {
+function registerContextTool(
+  server: McpServer,
+  resolveContext: ContextResolver,
+  dataDir: string,
+  runtime?: DaemonCall,
+) {
   server.registerTool(
     'ultra_context',
     {
@@ -188,25 +241,30 @@ function registerContextTool(server: McpServer, resolveContext: ContextResolver,
         collaborationMode: z.string(),
         resolutionStatus: z.enum(['verified', 'unknown']),
         resolutionReason: z.string(),
-        capabilityAvailability: z.literal('unavailable'),
+        capabilityAvailability: z.enum(['available', 'unavailable']),
         capabilityReason: z.string(),
+        executionCapabilities: z.unknown().optional(),
       },
     },
-    async ({ contextKey }) => {
+    async ({ contextKey }, extra) => {
       try {
-        const context = await resolveContext(contextKey, dataDir);
+        const context = await resolveForCaller(resolveContext, extra._meta)(contextKey, dataDir);
         const message =
           context.resolutionStatus === 'verified'
             ? 'Verified exact-turn context is available.'
             : context.resolutionReason;
-        return {
-          content: [{ type: 'text', text: `${message} ${PROBE_LIMIT}` }],
-          structuredContent: {
-            ...context,
-            capabilityAvailability: 'unavailable',
-            capabilityReason: PROBE_LIMIT,
+        return withContextCapabilities(
+          {
+            content: [{ type: 'text', text: `${message} ${PROBE_LIMIT}` }],
+            structuredContent: {
+              ...context,
+              capabilityAvailability: 'unavailable',
+              capabilityReason: PROBE_LIMIT,
+            },
           },
-        };
+          context,
+          runtime,
+        );
       } catch (error) {
         return failure(
           error instanceof Error ? error.message : 'Exact-turn context is unavailable.',

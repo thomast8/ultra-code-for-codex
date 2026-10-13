@@ -24,6 +24,8 @@ export class PanelBinding {
   private generation = 0;
   private active = true;
   private timer: ReturnType<typeof setTimeout> | undefined;
+  private queuedTimer: ReturnType<typeof setTimeout> | undefined;
+  private readGeneration = 0;
   private checking = false;
   private readPending = false;
 
@@ -67,6 +69,7 @@ export class PanelBinding {
   retry() {
     if (!this.active || this.state.terminal) return;
     this.publish({ retry: false, status: 'Checking this panel’s binding status.' });
+    this.startQueuedWait();
     this.readPending = true;
     void this.check();
   }
@@ -92,14 +95,7 @@ export class PanelBinding {
         ],
       });
       if (!this.current(generation)) return;
-      this.publish(
-        result.isError
-          ? { request: 'idle', status: 'The host rejected the binding request. You can retry.' }
-          : {
-              request: 'queued',
-              status: 'Binding request queued. Waiting for this chat to process it.',
-            },
-      );
+      this.acknowledge(result.isError === true);
     } catch {
       if (this.current(generation))
         this.publish({
@@ -107,6 +103,31 @@ export class PanelBinding {
           status: 'Could not send the binding request. You can retry.',
         });
     }
+  }
+
+  private acknowledge(rejected: boolean) {
+    if (rejected) {
+      this.publish({
+        request: 'idle',
+        status: 'The host rejected the binding request. You can retry.',
+      });
+      return;
+    }
+    this.publish({
+      request: 'queued',
+      status: 'Binding request queued. Waiting for this chat to process it.',
+    });
+    this.startQueuedWait();
+  }
+
+  private startQueuedWait() {
+    clearTimeout(this.queuedTimer);
+    if (this.state.request !== 'queued') return;
+    this.queuedTimer = setTimeout(() => {
+      this.readFailure(
+        'Binding request is still queued after one minute. Retry the status check; no new request will be sent.',
+      );
+    }, 60_000);
   }
 
   private prepare(nonce: string, data: Record<string, unknown>, failed?: boolean) {
@@ -142,12 +163,19 @@ export class PanelBinding {
     this.update(this.state);
   }
 
-  private current(generation: number) {
-    return this.active && generation === this.generation && !this.state.terminal;
+  private current(generation: number, readGeneration = this.readGeneration) {
+    return (
+      this.active &&
+      generation === this.generation &&
+      readGeneration === this.readGeneration &&
+      !this.state.terminal
+    );
   }
 
   private stopPolling() {
     clearTimeout(this.timer);
+    clearTimeout(this.queuedTimer);
+    this.readGeneration += 1;
     this.readPending = false;
   }
 
@@ -157,6 +185,7 @@ export class PanelBinding {
   }
 
   private readFailure(status: string) {
+    this.stopPolling();
     this.publish({ status, retry: true });
   }
 
@@ -211,14 +240,15 @@ export class PanelBinding {
     this.checking = true;
     this.readPending = false;
     const generation = this.generation;
+    const readGeneration = this.readGeneration;
     try {
       const result = await this.app.callServerTool({
         name: 'ultra_panel_status',
         arguments: { nonce: this.state.nonce },
       });
-      if (this.current(generation)) this.acceptStatus(result);
+      if (this.current(generation, readGeneration)) this.acceptStatus(result);
     } catch {
-      if (this.current(generation))
+      if (this.current(generation, readGeneration))
         this.readFailure('Could not read this panel’s binding status. Retry the status check.');
     } finally {
       this.checking = false;

@@ -1,6 +1,6 @@
 {
   "name": "ultra-code-for-codex",
-  "version": "0.1.5",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -17,10 +17,12 @@
     "check": "npm run format:check && npm run quality && npm run test:coverage && npm run build"
   },
   "dependencies": {
+    "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
     "@modelcontextprotocol/ext-apps": "1.7.5",
     "@modelcontextprotocol/sdk": "1.32.0",
     "ajv": "8.20.0",
     "quickjs-emscripten": "0.32.0",
+    "quickjs-emscripten-core": "0.32.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "zod": "4.6.5"

@@ -26,5 +26,5 @@ check:
 qa-desktop:
     node scripts/qa-desktop.mjs
 
-evaluate-routing:
-    node scripts/evaluate-routing.mjs
+evaluate-routing *args:
+    node scripts/evaluate-routing.mjs {{args}}

@@ -1,7 +1,8 @@
 # Desktop compatibility gate
 
-This branch is a compatibility probe, not the complete orchestration runtime.
-Later implementation slices remain gated on all checks below.
+The runtime is implemented in the development build. The observations below retain
+the compatibility investigation history; current verification is tracked in
+[acceptance.md](../acceptance.md). Historical blockers are not current status.
 
 ## Current evidence
 
@@ -185,4 +186,50 @@ Restoration makes no claim about the current turn, Ultra effort, Plan Mode or wo
 
 Validation: 41 focused panel tests passed, including 17 reopen fixtures covering restart, chat/profile isolation, malformed identity and incomplete binding states. Strict lint, TypeScript, formatting and build passed. The built manifest's actual stdio launch passed; installed and built server hashes match.
 
-Desktop QA remains pending for 0.1.5. The user's close/reopen attempt still ran cached 0.1.4 servers, verified by process working-directory version readback. No active chats were interrupted to force refresh. Workflow execution remains behind the existing capability gate.
+The initial close/reopen attempt still ran cached 0.1.4 servers. On 2026-10-13 all five live servers used 0.1.5. The user closed and reopened from More tools twice without clicking bind. The native MCP App reported bound with no binding button, and two new saved bindings belonged to this same chat. Same-chat Desktop restoration now passes; two-chat live UI isolation remains unverified. Workflow execution remains behind the existing capability gate.
+
+## Current log activation correction
+
+Version 0.1.6 adds the verified `0.162.0-alpha.17.2` log format. The resumed
+chat used this version while the parser accepted only 0.160.0/0.160.1, causing
+`Unsupported Codex log version for codex-turn-context-v1`. The required session
+and turn fields are unchanged. Unknown versions still fail closed; exact session,
+turn, profile and cwd matching remain mandatory.
+
+The installed hook was invoked against this exact current turn and its new
+handle resolved through the native Desktop MCP tool as `gpt-6-astra`, `ultra`,
+`default`. The old unknown handle remains an immutable snapshot. This proves
+installed-process parsing and native context resolution; the next submitted user turn also automatically invoked the updated hook and
+produced another exact verified Ultra handle. Compatibility
+fixtures cover non-Ultra, Plan, partial records, missing fields and conflicts.
+
+## General workflow release
+
+Installed 0.2.0 passed native research, design-comparison and isolated coding
+workflows on 2026-10-13. The reopened MCP App showed the verified chat binding,
+three completed workflows and one separately cancelled control run. Native pause
+was exercised through computer use; Thomas resumed the comparison, cancelled the
+control and closed/reopened the panel. Backend state and the reopened native DOM
+confirmed those actions. No extra binding message was needed.
+
+Before, `capabilityAvailability: unavailable` described the probe build, which
+could not dispatch workflows. The native tool now returns `available` after the
+local runtime health check; separate worker metadata verifies the actual profile,
+account type and model catalog. A capability error remains explicit rather than
+being changed into permission to dispatch.
+
+Version 0.2.1 additionally rejects superseded context handles and unknown modes,
+rolls back unpersisted result/handoff mutations, stops known terminal timers, and removes
+unclaimed handoffs of terminal runs from pending notices. Audit records remain
+intact. Old records whose finish time was never captured remain unknown.
+
+See the acceptance ledger for final release gates and remaining native two-chat,
+Plan-transition and independent account-identity gaps. No billed-cost savings are
+claimed from the one paired fixture.
+
+Final review also separated model and panel control tools, checked routed chat
+identity on context-bearing requests, and bounded queued binding-status waits.
+Startup diagnostics retain a bounded stderr tail but expose only recognized
+failure categories and TOML locations, never raw configuration values or paths.
+A real bundled-CLI invalid-policy launch produced an actionable configuration
+error without a model call.

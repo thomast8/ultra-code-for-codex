@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { readExactTurn } from './session-source.js';
@@ -62,10 +62,12 @@ export async function registerContext(
   dataDir: string,
 ): Promise<{ contextKey: string }> {
   if (!dataDir) throw new Error('Missing plugin data directory');
-  const context = await readExactTurn(input);
   const contextKey = `uctx_${randomUUID()}`;
   const directory = join(dataDir, 'activation');
   await mkdir(directory, { recursive: true, mode: 0o700 });
+  // Revoke the previous turn before waiting for new metadata, including failed hooks.
+  await atomicWrite(currentFile(dataDir, input.session_id), contextKey);
+  const context = await readExactTurn(input);
   const stored: StoredContext = {
     schema: 'ultra-context-v1',
     resolutionStatus: context.resolutionStatus,
@@ -101,4 +103,25 @@ export async function resolveContext(
     await new Promise((resolve) => setTimeout(resolve, Math.min(50, deadline - Date.now())));
   } while (Date.now() <= deadline);
   throw new Error('Exact-turn context is unavailable');
+}
+
+function currentFile(dataDir: string, sessionId: string): string {
+  const identity = createHash('sha256').update(sessionId).digest('hex');
+  return join(dataDir, 'activation', `current-${identity}`);
+}
+
+export async function resolveCurrentContext(
+  contextKey: string,
+  dataDir: string,
+): Promise<LeadContext> {
+  const context = await resolveContext(contextKey, dataDir);
+  let current: string;
+  try {
+    current = await readFile(currentFile(dataDir, context.sessionId), 'utf8');
+  } catch {
+    throw new Error('Current-turn registration is unavailable; submit a new prompt');
+  }
+  if (current !== contextKey)
+    throw new Error('This context handle was superseded; use the current prompt hook handle');
+  return context;
 }

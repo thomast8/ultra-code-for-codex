@@ -1,0 +1,17 @@
+---
+name: ultra-code
+description: Run bounded, cost-aware workflows when independent work warrants orchestration. Preserve the selected Codex lead for intent, decisions, integration, verification and consequential actions.
+---
+
+Use this skill for explicit Ultra Code requests or verified Ultra turns when a task benefits from independent workers. A small, tightly coupled task should stay with the lead. Ultra is permission to consider orchestration, not a requirement to create workers.
+
+Before starting, resolve the exact current `ultra_context` handle. Preserve the selected lead model and effort. Unknown context blocks execution; Plan Mode remains read-only. Existing task scope, repository quality gates and approval requirements still apply.
+
+1. Identify a useful bounded assignment and why its expected benefit exceeds worker input/output, startup, repeated evidence, retries and lead coordination. For example, two independent source checks may save time; a second agent rereading a ten-line patch usually will not. Do not invent savings or token prices.
+2. Select an available model and supported effort for that assignment. Start with `gpt-6-luna` for bounded extraction and straightforward checks; use `gpt-6.1-sol` for complex implementation or synthesis. Use `gpt-6-astra` only when substantial uncertainty or consequence justifies the added cost, and record that reason. These are routing starting points, not availability guarantees. The worker backend verifies the live catalog and exact returned model/effort; never substitute silently or retry a blocked model repeatedly.
+3. Provide all six assignment fields: outcome, bounded inputs, ownership, constraints, acceptance and stop conditions. Record the seven assessment fields before dispatch and retain them unchanged. Pass source references and relevant extracts, not the parent chat. Reuse completed evidence rather than commissioning the same investigation again.
+4. Bound the script with `maxAgentCalls` and an honest lead-session capacity grant. Reserve the lead and other occupied slots. Concurrent workflows share local admission; the grant is not a host-wide reservation. No observed capacity means no invented grant.
+5. Start the immutable script, then use `ultra_wait` across its run IDs. Read results on meaningful changes, completion, errors or lead handoffs. UI polling does not require model calls. Do not turn quiet progress into repeated lead inference or assume silence means a hang.
+6. Keep judgment, required real QA, required review, integration and consequential external actions with the selected lead. Add an independent review only where repository rules or a concrete risk warrant it; no automatic critic teams. Claim and resolve `lead()` handoffs with the exact verified turn, inspect the saved evidence, and distinguish execution completion from goal acceptance. An uncertain worker requires actual termination and write readback before its reconciliation receipt; the old run remains incomplete and never retries automatically.
+
+Read [the authoring reference](references/authoring.md) before writing a script. Its APIs and examples describe the implemented runtime. They do not grant missing authority or establish live QA for a particular installation.
