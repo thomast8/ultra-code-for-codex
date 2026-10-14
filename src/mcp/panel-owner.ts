@@ -2,10 +2,14 @@ import { isAbsolute, resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 
-// shortcut: requires Desktop's two routed thread aliases, extend after live host verification.
+// Manual launches lack a context handle, so restoration keeps both host aliases.
 const threadIdentity = z
   .object({ thread_id: z.uuid(), threadId: z.uuid() })
   .refine((metadata) => metadata.thread_id === metadata.threadId);
+
+const routedContextIdentity = z
+  .object({ thread_id: z.uuid().optional(), threadId: z.uuid().optional() })
+  .refine((metadata) => metadata.thread_id !== undefined || metadata.threadId !== undefined);
 
 export function requestMetadataKind(metadata: unknown): 'absent' | 'generic' | 'routed' {
   if (metadata === undefined) return 'absent';
@@ -23,14 +27,15 @@ export function requestMetadataKind(metadata: unknown): 'absent' | 'generic' | '
 export function assertRoutedContext(metadata: unknown, sessionId: string): void {
   // MCP progress and extension metadata do not establish chat routing.
   if (requestMetadataKind(metadata) !== 'routed') return;
-  const identity = threadIdentity.safeParse(metadata);
+  const identity = routedContextIdentity.safeParse(metadata);
   if (!identity.success) {
     const issues = identity.error.issues
       .map((issue) => `${String(issue.path[0] ?? 'aliases')}:${issue.code}`)
       .join(', ');
     throw new Error(`Routed chat identity is missing, invalid, or conflicting (${issues})`);
   }
-  if (identity.data.thread_id !== sessionId)
+  const ids = [identity.data.thread_id, identity.data.threadId];
+  if (ids.some((id) => id !== undefined && id !== sessionId))
     throw new Error('Context handle does not belong to the routed chat');
 }
 
