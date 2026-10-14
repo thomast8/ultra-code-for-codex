@@ -167,6 +167,26 @@ it('collapses on completion and reopens with a compact latest result and expanda
   expect(screen.getByRole('region', { name: 'Current run' })).toBeDefined();
 });
 
+it('bounds a lead scalar on the card and preserves the complete value in details', async () => {
+  const full = 'x'.repeat(200);
+  await loaded([
+    runFixture({
+      state: 'completed',
+      finishedAt: 252_000,
+      tasks: [],
+      acceptanceOutcome: 'satisfied',
+      result: { acceptance: 'satisfied', value: full, evidence: [] },
+    }),
+  ]);
+  const run = within(screen.getByRole('region', { name: 'Audit documents' }));
+  expect(run.getByText(`${'x'.repeat(160)}…`)).toBeDefined();
+  const details = run.getByText('Result details').closest('details')!;
+  expect(details.open).toBe(false);
+  expect(within(details).getByText(full)).toBeDefined();
+  fireEvent.click(details.querySelector('summary')!);
+  expect(details.open).toBe(true);
+});
+
 it('keeps old failed, unverified and reconciliation work in current view', async () => {
   const failed = finished('failed-run', 0);
   failed.state = 'failed';

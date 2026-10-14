@@ -35,8 +35,9 @@ bridge.oncalltool = async ({ name }) => {
   return { content: [] };
 };
 bridge.onmessage = async () => ({});
-bridge.oninitialized = () => {
-  void bridge.sendToolResult({
+bridge.oninitialized = async () => {
+  await bridge.sendToolInput({ arguments: {} });
+  await bridge.sendToolResult({
     content: [],
     structuredContent: { bindingNonce: 'qa', bound: true, capabilityAvailability: 'available' },
   });

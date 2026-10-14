@@ -4,7 +4,7 @@ import { AgentDetail, AgentList, AgentPreview } from './agents.js';
 import { Icon } from './icons.js';
 import { controlsAvailable, RunControls } from './run-controls.js';
 import { RunDetails } from './run-details.js';
-import { resultSummary } from './result-value.js';
+import { resultSummary, unwrapLeadResult } from './result-value.js';
 import { Acceptance, ResultValue, StatusBadge } from './workflow-details.js';
 import type { RunAction } from './workflow-feed.js';
 import {
@@ -228,13 +228,17 @@ function AgentViews({
 }
 
 function FinishedResult({ run }: { run: RunSnapshot }) {
-  const summary = resultSummary(run.result);
+  const value = unwrapLeadResult(run.result);
+  const summary = resultSummary(value);
   if (!summary) return null;
-  const structured = typeof run.result === 'object' && run.result !== null;
+  const structured = typeof value === 'object' && value !== null;
+  const longScalar = typeof value === 'string' && value.length > 160;
   return (
     <div className="run-result">
       <p className="run-result-summary">{summary.text}</p>
-      {structured && <ResultValue value={run.result} omit={summary.key} label="Result details" />}
+      {(structured || longScalar) && (
+        <ResultValue value={value} omit={summary.key} label="Result details" />
+      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { JsonValue } from '../contracts/workflow.js';
 
 type JsonObject = { [key: string]: JsonValue };
@@ -5,6 +6,8 @@ type Primitive = string | number | boolean | null;
 
 const acronyms = new Set(['api', 'id', 'pr', 'sha', 'uri', 'url']);
 const summaryKeys = ['summary', 'message', 'title', 'headline', 'description'];
+const summaryLimit = 160;
+const listPageSize = 100;
 
 export function safeLink(uri: string | undefined): string | undefined {
   if (!uri) return undefined;
@@ -39,15 +42,31 @@ function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'} reported`;
 }
 
+function boundedSummary(text: string): string {
+  return text.length > summaryLimit ? `${text.slice(0, summaryLimit)}…` : text;
+}
+
+export function unwrapLeadResult(value: JsonValue): JsonValue {
+  if (!isObject(value)) return value;
+  const acceptance = value.acceptance;
+  if (
+    ['satisfied', 'incomplete', 'blocked'].includes(String(acceptance)) &&
+    'value' in value &&
+    Array.isArray(value.evidence)
+  )
+    return value.value;
+  return value;
+}
+
 export function resultSummary(value: JsonValue): { text: string; key: string | null } | null {
   if (value === null) return null;
   if (Array.isArray(value)) return { text: plural(value.length, 'item'), key: null };
-  if (!isObject(value)) return { text: formatPrimitive(value, ''), key: null };
+  if (!isObject(value)) return { text: boundedSummary(formatPrimitive(value, '')), key: null };
   const entries = Object.entries(value);
   const named = summaryKeys.find((key) => typeof value[key] === 'string' && value[key]);
-  if (named) return { text: value[named] as string, key: named };
+  if (named) return { text: boundedSummary(value[named] as string), key: named };
   const first = entries.find(([, item]) => typeof item === 'string' && item);
-  if (first) return { text: first[1] as string, key: first[0] };
+  if (first) return { text: boundedSummary(first[1] as string), key: first[0] };
   return { text: plural(entries.length, 'field'), key: null };
 }
 
@@ -76,15 +95,29 @@ function Leaf({ value, name }: { value: Primitive; name: string }) {
 }
 
 function ListValue({ items, name }: { items: JsonValue[]; name: string }) {
+  const [limit, setLimit] = useState(listPageSize);
   if (!items.length) return <span className="workflow-muted">None</span>;
+  const visible = items.slice(0, limit);
+  const remaining = items.length - visible.length;
   return (
-    <ul className="result-list">
-      {items.map((item, index) => (
-        <li key={index}>
-          <StructuredValue value={item} name={name} />
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="result-list">
+        {visible.map((item, index) => (
+          <li key={index}>
+            <StructuredValue value={item} name={name} />
+          </li>
+        ))}
+      </ul>
+      {remaining > 0 && (
+        <button
+          type="button"
+          className="quiet-button"
+          onClick={() => setLimit((current) => Math.min(current + listPageSize, items.length))}
+        >
+          Show {Math.min(listPageSize, remaining)} more · {remaining} remaining
+        </button>
+      )}
+    </>
   );
 }
 

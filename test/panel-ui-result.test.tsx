@@ -1,8 +1,13 @@
 // @vitest-environment happy-dom
 import { createElement } from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
-import { humanizeKey, resultSummary, StructuredValue } from '../src/ui/result-value.js';
+import {
+  humanizeKey,
+  resultSummary,
+  StructuredValue,
+  unwrapLeadResult,
+} from '../src/ui/result-value.js';
 
 afterEach(cleanup);
 
@@ -38,6 +43,13 @@ it('summarises results as prose instead of serialised JSON', () => {
   expect(resultSummary(42)).toEqual({ text: '42', key: null });
 });
 
+it('unwraps canonical lead results and bounds compact summaries', () => {
+  const wrapped = { acceptance: 'satisfied', value: leadResult, evidence: [] };
+  expect(unwrapLeadResult(wrapped)).toBe(leadResult);
+  const long = 'x'.repeat(200);
+  expect(resultSummary(long)).toEqual({ text: `${'x'.repeat(160)}…`, key: null });
+});
+
 it('renders structured values as labelled facts, links and lists', () => {
   render(createElement(StructuredValue, { value: leadResult, omit: 'summary' }));
   expect(screen.queryByText(leadResult.summary)).toBeNull();
@@ -66,4 +78,14 @@ it('renders plain, multi-line, empty and unsafe values without markup leaks', ()
   expect(screen.getByText('None')).toBeDefined();
   rerender(createElement(StructuredValue, { value: { ratio: 1234.5, ok: true } }));
   expect(screen.getByText('1,234.5')).toBeDefined();
+});
+
+it('renders large lists in explicit bounded pages', () => {
+  render(createElement(StructuredValue, { value: Array.from({ length: 205 }, (_, i) => i) }));
+  expect(screen.getAllByRole('listitem')).toHaveLength(100);
+  fireEvent.click(screen.getByRole('button', { name: 'Show 100 more · 105 remaining' }));
+  expect(screen.getAllByRole('listitem')).toHaveLength(200);
+  fireEvent.click(screen.getByRole('button', { name: 'Show 5 more · 5 remaining' }));
+  expect(screen.getAllByRole('listitem')).toHaveLength(205);
+  expect(screen.queryByRole('button', { name: /more/ })).toBeNull();
 });
