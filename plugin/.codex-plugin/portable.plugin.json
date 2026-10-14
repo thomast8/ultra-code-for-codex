@@ -8,7 +8,7 @@
       "hooks": "./hooks/hooks.json",
       "interface": {
         "logo": "./assets/ultra.png",
-        "composerIcon": "./assets/ultra.png",
+        "composerIcon": "./assets/ultra-menu.png",
         "displayName": "Ultra Code for Codex",
         "shortDescription": "Exact-turn Codex context and an explicitly bound panel.",
         "longDescription": "A local compatibility proof that registers exact-turn activation context and lets the user explicitly bind a lightweight panel to one chat.",
