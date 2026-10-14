@@ -1,6 +1,13 @@
 import { createElement, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App, PostMessageTransport } from '@modelcontextprotocol/ext-apps';
+import {
+  App,
+  applyDocumentTheme,
+  applyHostFonts,
+  applyHostStyleVariables,
+  PostMessageTransport,
+  type McpUiHostContext,
+} from '@modelcontextprotocol/ext-apps';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import packageMetadata from '../../package.json' with { type: 'json' };
 import { initialState, PanelBinding, type PanelState } from './binding.js';
@@ -36,6 +43,12 @@ function readAvailability(
   };
 }
 
+export function applyHostContext(context: Partial<McpUiHostContext> | undefined) {
+  if (context?.theme) applyDocumentTheme(context.theme);
+  if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
+  if (context?.styles?.css?.fonts) applyHostFonts(context.styles.css.fonts);
+}
+
 export function Panel() {
   const [app] = useState(() => new App({ name: 'Ultra Code', version: packageMetadata.version }));
   const [state, setState] = useState(initialState);
@@ -46,9 +59,13 @@ export function Panel() {
       binding.receive(result);
       setAvailability((previous) => readAvailability(result, previous));
     });
-    void app.connect(new PostMessageTransport(window.parent, window.parent)).catch(() => {
-      binding.connectionFailed();
-    });
+    app.onhostcontextchanged = applyHostContext;
+    void app
+      .connect(new PostMessageTransport(window.parent, window.parent))
+      .then(() => applyHostContext(app.getHostContext()))
+      .catch(() => {
+        binding.connectionFailed();
+      });
     return () => {
       binding.close();
       void app.close();

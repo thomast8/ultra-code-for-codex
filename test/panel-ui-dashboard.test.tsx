@@ -10,9 +10,13 @@ import {
   threeRuns,
 } from './panel-ui-dashboard-fixture.js';
 
-vi.mock('@modelcontextprotocol/ext-apps', async () => {
+vi.mock('@modelcontextprotocol/ext-apps', async (importOriginal) => {
   const { dashboardBridge: bridge } = await import('./panel-ui-dashboard-fixture.js');
-  return { App: bridge.MockApp, PostMessageTransport: class {} };
+  return {
+    ...(await importOriginal<object>()),
+    App: bridge.MockApp,
+    PostMessageTransport: class {},
+  };
 });
 import { Panel } from '../src/ui/panel.js';
 

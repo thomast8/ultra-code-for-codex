@@ -34,8 +34,15 @@ export function AgentPreview({ tasks, select }: Pick<AgentsProps, 'tasks' | 'sel
 }
 
 function AgentSymbol({ task }: { task: TaskSnapshot }) {
-  if (task.state === 'running') return <Icon name="working" />;
-  if (task.state === 'completed') return <Icon name="completed" />;
+  if (task.state === 'running')
+    return (
+      <span className="agent-dots" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </span>
+    );
+  if (task.state === 'completed') return <Icon name="check" />;
   const symbols: Record<string, string> = {
     failed: '!',
     needs_reconciliation: '!',
@@ -144,10 +151,7 @@ export function AgentDetail({
         <p className="workflow-muted">Last activity {elapsed(task.lastActivityAt, now)} ago</p>
         {task.waitingReason && <p className="workflow-waiting">Waiting: {task.waitingReason}</p>}
         <details>
-          <summary>
-            View activity and evidence
-            <Icon name="right" />
-          </summary>
+          <summary>View activity and evidence</summary>
           <TaskDetails task={task} now={now} />
         </details>
       </div>

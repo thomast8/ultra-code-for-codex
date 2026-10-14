@@ -13,7 +13,6 @@ export function RunDetails({ run, runs }: { run: RunSnapshot; runs: RunSnapshot[
           Continues {parent ? <a href={`#run-${parent.id}`}>{parent.title}</a> : run.parentRunId}
         </p>
       )}
-      <Acceptance value={run.acceptanceOutcome} />
       <Usage value={run.usage} complete={run.accountingComplete} />
       <details>
         <summary>Acceptance criteria</summary>
@@ -39,7 +38,6 @@ export function RunDetails({ run, runs }: { run: RunSnapshot; runs: RunSnapshot[
             ))}
         </details>
       ))}
-      <ResultValue value={run.result} />
     </div>
   );
 }

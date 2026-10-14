@@ -4,10 +4,12 @@ import { AgentDetail, AgentList, AgentPreview } from './agents.js';
 import { Icon } from './icons.js';
 import { RunControls } from './run-controls.js';
 import { RunDetails } from './run-details.js';
+import { resultSummary } from './result-value.js';
 import { Acceptance, ResultValue, StatusBadge } from './workflow-details.js';
 import type { RunAction } from './workflow-feed.js';
 import {
   agentCounts,
+  attentionMessage,
   needsAttention,
   runElapsed,
   terminal,
@@ -67,7 +69,7 @@ export function RunCard({ run, runs, now, busy, error, control }: RunCardProps) 
           <RunCounters run={run} now={now} />
         </div>
       )}
-      {attention && <Attention run={run} />}
+      {attention && selected && <Attention run={run} />}
       {error && (
         <p role="alert" className="workflow-error">
           {error}
@@ -108,17 +110,12 @@ export function RunCounters({ run, now }: { run: RunSnapshot; now: number }) {
 
 function Attention({ run }: { run: RunSnapshot }) {
   return (
-    <div className="run-attention">
-      <div className="attention-heading">
-        <Icon name="alert" />
+    <div className="run-attention" role="note">
+      <Icon name="alert" />
+      <div>
         <strong>Review needed</strong>
+        <p>{attentionMessage(run)}</p>
       </div>
-      <p>{attentionMessage(run)}</p>
-      <Acceptance value={run.acceptanceOutcome} />
-      <p>
-        Completion and verification are separate. Open agents or Run details to inspect the
-        evidence.
-      </p>
     </div>
   );
 }
@@ -143,33 +140,40 @@ function RunSummary({
   return (
     <>
       <header className="workflow-run-heading">
-        <p className={`run-eyebrow ${attention ? 'attention-ink' : ''}`}>
-          {attention ? 'Needs attention' : finished ? 'Latest result' : 'In progress'}
-        </p>
-        <h2>{run.title}</h2>
+        <div className="run-title">
+          <p className={`run-eyebrow ${attention ? 'attention-ink' : ''}`}>
+            {attention ? 'Needs attention' : finished ? 'Latest result' : 'In progress'}
+          </p>
+          <h2>{run.title}</h2>
+        </div>
         <StatusBadge state={run.state} />
       </header>
+      {attention && <Attention run={run} />}
       <div className="run-summary">
+        {finished && <FinishedResult run={run} />}
         <div className="agent-summary-heading">
           <AgentPreview tasks={run.tasks} select={select} />
-          <strong>
-            {run.tasks.length} {run.tasks.length === 1 ? 'agent' : 'agents'}
-          </strong>
+          <span className="agent-summary-copy">
+            <strong>
+              {run.tasks.length} {run.tasks.length === 1 ? 'agent' : 'agents'}
+            </strong>
+            <span className="workflow-muted">{agentCounts(run.tasks)}</span>
+          </span>
         </div>
-        <p className="workflow-muted">{agentCounts(run.tasks)}</p>
-        <RunCounters run={run} now={now} />
-        {finished && <Acceptance value={run.acceptanceOutcome} />}
+        <div className="run-meta">
+          <RunCounters run={run} now={now} />
+          {finished && <Acceptance value={run.acceptanceOutcome} />}
+        </div>
         <button
           type="button"
+          className="disclosure-button"
           aria-expanded={expanded}
           aria-controls={`agents-${run.id}`}
-          onClick={() => {
-            toggle();
-          }}
+          onClick={toggle}
         >
+          <Icon name="chevron" />
           {expanded ? 'Hide agents' : 'Show agents'}
         </button>
-        {finished && <FinishedResult run={run} />}
       </div>
     </>
   );
@@ -199,20 +203,13 @@ function AgentViews({
 }
 
 function FinishedResult({ run }: { run: RunSnapshot }) {
-  if (run.result === null) return null;
-  const value = typeof run.result === 'string' ? run.result : JSON.stringify(run.result);
+  const summary = resultSummary(run.result);
+  if (!summary) return null;
+  const structured = typeof run.result === 'object' && run.result !== null;
   return (
-    <>
-      <p className="compact-result">{value.length > 160 ? `${value.slice(0, 160)}…` : value}</p>
-      <ResultValue value={run.result} />
-    </>
+    <div className="run-result">
+      <p className="run-result-summary">{summary.text}</p>
+      {structured && <ResultValue value={run.result} omit={summary.key} label="Result details" />}
+    </div>
   );
-}
-
-function attentionMessage(run: RunSnapshot): string {
-  if (run.error) return run.error;
-  const handoff = run.handoffs.find((item) => item.state !== 'resolved');
-  if (handoff && !terminal(run.state)) return handoff.spec.objective;
-  const failed = run.tasks.find((task) => ['failed', 'needs_reconciliation'].includes(task.state));
-  return failed?.result?.error ?? 'An agent, lead decision or acceptance check needs attention.';
 }
