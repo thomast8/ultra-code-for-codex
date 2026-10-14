@@ -5,7 +5,7 @@ it('cancels before launch without starting a backend', async () => {
   const h = workerHarness();
   h.controller.abort();
   expect(await h.execute(workerSpec(), h.options)).toMatchObject({
-    execution: 'failed',
+    execution: 'interrupted',
     acceptance: 'blocked',
   });
   expect(h.launch).not.toHaveBeenCalled();
@@ -17,7 +17,7 @@ it('checks cancellation after thread recording and before turn dispatch', async 
     h.controller.abort();
   };
   expect(await h.execute(workerSpec(), h.options)).toMatchObject({
-    execution: 'failed',
+    execution: 'interrupted',
     acceptance: 'blocked',
   });
   expect(h.backend.calls.some((call) => call.method === 'turn/start')).toBe(false);
