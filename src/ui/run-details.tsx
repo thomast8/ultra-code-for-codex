@@ -14,7 +14,9 @@ export function RunDetails({ run, runs }: { run: RunSnapshot; runs: RunSnapshot[
         </p>
       )}
       <Acceptance value={run.acceptanceOutcome} />
+      <h4>Worker usage</h4>
       <Usage value={run.usage} complete={run.accountingComplete} />
+      <p>Main chat token usage: unknown. Worker coverage does not include lead overhead.</p>
       <details>
         <summary>Acceptance criteria</summary>
         <ul>

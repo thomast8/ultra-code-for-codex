@@ -37,7 +37,7 @@ export function tokenLabel(usage: Pick<TokenUsage, 'totalTokens'> | null, comple
     total >= 1000
       ? `${(total / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })}k`
       : total.toLocaleString();
-  return `${count} tokens${complete ? '' : ' (partial)'}`;
+  return `${count} worker tokens${complete ? '' : ' (partial)'}`;
 }
 
 export function runElapsed(run: RunSnapshot, now: number): string {

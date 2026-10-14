@@ -69,8 +69,8 @@ export function Dashboard({ app, nonce }: { app: Pick<App, 'callServerTool'>; no
             About Ultra
           </summary>
           <p>
-            Closing this panel does not cancel work. Token totals include reported worker usage;
-            partial or missing usage is marked.
+            Closing this panel does not cancel work. Totals cover worker tokens only; partial or
+            missing worker usage is marked. Main chat usage is unknown.
           </p>
         </details>
         <span>This chat</span>

@@ -188,3 +188,18 @@ two-chat, Plan-transition and independent account-identity gaps listed above.
 Main-agent token display is a separate requested GitHub issue #4, not part of
 these fixes. Current whole-workflow accounting stays partial because lead
 usage is unobserved.
+
+## 0.2.6 remaining review fixes
+
+- [x] Permission verification preserves allowlisted WorkerBlocked reasons for tasks and capability inspection.
+- [x] Empty evidence description/URI/revision strings are rejected by the worker wire schema as certain output failures; null optional fields remain supported.
+- [x] Budget exhaustion, script failure and early return settle undispatched workers and remove their scheduler queue.
+- [x] Legacy terminal queued tasks are settled on recovery without redispatching or altering dispatched/uncertain work.
+- [x] Cancellation interrupts root checks, backend initialization and preflight requests. A real bundled CLI child exited in 29 ms during initialization, with no model turn.
+- [x] Worker accounting covers settled known attempts, including known-zero undispatched cancellations. In-flight, uncertain and missing usage stays partial. Main-chat usage stays explicitly unknown.
+- [x] Compiled live socket QA confirms terminal queues, budget isolation and accounting; actual bundled metadata fault injection preserves the safe feature-verification reason.
+- [ ] Native 0.2.6 panel and live worker-output contract QA before merge.
+
+The fixture PR #2 targets its isolated QA base, not plugin main. Its frozen
+93bb04b source passed its own just check: four tests, 100% source coverage and
+nine independent acceptance cases.

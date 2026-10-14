@@ -146,7 +146,7 @@ export type RunSnapshot = {
   tasks: TaskSnapshot[];
   handoffs: HandoffSnapshot[];
   usage: TokenUsage | null;
-  accountingComplete: boolean;
+  accountingComplete: boolean; // Reported worker attempts only; main-chat overhead is excluded.
   result: JsonValue;
   error: string | null;
 };

@@ -18,7 +18,7 @@ import {
 
 const runFile = promisify(execFile);
 
-export async function verifyAssignmentRoot(spec: AgentSpec): Promise<void> {
+export async function verifyAssignmentRoot(spec: AgentSpec, signal?: AbortSignal): Promise<void> {
   const cwd = spec.assignment.ownership.cwd;
   requireWorker(isAbsolute(cwd), 'Worker cwd must be an absolute canonical directory');
   requireWorker(
@@ -31,7 +31,7 @@ export async function verifyAssignmentRoot(spec: AgentSpec): Promise<void> {
       'Assigned paths must remain inside the worker root',
     );
   }
-  if (spec.capability === 'workspace-write') await verifyLinkedWorktree(cwd);
+  if (spec.capability === 'workspace-write') await verifyLinkedWorktree(cwd, signal);
 }
 
 function within(root: string, path: string): boolean {
@@ -39,9 +39,10 @@ function within(root: string, path: string): boolean {
   return part !== '..' && !part.startsWith(`..${sep}`) && !isAbsolute(part);
 }
 
-async function git(cwd: string, args: string[]): Promise<string> {
+async function git(cwd: string, args: string[], signal?: AbortSignal): Promise<string> {
   try {
     const { stdout } = await runFile('git', ['-C', cwd, ...args], {
+      ...(signal ? { signal } : {}),
       timeout: 10_000,
       maxBuffer: 1_048_576,
     });
@@ -51,16 +52,16 @@ async function git(cwd: string, args: string[]): Promise<string> {
   }
 }
 
-export async function verifyLinkedWorktree(cwd: string): Promise<void> {
+export async function verifyLinkedWorktree(cwd: string, signal?: AbortSignal): Promise<void> {
   requireWorker(
     (await stat(join(cwd, '.git')).catch(() => undefined))?.isFile() === true,
     'Writer root must be a linked Git worktree',
   );
   const [top, directory, common, listing] = await Promise.all([
-    git(cwd, ['rev-parse', '--show-toplevel']),
-    git(cwd, ['rev-parse', '--absolute-git-dir']),
-    git(cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir']),
-    git(cwd, ['worktree', 'list', '--porcelain']),
+    git(cwd, ['rev-parse', '--show-toplevel'], signal),
+    git(cwd, ['rev-parse', '--absolute-git-dir'], signal),
+    git(cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir'], signal),
+    git(cwd, ['worktree', 'list', '--porcelain'], signal),
   ]);
   requireWorker((await realpath(top)) === cwd, 'Writer cwd must be the worktree root');
   const [gitDirectory, commonDirectory] = await Promise.all([

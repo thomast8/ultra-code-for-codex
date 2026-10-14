@@ -13,7 +13,7 @@ import type {
 import { assertContext, assertOwner, changeHandoff } from './handoffs.js';
 import { Journal } from './journal.js';
 import { closeReadbackRun, hasWorkerReadback, recoveredWorker } from './reconciliation.js';
-import { createRun, failedResult, refreshSnapshot } from './records.js';
+import { createRun, failedResult, refreshSnapshot, emptyUsage } from './records.js';
 import { Scheduler } from './scheduler.js';
 import { RunSession } from './session.js';
 import type { CallRecord, Owner, RunRecord } from './types.js';
@@ -192,6 +192,7 @@ export class WorkflowEngine {
     void session.launch();
   }
   private recover(run: RunRecord): void {
+    this.settleRecoveredQueue(run);
     const uncertain = run.calls.map((call) => this.recoverCall(call)).some(Boolean);
     refreshSnapshot(run);
     if (uncertain) {
@@ -210,6 +211,14 @@ export class WorkflowEngine {
       const grant = run.authority.capacity;
       this.scheduler.setGrant(run.snapshot.id, grant.totalSlots - grant.reservedSlots);
     }
+  }
+  private settleRecoveredQueue(run: RunRecord): void {
+    if (!['completed', 'failed', 'cancelled'].includes(run.snapshot.state)) return;
+    const queued = run.calls.filter((call) => call.state === 'queued' && call.task);
+    if (!queued.length) return;
+    for (const call of queued) this.cancelQueued(run, call.id);
+    refreshSnapshot(run);
+    this.journal.save(run, 'run.queued_settled');
   }
   private recoverCall(call: CallRecord): boolean {
     if (call.state === 'dispatched') {
@@ -269,13 +278,16 @@ export class WorkflowEngine {
     if (call.state !== 'queued' || !call.task) return;
     const result = failedResult(
       call.payload as AgentSpec,
-      'Run cancelled before dispatch',
+      'Run closed before dispatch',
       'interrupted',
     );
     call.state = 'resolved';
     call.result = result as unknown as JsonValue;
     call.settlement = run.nextSettlement++;
     call.task.state = 'cancelled';
+    result.usage = emptyUsage();
+    call.task.usage = result.usage;
+    call.task.waitingReason = null;
     call.task.result = result;
     call.task.finishedAt = Date.now();
   }

@@ -92,7 +92,7 @@ it('drills into rationale, actual model and token subsets without adding cached 
   expect(first.getByText('Luna can compare this bounded file list.')).toBeDefined();
   expect(first.getAllByText('40 (included in input)')[0]).toBeDefined();
   expect(first.getAllByText('5 (included in output)')[0]).toBeDefined();
-  expect(first.queryByText('165 tokens')).toBeNull();
+  expect(first.queryByText('165 worker tokens')).toBeNull();
   fireEvent.click(first.getByRole('button', { name: '‹ Back to all 4 agents' }));
   fireEvent.click(first.getByRole('button', { name: /Verify the register · completed/ }));
   fireEvent.click(first.getByText('View activity and evidence'));

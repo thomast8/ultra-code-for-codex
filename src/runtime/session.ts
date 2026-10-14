@@ -104,6 +104,7 @@ export class RunSession {
           call,
           (output) => this.resolve(call, output),
           () => this.replayReady(),
+          (message) => this.fail(message),
         );
       queueMicrotask(() => this.deliver());
       return result;
@@ -196,6 +197,11 @@ export class RunSession {
       if (this.run.calls.some((call) => call.state !== 'resolved'))
         this.run.snapshot.acceptanceOutcome = 'incomplete';
       this.run.snapshot.finishedAt = Date.now();
+      this.workers.cancelQueued(
+        this.run,
+        'Workflow completed before queued dispatch',
+        (call, value) => this.resolve(call, value),
+      );
       this.journal.save(this.run, 'run.completed');
     }
     this.finished();
@@ -208,6 +214,7 @@ export class RunSession {
     this.run.snapshot.acceptanceOutcome = blocked ? 'blocked' : 'incomplete';
     this.run.snapshot.finishedAt = blocked ? null : (this.run.snapshot.finishedAt ?? Date.now());
     this.run.snapshot.error = message;
+    this.workers.cancelQueued(this.run, message, (call, value) => this.resolve(call, value));
     this.journal.save(this.run, 'run.failed', message);
     this.finished();
   }
