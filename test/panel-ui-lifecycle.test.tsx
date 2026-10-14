@@ -105,6 +105,32 @@ it('drills from a square into current model, tokens and activity and returns to 
   expect(screen.queryByRole('heading', { name: 'Compare document names' })).toBeNull();
 });
 
+it('keeps authored phase membership visible in agent rows and drill-down details', async () => {
+  const tasks = [
+    taskFixture(),
+    taskFixture({
+      id: 'verify',
+      title: 'Verify sources',
+      phase: { id: 'verification', label: 'Source verification' },
+    }),
+  ];
+  await loaded([runFixture({ tasks })]);
+  fireEvent.click(screen.getByRole('button', { name: 'Show agents' }));
+  const row = screen.getByRole('button', { name: /Verify sources · Working/ });
+  expect(within(row).getByText('Phase: Source verification')).toBeDefined();
+  expect(
+    within(screen.getByRole('button', { name: /Compare document names · Working/ })).getByText(
+      'Phase: Folder inventory',
+    ),
+  ).toBeDefined();
+  fireEvent.click(row);
+  expect(
+    within(document.querySelector('.agent-detail-card') as HTMLElement).getByText(
+      'Phase: Source verification',
+    ),
+  ).toBeDefined();
+});
+
 it('collapses on completion and reopens with a compact latest result and expandable history', async () => {
   const current = runFixture({ id: 'new', title: 'Current run', tasks: [taskFixture()] });
   const view = await loaded([finished('older', -1), current]);

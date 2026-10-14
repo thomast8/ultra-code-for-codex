@@ -94,6 +94,7 @@ function AgentRow({
         <small>
           {taskElapsed(task, now)} · {tokenLabel(taskUsage(task), terminal(task.state))}
         </small>
+        <small>Phase: {task.phase.label}</small>
         {task.waitingReason && <small>{task.waitingReason}</small>}
       </span>
       <Icon name="right" />
@@ -126,6 +127,7 @@ export function AgentDetail({
       </h3>
       <div className="agent-detail-card">
         <StatusBadge state={task.state} />
+        <p className="workflow-muted">Phase: {task.phase.label}</p>
         <p className="agent-model">
           {task.reportedModel ?? `Requested: ${task.requestedModel}`} · {task.effort}
         </p>
