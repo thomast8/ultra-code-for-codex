@@ -255,4 +255,24 @@ On 2026-10-14, all five native MCP client paths and the shared daemon were confi
 
 ### Exact-handle routing alias compatibility
 
-The restarted 0.2.3 native context and status calls reported `thread_id:invalid_type` with no validation issue for `threadId`. The lead-call adapter unnecessarily required both aliases even though its current context handle already resolves the exact chat and turn. Version 0.2.4 accepts either valid UUID alias for exact-handle calls, validates every supplied alias against that resolved chat, and still rejects malformed or conflicting aliases. Manual launches without a context handle retain the existing two-alias and saved-owner restoration checks. Cross-chat routing is rejected for either single alias and for conflicting pairs in both orders. Native worker-to-lead verification is pending the updated Desktop connection.
+The restarted 0.2.3 native context and status calls reported `thread_id:invalid_type` with no validation issue for `threadId`. The lead-call adapter unnecessarily required both aliases even though its current context handle already resolves the exact chat and turn. Version 0.2.4 accepts either valid UUID alias for exact-handle calls, validates every supplied alias against that resolved chat, and still rejects malformed or conflicting aliases. Manual launches without a context handle retain the existing two-alias and saved-owner restoration checks. Cross-chat routing is rejected for either single alias and for conflicting pairs in both orders. The updated Desktop connection passed native verification as recorded below.
+
+### Native 0.2.4 completion and panel reopen
+
+On 2026-10-14, the native lead tools resolved the exact current chat/turn and an
+available runtime. All three native MCP client directories and the daemon used
+0.2.4. One restricted Luna/Low worker returned a schema-valid source check, then
+the selected Sol/High lead verified the source and resolved the saved handoff.
+Native start, wait, result, claim and resolve calls succeeded; the run finished
+completed/satisfied. No extra model call or retry was needed.
+
+The expanded panel showed all six workflows, including the new completed result,
+with no Bind button. User-assisted close/reopen from More tools produced a new
+tab and initialization ID while retaining the bound status, all six cards and the
+resolved handoff. Backend readback confirmed the five previous runs were unchanged.
+This closes the same-chat native routing and reopen failure; other native-account
+and mode/isolation gaps remain in the acceptance ledger.
+
+Reported worker usage was 15,952 tokens over 6,223 ms of execution. Shared lead
+usage and billed cost are unknown, and the UI labels accounting partial. The
+541-test full pre-push gate and installed-server routing checks passed.

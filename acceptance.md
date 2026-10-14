@@ -1,9 +1,10 @@
 # Acceptance ledger
 
-Updated 2026-10-13. Native workflow QA passed on installed 0.2.0.
-Installed release 0.2.1 adds current-handle revocation, unknown-mode rejection,
-durable result/handoff rollback, separate model and panel control authority, and
-accurate terminal-run notices/timestamps.
+Updated 2026-10-14. Native research/comparison/coding QA passed on installed
+0.2.0. Installed 0.2.4 corrects generic and single-alias MCP metadata handling;
+its native worker-to-lead workflow and bound-panel close/reopen QA passed.
+The selected lead model and High effort were preserved. Automatic activation requires verified Ultra effort; explicit invocation also
+works at High.
 The mandatory pre-push hook supplies the final combined repository gate; the
 PR records its observed result. Installed-process readback is tracked below.
 
@@ -52,7 +53,7 @@ old run stays incomplete; a retry is a new linked run, never an automatic write.
 - [x] Install 0.2.0 and verify the actual running MCP/daemon versions.
 - [x] Installed 0.2.1 MCP and shared daemon readback: available runtime, exact Ultra context, four preserved QA runs, isolated app-only pause/resume/cancel, and stable terminal timestamp.
 - [x] Native Veridue restart loaded 0.2.1: three client process directories, daemon version, and a new native panel tab confirmed automatic binding with all five retained runs.
-- [ ] Native 0.2.2 metadata compatibility and a fresh complete worker-to-lead workflow.
+- [x] Native 0.2.4 metadata compatibility: verified context/start/wait/result/lead claim/resolve, one completed read-only worker, and six retained workflow cards after closing/reopening from More tools.
 - [x] Real research/comparison/coding workflows completed through native MCP tools; the lead inspected evidence and resolved acceptance.
 - [x] Native multi-run controls: computer-use pause; user-assisted resume/cancel/reopen; backend readback and reopened native DOM agree. Binding and results persisted.
 - [x] Isolated coding fixture: checks, nine-case independent regression, review, push and ready [PR #2](https://github.com/thomast8/ultra-code-for-codex/pull/2) readback. It remains unmerged.
@@ -123,12 +124,52 @@ made no model call; it does not claim native message-delivery timeout QA.
 Version 0.2.2 distinguishes generic request metadata from routed chat identity.
 An actual SDK-generated progress-only request reproduced the 0.2.1 failure.
 For example, a progress token no longer requires chat-ID aliases when the lead
-supplies its verified current-turn handle. Any recognized routing field still
-requires both valid matching aliases and the exact same session. Superseded
+supplies its verified current-turn handle. At that release, recognized routing
+fields still required both valid matching aliases and the same session. Superseded
 handles remain rejected, and manual restoration still requires verified routed
 identity plus an existing owner in the same profile.
 
 The context response exposes only an absent/generic/routed classification; no
 raw metadata keys or values are returned. Focused SDK and handler tests, static
-gates and the real packaged stdio launch passed. Native 0.2.2 workflow QA remains
-pending installation and host refresh.
+gates and the real packaged stdio launch passed. Subsequent native checks isolated
+the single-alias mismatch; the 0.2.4 results below supersede that pending state.
+
+## Native 0.2.4 routing and workflow QA
+
+The 0.2.3 native diagnostic identified `thread_id:invalid_type` while `threadId`
+passed validation. Exact-handle model calls now accept either valid UUID alias
+and check every supplied alias against the verified chat. Malformed, conflicting
+and other-chat IDs remain rejected. Manual restoration retains its separate
+two-alias, canonical-profile and saved-owner requirements.
+
+On 2026-10-14, all three live native MCP client directories and the shared daemon
+were verified at 0.2.4. Native context, start, wait, result and lead handoff calls
+succeeded. One read-only `gpt-6-luna` worker at Low effort returned a valid
+source-bound result with no unresolved items. The selected `gpt-6.1-sol` lead at
+High effort independently checked its conclusions and resolved the handoff.
+The run ended `completed` with acceptance `satisfied`; its final value exactly
+matched the evidence-backed lead resolution.
+
+The expanded panel showed a bound status, no Bind button, the completed task,
+resolved handoff and all six workflow cards. The user closed that tab and reopened
+from More tools without clicking Bind. A different tab and initialization ID
+restored the bound status, all six cards and the completed result. Native backend
+readback matched, and all five earlier run snapshots remained unchanged.
+
+This one worker reported 15,695 input and 257 output tokens, totaling 15,952, with
+6,223 ms execution time. Cached-input and reasoning-output fields were zero.
+Lead overhead and actual charges remain unknown; the panel correctly labels the
+total partial. No retry, extra reviewer or billing-savings claim was added.
+
+The routing code at `f1798946421bc7d2e818c63dd45e7b4429ad1122` passed the mandatory
+541-test pre-push gate, coverage thresholds, formatting, lint, strict TypeScript
+and build. Actual installed stdio QA also checked both single aliases, malformed
+and foreign IDs, explicit panel binding and unchanged manual restoration.
+The local build pins a checksum-verified Node 26.10.0 executable; Homebrew's
+26.11.1 default was not changed.
+
+Evidence in the working chat: `work/native-workflow-qa/native-0.2.4-final-readback.json`,
+`metadata-0.2.4-installed.json` and `native-0.2.4-panel.json`.
+This pass qualifies the current read-only worker-to-lead and same-chat panel
+workflow. It does not repeat the earlier coding/publication QA or close the native
+two-chat, Plan-transition and independent account-identity gaps listed above.

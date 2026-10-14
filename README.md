@@ -12,10 +12,15 @@ There is no Codex Pilot, private Desktop IPC or hosted service dependency.
 
 ## Use
 
-Ask **“Use Ultra Code to investigate these independent questions, then compare the
-findings.”** On a verified native Ultra turn the hook also enables the selective
-authoring policy. A small task, such as correcting one label, stays with the lead.
-Ultra does not require fan-out or grant additional authority.
+On a verified native **Ultra** turn, the hook activates the orchestration policy
+automatically. You do not need to say “Use Ultra Code.” For example, ask
+**“Investigate these three independent questions, then compare the evidence.”**
+The lead decides whether delegation is useful; a small task such as correcting
+one label stays with the lead. Ultra does not require fan-out or grant authority.
+
+At another reasoning level, explicit invocation also works when capabilities are
+verified: **“Use Ultra Code to investigate these independent questions.”** Native
+0.2.4 QA completed one worker-to-lead workflow at the selected lead's High effort.
 
 Ask **“Open the Ultra Code panel for this chat.”** An agent-opened panel binds from
 its exact-turn context without another message. After that first verified binding,
