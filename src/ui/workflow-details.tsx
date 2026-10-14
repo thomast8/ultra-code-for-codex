@@ -1,3 +1,4 @@
+import { elapsed, taskElapsed } from './workflow-time.js';
 import type {
   ArtifactRef,
   JsonValue,
@@ -15,7 +16,7 @@ const tones: Record<string, string> = {
   pending: 'attention',
   claimed: 'attention',
   completed: 'completed',
-  cancelled: 'completed',
+  cancelled: 'queued',
   resolved: 'completed',
   failed: 'failed',
 };
@@ -32,13 +33,7 @@ export function Acceptance({ value }: { value: string }) {
   return <span className="workflow-acceptance">Acceptance: {value}</span>;
 }
 
-export function elapsed(start: number, end: number): string {
-  const seconds = Math.max(0, Math.floor((end - start) / 1000));
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-}
+export { elapsed } from './workflow-time.js';
 
 export function Usage({
   value,
@@ -47,7 +42,7 @@ export function Usage({
   value: TokenUsage | null;
   complete?: boolean;
 }) {
-  if (!value) return <span className="workflow-muted">Tokens unknown</span>;
+  if (!value) return <span className="workflow-muted">Tokens not reported</span>;
   return (
     <details className="workflow-usage">
       <summary>
@@ -126,7 +121,7 @@ export function TaskDetails({ task, now }: { task: TaskSnapshot; now: number }) 
         <dt>Effort</dt>
         <dd>{task.effort}</dd>
         <dt>Elapsed</dt>
-        <dd>{elapsed(task.startedAt ?? task.createdAt, task.finishedAt ?? now)}</dd>
+        <dd>{taskElapsed(task, now)}</dd>
         <dt>Last activity</dt>
         <dd>
           {elapsed(task.lastActivityAt, now)} ago
@@ -134,7 +129,10 @@ export function TaskDetails({ task, now }: { task: TaskSnapshot; now: number }) 
         </dd>
       </dl>
       {task.waitingReason && <p className="workflow-waiting">Waiting: {task.waitingReason}</p>}
-      <Usage value={task.usage ?? result?.usage ?? null} />
+      <Usage
+        value={task.usage ?? result?.usage ?? null}
+        complete={['completed', 'cancelled', 'failed'].includes(task.state)}
+      />
       <details>
         <summary>Why this model and effort</summary>
         <AssessmentDetails task={task} />

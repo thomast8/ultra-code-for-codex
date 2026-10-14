@@ -23,8 +23,11 @@ opening from **More tools > Plugins and MCPs** restores the same chat when Deskt
 supplies its routed identity. Missing or conflicting metadata retains the explicit
 **Show this chat’s workflows** fallback. No global latest-chat lookup is used.
 
-The panel shows multiple workflows, arbitrary phases, task models and rationale,
-usage, evidence, known waits and separate execution/acceptance outcomes. Pause
+The panel keeps active and unresolved workflows visible, with agent status squares,
+live time/tokens and drill-down details. The latest settled result stays compact;
+earlier results are available in History. Task models/rationale, phases, evidence,
+known waits and separate execution/acceptance outcomes remain available. See
+[the panel design and verification](docs/panel-design.md). Pause
 stops new dispatch while active tasks drain; cancel interrupts only that run and
 preserves edits. Closing the panel does not stop the local daemon. Results persist.
 A returned worker result is not a verified goal: the lead must inspect evidence
