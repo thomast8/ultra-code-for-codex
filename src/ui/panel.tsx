@@ -60,12 +60,10 @@ export function Panel() {
       setAvailability((previous) => readAvailability(result, previous));
     });
     app.onhostcontextchanged = applyHostContext;
-    void app
-      .connect(new PostMessageTransport(window.parent, window.parent))
-      .then(() => applyHostContext(app.getHostContext()))
-      .catch(() => {
-        binding.connectionFailed();
-      });
+    void app.connect(new PostMessageTransport(window.parent, window.parent)).then(
+      () => applyHostContext(app.getHostContext()),
+      () => binding.connectionFailed(),
+    );
     return () => {
       binding.close();
       void app.close();

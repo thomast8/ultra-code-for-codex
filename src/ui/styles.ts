@@ -81,7 +81,7 @@ const layout = `
 .workflow-dashboard{min-height:100vh;display:flex;flex-direction:column}.dashboard-content{flex:1;width:100%;max-width:760px;margin:0 auto;padding:14px 16px 20px;display:flex;flex-direction:column;gap:12px}.history-title{font-size:var(--text)!important;color:var(--muted)}
 .workflow-run{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:12px;transition:border-color .2s,box-shadow .2s;animation:ultra-rise .28s var(--ease)}.workflow-run:hover{border-color:var(--line-strong)}
 .workflow-run-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.run-title{min-width:0}.run-eyebrow{font-size:var(--text-xs);font-weight:600;color:var(--muted)}.run-eyebrow.attention-ink{color:var(--warning-ink)}
-.run-summary{display:flex;flex-direction:column;align-items:stretch;gap:10px}.run-result{display:flex;flex-direction:column;gap:6px}.run-result-summary{font-size:var(--text);line-height:1.5}
+.run-summary{display:flex;flex-direction:column;align-items:stretch;gap:10px}.run-result{display:flex;flex-direction:column;gap:6px}.run-result-summary{font-size:var(--text);line-height:1.5;white-space:pre-line}
 .agent-summary-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.agent-summary-copy{display:flex;flex-direction:column;gap:1px;font-size:12px}.agent-preview:empty{display:none}.agent-preview{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .run-meta{display:flex;align-items:center;justify-content:space-between;gap:6px 10px;flex-wrap:wrap}.run-counters{font-size:12px;font-variant-numeric:tabular-nums}.ultra-panel .disclosure-button{align-self:flex-start;margin-left:-6px}
 .workflow-muted,.workflow-task-model,.workflow-source{color:var(--muted)}.workflow-error{color:var(--danger-ink)}.workflow-waiting{color:var(--warning-ink)}.empty-state{color:var(--muted);padding:32px 0;text-align:center}
@@ -104,7 +104,7 @@ const agents = `
 `;
 
 const details = `
-.workflow-badge{display:inline-flex;align-items:center;flex:none;font-size:var(--text-xs);font-weight:500;white-space:nowrap;border-radius:999px;padding:1px 8px;line-height:1.6}.workflow-badge::first-letter{text-transform:uppercase}
+.workflow-badge{display:inline-block;flex:none;font-size:var(--text-xs);font-weight:500;white-space:nowrap;border-radius:999px;padding:1px 8px;line-height:1.6}.workflow-badge::first-letter{text-transform:uppercase}
 .tone-running{background:var(--info-bg);color:var(--info-ink)}.tone-queued{background:var(--fill);color:var(--muted)}.tone-attention{background:var(--warning-bg);color:var(--warning-ink)}.tone-completed{background:var(--success-bg);color:var(--success-ink)}.tone-failed{background:var(--danger-bg);color:var(--danger-ink)}
 .run-disclosure{border-top:1px solid var(--line);padding-top:8px}.run-details{display:flex;flex-direction:column;gap:8px;padding:6px 0 0 18px;font-size:12px}
 .workflow-phase{border-top:1px solid var(--line);padding-top:6px}.workflow-phase>summary strong{color:var(--ink);font-weight:500}.workflow-handoff{margin:8px 0 4px!important;padding:2px 0 2px 12px;border-left:2px solid var(--warning-bg);display:flex;flex-direction:column;gap:6px}.workflow-handoff>*{margin-top:6px}
