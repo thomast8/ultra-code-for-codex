@@ -1,6 +1,6 @@
 {
   "name": "ultra-code-for-codex",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "description": "Local adaptive Codex workflows with bounded workers, durable results and a chat-bound panel.",
   "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",

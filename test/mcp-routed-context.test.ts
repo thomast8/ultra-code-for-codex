@@ -55,11 +55,14 @@ function operations(nonce: string) {
 }
 
 it.each([
-  { thread_id: sessionId },
-  { threadId: sessionId },
+  { thread_id: otherId },
+  { threadId: otherId },
+  { thread_id: null },
+  { threadId: 7 },
   { thread_id: null, threadId: sessionId },
   { thread_id: sessionId, threadId: 7 },
   { thread_id: sessionId, threadId: otherId },
+  { thread_id: otherId, threadId: sessionId },
   { thread_id: 'not-a-uuid', threadId: 'not-a-uuid' },
   { thread_id: otherId, threadId: otherId },
 ])(
@@ -78,29 +81,34 @@ it.each([
   },
 );
 
-it.each([undefined, {}, { progressToken: 7 }, { extension: 'private-value' }, routed])(
-  'accepts exact handles with generic metadata or matching routed identity: %j',
-  async (_meta) => {
-    const f = await connected();
-    try {
-      for (const operation of operations(f.nonce)) {
-        const result = await f.client.callTool({ ...operation, ...(_meta ? { _meta } : {}) });
-        expect(result.isError, operation.name).not.toBe(true);
-      }
-      const context = await f.client.callTool({
-        name: 'ultra_context',
-        arguments: { contextKey: 'current' },
-        ...(_meta ? { _meta } : {}),
-      });
-      expect(JSON.stringify(context)).not.toContain('private-value');
-      expect(f.runtime.mock.calls.map(([method]) => method)).toEqual(
-        expect.arrayContaining(['start', 'status', 'result', 'wait', 'control', 'handoff']),
-      );
-    } finally {
-      await f.close();
+it.each([
+  undefined,
+  {},
+  { progressToken: 7 },
+  { extension: 'private-value' },
+  { thread_id: sessionId },
+  { threadId: sessionId },
+  routed,
+])('accepts exact handles with generic metadata or matching routed identity: %j', async (_meta) => {
+  const f = await connected();
+  try {
+    for (const operation of operations(f.nonce)) {
+      const result = await f.client.callTool({ ...operation, ...(_meta ? { _meta } : {}) });
+      expect(result.isError, operation.name).not.toBe(true);
     }
-  },
-);
+    const context = await f.client.callTool({
+      name: 'ultra_context',
+      arguments: { contextKey: 'current' },
+      ...(_meta ? { _meta } : {}),
+    });
+    expect(JSON.stringify(context)).not.toContain('private-value');
+    expect(f.runtime.mock.calls.map(([method]) => method)).toEqual(
+      expect.arrayContaining(['start', 'status', 'result', 'wait', 'control', 'handoff']),
+    );
+  } finally {
+    await f.close();
+  }
+});
 
 it('checks routed identity on an already-bound nonce without changing app nonce access', async () => {
   const f = await connected();
@@ -160,3 +168,23 @@ it.each([null, [], 7, 'invalid metadata'])(
     );
   },
 );
+
+it('reports only routing field names and validation codes on malformed identity', () => {
+  expect(() => assertRoutedContext({ thread_id: null, threadId: sessionId }, sessionId)).toThrow(
+    'thread_id:invalid_type',
+  );
+  try {
+    assertRoutedContext({ thread_id: 'private-identity', threadId: otherId }, sessionId);
+    throw new Error('Expected malformed routing to fail');
+  } catch (error) {
+    expect(String(error)).toContain('thread_id:invalid_format');
+    expect(String(error)).not.toContain('private-identity');
+    expect(String(error)).not.toContain(otherId);
+  }
+});
+
+it('rejects a supplied route with no defined identity', () => {
+  expect(() => assertRoutedContext({ threadId: undefined }, sessionId)).toThrow(
+    'Routed chat identity is missing, invalid, or conflicting (aliases:custom)',
+  );
+});
