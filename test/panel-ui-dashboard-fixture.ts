@@ -180,6 +180,9 @@ class MockApp {
   async connect() {
     return undefined;
   }
+  getHostContext() {
+    return dashboardBridge.hostContext;
+  }
   async sendMessage() {
     dashboardBridge.messages += 1;
     return { isError: false };
@@ -202,6 +205,7 @@ export const dashboardBridge = {
   statusResult: { structuredContent: { runs: [], cursor: 0 } } as unknown,
   statusResults: [] as unknown[],
   controlResult: { isError: false } as unknown,
+  hostContext: undefined as Record<string, unknown> | undefined,
   MockApp,
 };
 
@@ -213,6 +217,7 @@ export function resetBridge() {
   dashboardBridge.statusResult = { structuredContent: { runs: [], cursor: 0 } };
   dashboardBridge.statusResults = [];
   dashboardBridge.controlResult = { isError: false };
+  dashboardBridge.hostContext = undefined;
 }
 
 export function deferredResult() {

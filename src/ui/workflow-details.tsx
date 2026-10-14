@@ -1,4 +1,5 @@
 import { elapsed, taskElapsed } from './workflow-time.js';
+import { safeLink, StructuredValue } from './result-value.js';
 import type {
   ArtifactRef,
   JsonValue,
@@ -30,7 +31,13 @@ export function StatusBadge({ state }: { state: string }) {
 }
 
 export function Acceptance({ value }: { value: string }) {
-  return <span className="workflow-acceptance">Acceptance: {value}</span>;
+  return (
+    <span
+      className={`workflow-badge workflow-acceptance tone-${value === 'satisfied' ? 'completed' : 'attention'}`}
+    >
+      Acceptance: {value}
+    </span>
+  );
 }
 
 export { elapsed } from './workflow-time.js';
@@ -62,16 +69,6 @@ export function Usage({
   );
 }
 
-function safeLink(uri: string | undefined): string | undefined {
-  if (!uri) return undefined;
-  try {
-    const url = new URL(uri);
-    return ['https:', 'http:'].includes(url.protocol) ? uri : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function Evidence({ artifacts }: { artifacts: ArtifactRef[] }) {
   if (!artifacts.length) return null;
   return (
@@ -99,12 +96,20 @@ export function Evidence({ artifacts }: { artifacts: ArtifactRef[] }) {
   );
 }
 
-export function ResultValue({ value }: { value: JsonValue }) {
+export function ResultValue({
+  value,
+  omit = null,
+  label = 'Result',
+}: {
+  value: JsonValue;
+  omit?: string | null;
+  label?: string;
+}) {
   if (value === null) return null;
   return (
     <details className="workflow-result">
-      <summary>Result</summary>
-      <pre>{typeof value === 'string' ? value : JSON.stringify(value, null, 2)}</pre>
+      <summary>{label}</summary>
+      <StructuredValue value={value} omit={omit} />
     </details>
   );
 }

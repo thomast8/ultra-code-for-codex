@@ -82,3 +82,25 @@ export function finishedAgentLabel(tasks: TaskSnapshot[]): string {
   const state = tasks.every((task) => task.state === 'completed') ? 'completed' : 'finished';
   return `${tasks.length} ${state} · ${tokenLabel(usage, known.length === tasks.length)}`;
 }
+
+export function attentionMessage(run: RunSnapshot): string {
+  if (run.error) return run.error;
+  const handoff = run.handoffs.find((item) => item.state !== 'resolved');
+  if (handoff && !terminal(run.state)) return handoff.spec.objective;
+  return taskAttentionMessage(run.tasks) ?? runAcceptanceMessage(run);
+}
+
+function taskAttentionMessage(tasks: TaskSnapshot[]): string | null {
+  const failed = tasks.find((task) => ['failed', 'needs_reconciliation'].includes(task.state));
+  if (failed) return failed.result?.error ?? `${failed.title}: ${taskLabel(failed)}.`;
+  const unaccepted = tasks.find(taskNeedsAttention);
+  if (!unaccepted?.result) return null;
+  const detail = unaccepted.result.unresolved[0] ?? unaccepted.result.error;
+  return `${unaccepted.title} reported acceptance ${unaccepted.result.acceptance}${detail ? `: ${detail}` : '.'}`;
+}
+
+function runAcceptanceMessage(run: RunSnapshot): string {
+  if (run.state === 'completed' && run.acceptanceOutcome !== 'satisfied')
+    return `The run finished with acceptance ${run.acceptanceOutcome}.`;
+  return 'A lead decision needs review.';
+}

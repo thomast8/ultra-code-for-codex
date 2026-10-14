@@ -56,11 +56,6 @@ export function Dashboard({ app, nonce }: { app: Pick<App, 'callServerTool'>; no
             control={(action) => void feed.control(run.id, action)}
           />
         ))}
-        {state.runs.length > 0 && (
-          <p className="workflow-muted workflow-note">
-            Quiet periods do not indicate a stalled task.
-          </p>
-        )}
       </div>
       <footer className="ultra-footer">
         <details>
@@ -69,8 +64,9 @@ export function Dashboard({ app, nonce }: { app: Pick<App, 'callServerTool'>; no
             About Ultra
           </summary>
           <p>
-            Closing this panel does not cancel work. Totals cover worker tokens only; partial or
-            missing worker usage is marked. Main chat usage is unknown.
+            Closing this panel does not cancel work, and quiet periods do not mean a task has
+            stalled. Totals cover worker tokens only; partial or missing worker usage is marked.
+            Main chat usage is unknown.
           </p>
         </details>
         <span>This chat</span>

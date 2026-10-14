@@ -22,6 +22,9 @@ const appState = vi.hoisted(() => {
       void transport;
       if (appState.connectError) throw new Error('Host connection failed');
     }
+    getHostContext() {
+      return undefined;
+    }
     async sendMessage(message: unknown) {
       this.sent.push(message);
       if (appState.sendError) throw new Error('Host message failed');
@@ -48,7 +51,8 @@ const appState = vi.hoisted(() => {
   };
 });
 
-vi.mock('@modelcontextprotocol/ext-apps', () => ({
+vi.mock('@modelcontextprotocol/ext-apps', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   App: appState.MockApp,
   PostMessageTransport: class {
     constructor(target: unknown, source: unknown) {
