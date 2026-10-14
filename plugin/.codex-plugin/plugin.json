@@ -5,6 +5,8 @@
   "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",
   "interface": {
+    "logo": "./assets/ultra.png",
+    "composerIcon": "./assets/ultra.png",
     "displayName": "Ultra Code for Codex",
     "shortDescription": "Selective workflows and durable results beside your chat.",
     "longDescription": "Keep the selected chat model as lead while bounded workers execute independent tasks. Track multiple workflows, evidence, usage and lead decisions in a local panel.",
