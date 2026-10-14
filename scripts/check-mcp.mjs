@@ -145,10 +145,17 @@ async function stopFixtureDaemon(pid) {
   if (pid === undefined) return;
   const runtime = JSON.parse(await readFile(join(pluginRoot, 'dist/runtime.json'), 'utf8'));
   const expected = `${runtime.nodeExecutable} ${join(pluginRoot, 'dist/daemon-entry.js')} ${dataDir}`;
-  const command = execFileSync('ps', ['-p', String(pid), '-o', 'command='], {
+  const command = execFileSync('ps', ['-ww', '-p', String(pid), '-o', 'command='], {
     encoding: 'utf8',
   }).trim();
-  assert.ok(command === expected, 'Refusing to stop a process outside the isolated fixture');
+  const suffix = command.slice(expected.length);
+  const attempt = /^ [0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+    suffix,
+  );
+  assert.ok(
+    command.startsWith(expected) && (suffix === '' || attempt),
+    'Refusing to stop a process outside the isolated fixture',
+  );
   process.kill(pid, 'SIGTERM');
   const deadline = Date.now() + 5_000;
   while (isRunning(pid) && Date.now() < deadline) {

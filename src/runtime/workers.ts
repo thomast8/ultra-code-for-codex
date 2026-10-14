@@ -6,6 +6,7 @@ import type {
   TaskResult,
   WorkerEvent,
 } from '../contracts/workflow.js';
+import { requireWriterLease } from './resources.js';
 import { ensureWorkerHandoff } from './reconciliation.js';
 import { failedResult, maximumUsage, refreshSnapshot } from './records.js';
 import type { Journal } from './journal.js';
@@ -26,6 +27,7 @@ export class Workers {
     eligible: () => boolean,
   ): void {
     const spec = agentSchema.parse(call.payload) as AgentSpec;
+    requireWriterLease(spec, call.claims);
     this.scheduler.enqueue({
       id: call.id,
       runId: run.snapshot.id,

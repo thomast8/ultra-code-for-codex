@@ -244,9 +244,11 @@ async function readAvailable(
   offset: number,
   state: LineState,
   input: HookInput,
+  deadline: number,
 ): Promise<number> {
   const size = (await handle.stat()).size;
   while (offset < size) {
+    if (Date.now() > deadline) throw new Error('Activation transcript scan exceeded its deadline');
     const buffer = Buffer.alloc(Math.min(READ_CHUNK, size - offset));
     const { bytesRead } = await handle.read(buffer, 0, buffer.length, offset);
     if (bytesRead === 0) break;
@@ -276,13 +278,15 @@ async function scanForContext(
   instanceId: string,
   maxWaitMs: number,
 ): Promise<LeadContext> {
-  const deadline = Date.now() + Math.min(Math.max(maxWaitMs, 0), 5_000);
+  const waitMs = Math.min(Math.max(maxWaitMs, 0), 5_000);
+  // Zero wait skips polling, while an existing-file scan still has a five-second bound.
+  const deadline = Date.now() + (waitMs === 0 ? 5_000 : waitMs);
   const state: LineState = { meta: undefined, turn: undefined, pending: '', discarding: false };
   const decoder = new StringDecoder('utf8');
   let offset = 0;
   do {
     try {
-      offset = await readAvailable(handle, decoder, offset, state, input);
+      offset = await readAvailable(handle, decoder, offset, state, input, deadline);
       if (hasExactMetadata(state)) {
         try {
           return { ...makeContext(state.meta, state.turn, input), instanceId };
@@ -295,7 +299,7 @@ async function scanForContext(
       const reason = error instanceof Error ? error.message : 'Invalid activation metadata';
       return unknownContext(input, instanceId, reason);
     }
-    if (Date.now() >= deadline) break;
+    if (waitMs === 0 || Date.now() >= deadline) break;
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
   } while (Date.now() <= deadline);
   return unknownContext(

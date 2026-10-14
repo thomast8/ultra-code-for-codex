@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { expect, it } from 'vitest';
 import { verifyAssignmentRoot, verifyLinkedWorktree } from '../src/codex/local-environment.js';
+import { createWorkerExecutor } from '../src/codex/worker.js';
 import { workerSpec } from './codex-worker-fixture.js';
 const execute = promisify(execFile);
 
@@ -76,3 +77,18 @@ it('rejects a subdirectory whose marker redirects to a different root', async ()
   await writeFile(join(nested, '.git'), `gitdir: ${stdout.trim()}\n`);
   await expect(verifyLinkedWorktree(nested)).rejects.toThrow('worktree inventory');
 });
+
+it.each(['missing', 'invalid'])(
+  'retains the safe %s writer-root failure through the actual executor',
+  async (kind) => {
+    const root = await realpath(await mkdtemp(join(tmpdir(), 'ultra-worker-invalid-')));
+    if (kind === 'invalid') await writeFile(join(root, '.git'), 'gitdir: /nonexistent\n');
+    const assignment = { ...workerSpec().assignment, ownership: { cwd: root, paths: [] } };
+    const result = await createWorkerExecutor()(
+      workerSpec({ assignment, capability: 'workspace-write' }),
+      { instanceId: '/unused', signal: new AbortController().signal, onEvent: async () => {} },
+    );
+    expect(result.acceptance).toBe('blocked');
+    expect(result.error).toContain(kind === 'missing' ? 'linked Git worktree' : 'Git identity');
+  },
+);

@@ -10,6 +10,7 @@ import type { EnvironmentInfoResponse } from './generated/v2/EnvironmentInfoResp
 import type { EnvironmentStatusResponse } from './generated/v2/EnvironmentStatusResponse.js';
 import {
   requireWorker,
+  WorkerBlocked,
   workerPages,
   workerRequest,
   type WorkerTransport,
@@ -46,13 +47,13 @@ async function git(cwd: string, args: string[]): Promise<string> {
     });
     return stdout.trim();
   } catch {
-    throw new Error('Assigned writer root Git identity could not be verified');
+    throw new WorkerBlocked('Assigned writer root Git identity could not be verified');
   }
 }
 
 export async function verifyLinkedWorktree(cwd: string): Promise<void> {
   requireWorker(
-    (await stat(join(cwd, '.git'))).isFile(),
+    (await stat(join(cwd, '.git')).catch(() => undefined))?.isFile() === true,
     'Writer root must be a linked Git worktree',
   );
   const [top, directory, common, listing] = await Promise.all([

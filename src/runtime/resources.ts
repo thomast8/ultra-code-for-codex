@@ -1,5 +1,13 @@
 import { realpathSync, statSync } from 'node:fs';
-import type { ResourceClaim } from '../contracts/workflow.js';
+import type { AgentSpec, ResourceClaim } from '../contracts/workflow.js';
+
+export function requireWriterLease(spec: AgentSpec, claims: ResourceClaim[]): void {
+  if (
+    spec.capability === 'workspace-write' &&
+    !claims.some((claim) => claim.mode === 'write' && claim.path === spec.assignment.ownership.cwd)
+  )
+    throw new Error('Writer requires a write lease for its canonical worktree root');
+}
 
 export function snapshotClaims(claims: ResourceClaim[]): ResourceClaim[] {
   return claims

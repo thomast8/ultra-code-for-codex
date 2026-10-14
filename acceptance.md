@@ -173,3 +173,17 @@ Evidence in the working chat: `work/native-workflow-qa/native-0.2.4-final-readba
 This pass qualifies the current read-only worker-to-lead and same-chat panel
 workflow. It does not repeat the earlier coding/publication QA or close the native
 two-chat, Plan-transition and independent account-identity gaps listed above.
+
+## 0.2.5 review fixes
+
+- [x] Writers require a canonical root write lease before admission and queued replay.
+- [x] Different-key writers on one root serialize; invalid claims dispatch no worker.
+- [x] Production writer preflight retains safe linked-worktree failure reasons.
+- [x] Activation scanning fails closed within its chunk-loop deadline.
+- [x] Safe per-attempt daemon startup diagnostics and concurrent cold clients pass real isolated API QA without model calls.
+- [ ] Installed/native 0.2.5 readback after supported reload.
+- [ ] Native full app quit during an active worker. Detached background execution is current source behavior, not a completed Desktop QA claim.
+
+Main-agent token display is a separate requested GitHub issue #4, not part of
+these fixes. Current whole-workflow accounting stays partial because lead
+usage is unobserved.

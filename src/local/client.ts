@@ -5,19 +5,21 @@ import { readFile } from 'node:fs/promises';
 import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { localEndpoint, type Endpoint } from './endpoint.js';
+import { waitForStartup } from './startup.js';
 
 export type DaemonCall = (method: string, params: unknown) => Promise<unknown>;
-export type LaunchDaemon = (dataDir: string) => Promise<void>;
+export type LaunchDaemon = (dataDir: string) => Promise<'endpoint' | void>;
 
-async function launchInstalledDaemon(dataDir: string): Promise<void> {
+async function launchInstalledDaemon(dataDir: string): Promise<'endpoint' | void> {
   const runtime = JSON.parse(
     await readFile(new URL('./runtime.json', import.meta.url), 'utf8'),
   ) as {
     nodeExecutable: string;
   };
+  const attemptId = randomUUID();
   const child = spawn(
     runtime.nodeExecutable,
-    [fileURLToPath(new URL('./daemon-entry.js', import.meta.url)), dataDir],
+    [fileURLToPath(new URL('./daemon-entry.js', import.meta.url)), dataDir, attemptId],
     {
       detached: true,
       stdio: 'ignore',
@@ -28,6 +30,7 @@ async function launchInstalledDaemon(dataDir: string): Promise<void> {
     child.once('spawn', resolve);
   });
   child.unref();
+  return waitForStartup(dataDir, attemptId);
 }
 
 function exchange(endpoint: Endpoint, method: string, params: unknown): Promise<unknown> {
@@ -85,7 +88,7 @@ export function createDaemonClient(
   dataDir: string,
   launch: LaunchDaemon = launchInstalledDaemon,
 ): DaemonCall {
-  let starting: Promise<void> | undefined;
+  let starting: Promise<'endpoint' | void> | undefined;
   return async (method, params) => {
     const endpoint = localEndpoint(dataDir);
     try {
@@ -96,7 +99,7 @@ export function createDaemonClient(
     starting ??= launch(endpoint.dataDir).finally(() => {
       starting = undefined;
     });
-    await starting;
+    const startup = await starting;
     for (let attempt = 0; attempt < 50; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       try {
@@ -105,6 +108,10 @@ export function createDaemonClient(
         if (!absent(error)) throw error;
       }
     }
-    throw new Error('Ultra Code runtime did not start within five seconds');
+    throw new Error(
+      startup === 'endpoint'
+        ? 'Ultra Code runtime endpoint could not be acquired'
+        : 'Ultra Code runtime did not start within five seconds',
+    );
   };
 }

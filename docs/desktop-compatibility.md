@@ -276,3 +276,28 @@ and mode/isolation gaps remain in the acceptance ledger.
 Reported worker usage was 15,952 tokens over 6,223 ms of execution. Shared lead
 usage and billed cost are unknown, and the UI labels accounting partial. The
 541-test full pre-push gate and installed-server routing checks passed.
+
+### Runtime review fixes in 0.2.5
+
+Workspace writers now require a write lease for their canonical worktree root,
+both on admission and when replaying queued tasks. Missing, read-only, key-only
+and unrelated claims fail before model dispatch. Different claim keys for the
+same root still serialize. Invalid linked-worktree roots retain their safe
+preflight explanation instead of becoming a generic initialization error.
+
+Activation scans enforce the existing deadline inside the chunk loop. A timeout
+returns unknown metadata even if a matching record was seen earlier in a partial
+scan. Zero polling wait still reads available data within a five-second bound.
+
+Detached daemon launches record a private, attempt-specific readiness or
+allowlisted failure receipt. Corrupt journals produce an actionable safe message.
+A competing launch that loses the process lock waits for the authenticated
+endpoint rather than failing immediately; two real cold clients both reached
+the same daemon in isolated QA. No request with a lost acknowledgement is retried.
+
+Compiled-daemon API QA rejected all four invalid writer claims before creating
+a task; a valid lease reached the production worktree check and was blocked
+there. Corrupt-journal and bounded filesystem-scan checks passed. These checks
+dispatched no model turns. Native workflow and reopen evidence above remains
+for 0.2.4; installed/native 0.2.5 readback is pending. Main-agent usage is tracked
+separately in issue #4 and remains unknown in the current panel.

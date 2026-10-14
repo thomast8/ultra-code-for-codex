@@ -113,3 +113,28 @@ it('denies an unauthenticated socket request without dispatch', async () => {
     await f.close();
   }
 });
+
+it('connects competing cold clients to the one lock-owning daemon', async () => {
+  const f = localFixture();
+  const original = await runningFixture();
+  await original.close();
+  let daemon: Awaited<ReturnType<typeof serveDaemon>> | undefined;
+  let launches = 0;
+  const launch = async (): Promise<'endpoint' | void> => {
+    launches += 1;
+    if (launches === 2) return 'endpoint';
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    daemon = await serveDaemon(f.dataDir, () => original.daemon.engine);
+  };
+  try {
+    const results = await Promise.all(
+      [createDaemonClient(f.dataDir, launch), createDaemonClient(f.dataDir, launch)].map((call) =>
+        call('health', {}),
+      ),
+    );
+    expect(launches).toBe(2);
+    expect(results[0]).toEqual(results[1]);
+  } finally {
+    await daemon?.close();
+  }
+});

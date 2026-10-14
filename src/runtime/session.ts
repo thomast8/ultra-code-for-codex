@@ -8,7 +8,7 @@ import {
 import type { AgentSpec, JsonValue, LeadHandoffSpec } from '../contracts/workflow.js';
 import type { Journal } from './journal.js';
 import { attachTask, createCall, refreshSnapshot } from './records.js';
-import { snapshotClaims } from './resources.js';
+import { requireWriterLease, snapshotClaims } from './resources.js';
 import { ScriptMachine } from './sandbox.js';
 import type { CallKind, CallRecord, RunRecord } from './types.js';
 import type { Workers } from './workers.js';
@@ -137,6 +137,7 @@ export class RunSession {
     }
     this.validatePhase(spec.phase);
     call.claims = snapshotClaims(spec.resources);
+    requireWriterLease(spec, call.claims);
     attachTask(call, spec);
   }
   private validatePhase(value: { id: string; label: string }): void {

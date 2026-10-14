@@ -82,6 +82,13 @@ filesystem, imports, network, timers, clock or randomness. SQLite records immuta
 starts, host calls, result delivery order, task assessments, usage and handoffs.
 Retries are new attempts; uncertain writes are never automatically repeated.
 
+Quitting Codex does not pause the detached local runtime. Workers can continue
+and use tokens while the app is closed; steps needing the lead wait until you
+return. Pause stops new dispatch while current workers drain. Cancel interrupts
+that workflow's workers. Saved results survive a runtime restart; uncertain
+interrupted work requires readback before retrying. An app quit during an active
+worker has not yet been verified in native Desktop QA.
+
 Workers use fresh ephemeral app-server threads. They receive bounded assignments,
 normal repository guidance, explicit model/effort and either read-only access or
 writes in an assigned isolated Git worktree. Nested agents, inherited apps/MCPs,
