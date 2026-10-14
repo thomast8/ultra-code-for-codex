@@ -23,6 +23,9 @@ build:
 check:
     npm run check
 
+qa-panel *args:
+    node scripts/qa-panel.mjs {{args}}
+
 qa-desktop:
     node scripts/qa-desktop.mjs
 
