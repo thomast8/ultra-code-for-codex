@@ -92,3 +92,22 @@ it.each(['missing', 'invalid'])(
     expect(result.error).toContain(kind === 'missing' ? 'linked Git worktree' : 'Git identity');
   },
 );
+
+it.each(['read-only', 'workspace-write'] as const)(
+  'preserves the missing %s root failure before backend launch',
+  async (capability) => {
+    const parent = await realpath(await mkdtemp(join(tmpdir(), 'ultra-missing-root-')));
+    const result = await createWorkerExecutor()(
+      workerSpec({
+        capability,
+        assignment: {
+          ...workerSpec().assignment,
+          ownership: { cwd: join(parent, 'never-created'), paths: [] },
+        },
+      }),
+      { instanceId: '/unused', signal: new AbortController().signal, onEvent: async () => {} },
+    );
+    expect(result.error).toContain('canonical directory');
+    expect(result.reportedModel).toBeNull();
+  },
+);

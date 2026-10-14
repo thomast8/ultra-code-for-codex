@@ -65,7 +65,8 @@ export function Dashboard({ app, nonce }: { app: Pick<App, 'callServerTool'>; no
           </summary>
           <p>
             Closing this panel does not cancel work, and quiet periods do not mean a task has
-            stalled. Token totals include reported worker usage; partial or missing usage is marked.
+            stalled. Totals cover worker tokens only; partial or missing worker usage is marked.
+            Main chat usage is unknown.
           </p>
         </details>
         <span>This chat</span>

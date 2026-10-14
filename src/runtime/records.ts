@@ -94,6 +94,15 @@ export function failedResult(
     error: message,
   };
 }
+export function emptyUsage(): TokenUsage {
+  return {
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    outputTokens: 0,
+    reasoningOutputTokens: 0,
+    totalTokens: 0,
+  };
+}
 export function maximumUsage(left: TokenUsage | null, right: TokenUsage): TokenUsage {
   const output = { ...right };
   for (const key of Object.keys(output) as (keyof TokenUsage)[]) {
@@ -105,19 +114,14 @@ export function refreshSnapshot(run: RunRecord): void {
   run.snapshot.tasks = run.calls.flatMap((call) => (call.task ? [call.task] : []));
   run.snapshot.handoffs = run.calls.flatMap((call) => (call.handoff ? [call.handoff] : []));
   const usage = run.snapshot.tasks.flatMap((task) => (task.usage ? [task.usage] : []));
-  run.snapshot.usage = usage.length
-    ? usage.reduce(
-        (sum, value) => {
+  run.snapshot.accountingComplete = run.snapshot.tasks.every(
+    (task) => task.result !== null && task.result.execution !== 'uncertain' && task.usage !== null,
+  );
+  run.snapshot.usage =
+    usage.length || !run.snapshot.tasks.length
+      ? usage.reduce((sum, value) => {
           for (const key of Object.keys(sum) as (keyof TokenUsage)[]) sum[key] += value[key];
           return sum;
-        },
-        {
-          inputTokens: 0,
-          cachedInputTokens: 0,
-          outputTokens: 0,
-          reasoningOutputTokens: 0,
-          totalTokens: 0,
-        },
-      )
-    : null;
+        }, emptyUsage())
+      : null;
 }

@@ -51,3 +51,26 @@ export async function workerPages<T>(
   }
   throw new WorkerBlocked('Worker catalog exceeds page bound');
 }
+
+export function closeOnAbort(
+  transport: Pick<WorkerTransport, 'close'>,
+  signal?: AbortSignal,
+): () => void {
+  const abort = () => transport.close();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
+  return () => signal?.removeEventListener('abort', abort);
+}
+
+export function awaitPreflight<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  let abort = () => {};
+  const cancelled = new Promise<never>((_, reject) => {
+    abort = () => reject(new WorkerBlocked('Worker cancelled during preflight'));
+    signal.addEventListener('abort', abort, { once: true });
+    if (signal.aborted) abort();
+  });
+  return Promise.race([promise, cancelled]).finally(() =>
+    signal.removeEventListener('abort', abort),
+  );
+}

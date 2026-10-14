@@ -65,3 +65,13 @@ it('sanitizes launch and invalid filesystem failures before reporting blocked me
   });
   expect(h.launch.mock.calls).toHaveLength(before);
 });
+
+it('preserves an allowlisted permission-inspection blocker without starting a turn', async () => {
+  const h = workerHarness();
+  h.backend.overrides['experimentalFeature/list'] = { data: [], nextCursor: null };
+  const result = await createCapabilitiesReader(h.launch)('/private/tmp', '/private/tmp');
+  expect(result.blockers[0]).toContain(
+    'Restricted worker verification failed: required feature state is missing:',
+  );
+  expect(h.backend.calls.some((call) => call.method === 'turn/start')).toBe(false);
+});

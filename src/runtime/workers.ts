@@ -8,7 +8,7 @@ import type {
 } from '../contracts/workflow.js';
 import { requireWriterLease } from './resources.js';
 import { ensureWorkerHandoff } from './reconciliation.js';
-import { failedResult, maximumUsage, refreshSnapshot } from './records.js';
+import { failedResult, maximumUsage, refreshSnapshot, emptyUsage } from './records.js';
 import type { Journal } from './journal.js';
 import { asError, type Scheduler } from './scheduler.js';
 import type { CallRecord, RunRecord } from './types.js';
@@ -25,6 +25,7 @@ export class Workers {
     call: CallRecord,
     deliver: (value: JsonValue) => void,
     eligible: () => boolean,
+    fail: (message: string) => void,
   ): void {
     const spec = agentSchema.parse(call.payload) as AgentSpec;
     requireWriterLease(spec, call.claims);
@@ -34,7 +35,7 @@ export class Workers {
       claims: call.claims,
       ready: () => eligible() && run.snapshot.state === 'running' && call.state === 'queued',
       waiting: () => this.waiting(run, call),
-      run: () => this.executeCall(run, call, spec, deliver),
+      run: () => this.executeCall(run, call, spec, deliver, fail),
       invalid: (error) => {
         this.complete(run, call, failedResult(spec, error.message), deliver);
       },
@@ -45,13 +46,10 @@ export class Workers {
     call: CallRecord,
     spec: AgentSpec,
     deliver: (value: JsonValue) => void,
+    fail: (message: string) => void,
   ): Promise<boolean> {
     if (this.overBudget(run)) {
-      run.snapshot.state = 'failed';
-      run.snapshot.acceptanceOutcome = 'incomplete';
-      run.snapshot.finishedAt ??= Date.now();
-      run.snapshot.error = 'Observed token budget exhausted; no new workers may start';
-      this.complete(run, call, failedResult(spec, run.snapshot.error), deliver);
+      fail('Observed token budget exhausted; no new workers may start');
       return true;
     }
     const controller = new AbortController();
@@ -125,6 +123,22 @@ export class Workers {
       // A failed result write must not become an ordinary scheduler failure.
       // The durable dispatch and held lease require readback; do not acknowledge it.
       call.state = 'uncertain';
+    }
+  }
+  cancelQueued(
+    run: RunRecord,
+    message: string,
+    deliver: (call: CallRecord, value: JsonValue) => void,
+  ): void {
+    this.scheduler.remove(run.snapshot.id);
+    for (const call of run.calls) {
+      if (call.state !== 'queued' || !call.task) continue;
+      this.complete(
+        run,
+        call,
+        { ...failedResult(call.payload as AgentSpec, message, 'interrupted'), usage: emptyUsage() },
+        (value) => deliver(call, value),
+      );
     }
   }
   private overBudget(run: RunRecord): boolean {

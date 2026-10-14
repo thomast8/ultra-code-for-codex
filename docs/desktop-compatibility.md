@@ -322,3 +322,41 @@ instance. It restored the bound status, the same three visible workflows and
 three-item History, and the completed/satisfied result. Native readback showed
 all six saved run snapshots and the resolved result unchanged. No worker calls
 were made. Full app quit during an active worker remains unverified.
+
+### Remaining review fixes in 0.2.6
+
+Terminal workflows settle their undispatched agent calls instead of leaving
+queued rows and unresolved promises. The same cleanup covers budget failure,
+script failure, early return and recovery of older terminal records. Already
+dispatched work still drains or requires reconciliation; it is not repeated.
+
+Worker preflight observes cancellation during root checks, Git identity
+commands, backend initialization and verification requests. Late arriving
+backends are closed. Once turn dispatch begins, the existing acknowledged
+interrupt/reconciliation path owns cancellation. Permission-verification
+failures retain their safe reason. Empty evidence strings are rejected by the
+wire contract while absent optional values continue to use null.
+
+The accounting flag now describes worker attempts only. Known final usage is
+complete, undispatched cancellations consume zero worker tokens, and missing
+or uncertain usage remains partial. The panel labels worker totals and states
+that main-chat usage is unknown. This does not implement issue #4 or establish
+billed cost.
+
+Actual compiled socket/QuickJS/SQLite QA reproduced and cleared terminal queues,
+readback closure and budget exhaustion with deterministic test workers. Separate
+actual bundled Codex preflight QA surfaced a deliberately injected
+feature-verification fault, preserved missing-root explanations and terminated
+an initializing child in 24 ms. These checks made no model turns.
+
+The native 0.2.6 client then ran one restricted Luna/Low read-only worker against
+revision `982d96f`. It returned three nonempty evidence descriptions, no
+unresolved work and 30,127 observed worker tokens. The selected Sol/High lead
+checked the exact source and resolved the handoff; the run finished
+completed/satisfied with worker accounting complete. No retry or additional
+worker was used.
+
+The expanded, bound native panel showed the run completed/satisfied and
+`30.1k worker tokens`. Its Run details displayed `30,127 tokens` under
+`Worker usage` and explicitly stated `Main chat token usage: unknown. Worker
+coverage does not include lead overhead.` No Bind action was present.

@@ -30,6 +30,7 @@ it('journals dispatch and cumulative usage before delivering worker results', as
   calls[0]!.finish(output(42, { usage }));
   await until(() => engine.status(owner)[0]?.state === 'completed');
   expect(engine.status(owner)[0]?.usage?.totalTokens).toBe(7);
+  expect(engine.status(owner)[0]?.accountingComplete).toBe(true);
   expect(engine.result(owner, run.id, `${run.id}:2`)).toMatchObject({ value: 42 });
   expect(engine.events(owner, 0).events.map((event) => event.type)).toContain('agent.result');
   await engine.close();

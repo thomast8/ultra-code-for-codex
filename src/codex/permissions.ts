@@ -6,6 +6,7 @@ import type { HooksListParams } from './generated/v2/HooksListParams.js';
 import type { ListMcpServerStatusParams } from './generated/v2/ListMcpServerStatusParams.js';
 import type { ThreadStartResponse } from './generated/v2/ThreadStartResponse.js';
 import type { CodexTransport } from './transport.js';
+import { WorkerBlocked } from './worker-protocol.js';
 
 export const PROHIBITED_WORKER_FEATURES = [
   'apps',
@@ -57,7 +58,7 @@ export type ReadOnlyWorkerEvidence = {
 };
 
 function block(reason: string): never {
-  throw new Error(`Restricted worker verification failed: ${reason}`);
+  throw new WorkerBlocked(`Restricted worker verification failed: ${reason}`);
 }
 
 function record(value: unknown, label: string): Record<string, unknown> {

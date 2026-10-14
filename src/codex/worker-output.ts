@@ -42,9 +42,9 @@ export function outputContract(spec: AgentSpec): OutputContract {
           required: ['id', 'description', 'uri', 'revision'],
           properties: {
             id: { type: 'string', minLength: 1, maxLength: 256 },
-            description: { type: 'string', maxLength: 4096 },
-            uri: { type: ['string', 'null'], maxLength: 4096 },
-            revision: { type: ['string', 'null'], maxLength: 256 },
+            description: { type: 'string', minLength: 1, maxLength: 4096 },
+            uri: { type: ['string', 'null'], minLength: 1, maxLength: 4096 },
+            revision: { type: ['string', 'null'], minLength: 1, maxLength: 256 },
           },
         },
       },

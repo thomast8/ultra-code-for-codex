@@ -344,3 +344,21 @@ it('starts the actual child in the explicitly assigned directory', async () => {
   expect(transport.initializeMetadata?.codexHome).toBe('/private/tmp');
   transport.close();
 });
+
+it('kills the actual initializing child promptly when launch is aborted', async () => {
+  const controller = new AbortController();
+  let exited: Promise<void> = Promise.resolve();
+  const child: SpawnCodexChild = (_file, _args, options) => {
+    const actualChild = spawn(process.execPath, ['-e', 'process.stdin.resume();'], options);
+    exited = new Promise((resolve) => actualChild.once('exit', () => resolve()));
+    return actualChild;
+  };
+  const before = Date.now();
+  const opening = CodexTransport.launch('/fixture/codex', 15000, child, {
+    signal: controller.signal,
+  });
+  controller.abort();
+  await expect(opening).rejects.toThrow('closed');
+  await exited;
+  expect(Date.now() - before).toBeLessThan(1000);
+});

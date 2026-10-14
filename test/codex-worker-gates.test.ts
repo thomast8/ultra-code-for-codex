@@ -132,7 +132,8 @@ it('checks aborts during discovery before launching the worker', async () => {
     return { config: {} };
   };
   expect(await h.execute(workerSpec(), h.options)).toMatchObject({
-    error: 'Worker cancelled during discovery',
+    execution: 'interrupted',
+    error: 'Worker cancelled during preflight',
   });
   expect(h.launch).toHaveBeenCalledTimes(1);
 });
