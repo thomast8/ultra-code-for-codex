@@ -343,8 +343,20 @@ or uncertain usage remains partial. The panel labels worker totals and states
 that main-chat usage is unknown. This does not implement issue #4 or establish
 billed cost.
 
-Actual compiled socket/QuickJS/SQLite QA reproduced and cleared terminal queues
-and budget exhaustion with deterministic test workers. Separate actual bundled
-Codex preflight QA surfaced a deliberately injected feature-verification fault
-and terminated an initializing child in 29 ms. These checks made no model
-turns; native 0.2.6 panel and worker-output contract verification is pending.
+Actual compiled socket/QuickJS/SQLite QA reproduced and cleared terminal queues,
+readback closure and budget exhaustion with deterministic test workers. Separate
+actual bundled Codex preflight QA surfaced a deliberately injected
+feature-verification fault, preserved missing-root explanations and terminated
+an initializing child in 24 ms. These checks made no model turns.
+
+The native 0.2.6 client then ran one restricted Luna/Low read-only worker against
+revision `982d96f`. It returned three nonempty evidence descriptions, no
+unresolved work and 30,127 observed worker tokens. The selected Sol/High lead
+checked the exact source and resolved the handoff; the run finished
+completed/satisfied with worker accounting complete. No retry or additional
+worker was used.
+
+The expanded, bound native panel showed the run completed/satisfied and
+`30.1k worker tokens`. Its Run details displayed `30,127 tokens` under
+`Worker usage` and explicitly stated `Main chat token usage: unknown. Worker
+coverage does not include lead overhead.` No Bind action was present.
