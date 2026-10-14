@@ -10,6 +10,8 @@ import { PROHIBITED_WORKER_FEATURES, verifyProcessFeatures } from './permissions
 import { CodexTransport } from './transport.js';
 import {
   requireWorker,
+  awaitPreflight,
+  closeOnAbort,
   workerPages,
   workerRequest,
   type WorkerTransport,
@@ -19,9 +21,14 @@ export const BUNDLED_CODEX = '/Applications/ChatGPT.app/Contents/Resources/codex
 export type LaunchWorkerTransport = (
   overrides: readonly string[],
   cwd: string,
+  signal?: AbortSignal,
 ) => Promise<WorkerTransport>;
-export const launchWorkerTransport: LaunchWorkerTransport = (configOverrides, cwd) =>
-  CodexTransport.launch(BUNDLED_CODEX, 15_000, undefined, { configOverrides, cwd });
+export const launchWorkerTransport: LaunchWorkerTransport = (configOverrides, cwd, signal) =>
+  CodexTransport.launch(BUNDLED_CODEX, 15_000, undefined, {
+    configOverrides,
+    cwd,
+    ...(signal ? { signal } : {}),
+  });
 
 type LaunchPolicy = { config: Record<string, JsonValue>; sandbox: SandboxPolicy };
 
@@ -89,14 +96,34 @@ export async function prepareWorkerTransport(
     launch,
     signal,
   );
+  const detach = closeOnAbort(transport, signal);
   try {
-    await verifyEligibility(transport, spec);
+    await awaitPreflight(verifyEligibility(transport, spec), signal);
     requireWorker(!signal?.aborted, 'Worker cancelled during eligibility verification');
     return { transport, policy };
   } catch (error) {
     transport.close();
     throw error;
+  } finally {
+    detach();
   }
+}
+
+async function launchPreflight(
+  launch: LaunchWorkerTransport,
+  args: string[],
+  cwd: string,
+  signal?: AbortSignal,
+): Promise<WorkerTransport> {
+  requireWorker(!signal?.aborted, 'Worker cancelled before backend launch');
+  const opening = launch(args, cwd, signal);
+  void opening.then(
+    (transport) => {
+      if (signal?.aborted) transport.close();
+    },
+    () => {},
+  );
+  return awaitPreflight(opening, signal);
 }
 
 export async function openRestrictedBackend(
@@ -106,14 +133,18 @@ export async function openRestrictedBackend(
   launch: LaunchWorkerTransport,
   signal?: AbortSignal,
 ): Promise<WorkerTransport> {
-  const discovery = await launch(configArguments(overrides), cwd);
+  const discovery = await launchPreflight(launch, configArguments(overrides), cwd, signal);
+  const detachDiscovery = closeOnAbort(discovery, signal);
   try {
     requireWorker(!signal?.aborted, 'Worker cancelled during discovery');
-    await verifyWorkerProfile(discovery, instanceId);
-    const response = await workerRequest<ConfigReadResponse>(discovery, 'config/read', {
-      cwd,
-      includeLayers: false,
-    });
+    await awaitPreflight(verifyWorkerProfile(discovery, instanceId), signal);
+    const response = await awaitPreflight(
+      workerRequest<ConfigReadResponse>(discovery, 'config/read', {
+        cwd,
+        includeLayers: false,
+      }),
+      signal,
+    );
     const config = response.config as Record<string, unknown>;
     for (const group of ['mcp_servers', 'apps']) {
       for (const name of namedEntries(config[group])) {
@@ -125,16 +156,20 @@ export async function openRestrictedBackend(
       }
     }
   } finally {
+    detachDiscovery();
     discovery.close();
   }
   requireWorker(!signal?.aborted, 'Worker cancelled during discovery');
-  const transport = await launch(configArguments(overrides), cwd);
+  const transport = await launchPreflight(launch, configArguments(overrides), cwd, signal);
+  const detach = closeOnAbort(transport, signal);
   try {
-    await verifyWorkerProfile(transport, instanceId);
+    await awaitPreflight(verifyWorkerProfile(transport, instanceId), signal);
     return transport;
   } catch (error) {
     transport.close();
     throw error;
+  } finally {
+    detach();
   }
 }
 

@@ -179,3 +179,32 @@ it('rejects model or effort changes before dispatch', async () => {
   });
   expect(h.backend.calls.some((call) => call.method === 'turn/start')).toBe(false);
 });
+
+it.each(['description', 'uri', 'revision'])(
+  'rejects empty evidence %s as a certain terminated-worker failure',
+  async (field) => {
+    const h = workerHarness();
+    h.backend.execute = () =>
+      h.backend.finish(
+        outputText({
+          evidence: [
+            { id: 'source', description: 'Source', uri: null, revision: null, [field]: '' },
+          ],
+        }),
+      );
+    expect(await h.execute(workerSpec(), h.options)).toMatchObject({
+      execution: 'failed',
+      error: expect.stringContaining('does not satisfy its schema'),
+    });
+  },
+);
+
+it('preserves a sanitized effective permission failure through the executor', async () => {
+  const h = workerHarness();
+  h.backend.overrides['thread/start'] = workerThread({
+    sandbox: { type: 'readOnly', networkAccess: true },
+  });
+  const result = await h.execute(workerSpec(), h.options);
+  expect(result.error).toContain('Restricted worker verification failed:');
+  expect(h.backend.calls.some((call) => call.method === 'turn/start')).toBe(false);
+});

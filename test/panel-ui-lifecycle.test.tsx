@@ -64,7 +64,7 @@ it('keeps agent squares, state counts and live usage visible while collapsed', a
   await loaded([run]);
   expect(screen.getByText('3 agents')).toBeDefined();
   expect(screen.getByText('2 working · 1 completed')).toBeDefined();
-  expect(screen.getByText('4m 12s elapsed · 18.4k tokens (partial)')).toBeDefined();
+  expect(screen.getByText('4m 12s elapsed · 18.4k worker tokens (partial)')).toBeDefined();
   expect(screen.queryByText('Requested model')).toBeNull();
   expect(screen.getByRole('button', { name: 'Show agents' }).getAttribute('aria-expanded')).toBe(
     'false',
@@ -76,7 +76,7 @@ it('keeps agent squares, state counts and live usage visible while collapsed', a
     structuredContent: { runs: [{ ...run, usage: { ...usage, totalTokens: 20_000 } }], cursor: 2 },
   };
   await tick();
-  expect(screen.getByText('4m 13s elapsed · 20k tokens (partial)')).toBeDefined();
+  expect(screen.getByText('4m 13s elapsed · 20k worker tokens (partial)')).toBeDefined();
 });
 
 it('drills from a square into current model, tokens and activity and returns to the preserved list', async () => {
@@ -86,7 +86,7 @@ it('drills from a square into current model, tokens and activity and returns to 
   ];
   await loaded([runFixture({ tasks })]);
   fireEvent.click(screen.getByRole('button', { name: 'Show agents' }));
-  fireEvent.click(screen.getByText('1 completed · 120 tokens'));
+  fireEvent.click(screen.getByText('1 completed · 120 worker tokens'));
   const row = screen.getByRole('button', { name: /Finished agent · completed/ });
   row.focus();
   fireEvent.click(row);
@@ -159,9 +159,9 @@ it('collapses on completion and reopens with a compact latest result and expanda
   await loaded([finished('older', -1), complete]);
   expect(screen.queryByRole('region', { name: 'older' })).toBeNull();
   expect(screen.getByRole('region', { name: 'Current run' })).toBeDefined();
-  const before = screen.getByText('4m 12s elapsed · 120 tokens (partial)').textContent;
+  const before = screen.getByText('4m 12s elapsed · 120 worker tokens (partial)').textContent;
   await tick();
-  expect(screen.getByText('4m 12s elapsed · 120 tokens (partial)').textContent).toBe(before);
+  expect(screen.getByText('4m 12s elapsed · 120 worker tokens (partial)').textContent).toBe(before);
   fireEvent.click(screen.getByRole('button', { name: 'History · 1' }));
   fireEvent.click(screen.getByRole('button', { name: 'Back to current' }));
   expect(screen.getByRole('region', { name: 'Current run' })).toBeDefined();

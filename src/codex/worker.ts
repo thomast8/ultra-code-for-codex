@@ -1,4 +1,10 @@
-import type { AgentSpec, ExecuteWorker, TaskResult, WorkerOptions } from '../contracts/workflow.js';
+import type {
+  AgentSpec,
+  ExecuteWorker,
+  TaskResult,
+  WorkerOptions,
+  JsonValue,
+} from '../contracts/workflow.js';
 import type { ThreadStartParams } from './generated/v2/ThreadStartParams.js';
 import type { ThreadStartResponse } from './generated/v2/ThreadStartResponse.js';
 import {
@@ -9,7 +15,14 @@ import {
 import { verifyAssignmentRoot, verifyLocalEnvironment } from './local-environment.js';
 import { verifyRestrictedWorker } from './permissions.js';
 import { outputContract, workerPrompt } from './worker-output.js';
-import { requireWorker, WorkerBlocked, workerRequest } from './worker-protocol.js';
+import {
+  requireWorker,
+  WorkerBlocked,
+  workerRequest,
+  awaitPreflight,
+  closeOnAbort,
+  type WorkerTransport,
+} from './worker-protocol.js';
 import { executeWorkerTurn } from './worker-turn.js';
 
 export type WorkerDependencies = {
@@ -20,16 +33,22 @@ export type WorkerDependencies = {
 
 export function createWorkerExecutor(dependencies: WorkerDependencies = {}): ExecuteWorker {
   return async (spec, options) => {
-    const observed = { reportedModel: null as string | null };
+    const observed = { reportedModel: null as string | null, dispatched: false };
     try {
       return await runWorker(spec, options, dependencies, observed);
     } catch (error) {
       const message =
-        error instanceof WorkerBlocked
-          ? error.message
-          : 'Restricted worker initialization or verification failed';
+        !observed.dispatched && options.signal.aborted
+          ? 'Worker cancelled during preflight'
+          : error instanceof WorkerBlocked
+            ? error.message
+            : 'Restricted worker initialization or verification failed';
       return {
-        execution: 'failed',
+        execution: observed.dispatched
+          ? 'uncertain'
+          : options.signal.aborted
+            ? 'interrupted'
+            : 'failed',
         acceptance: 'blocked',
         value: null,
         evidence: [],
@@ -47,7 +66,7 @@ async function runWorker(
   spec: AgentSpec,
   options: WorkerOptions,
   dependencies: WorkerDependencies,
-  observed: { reportedModel: string | null },
+  observed: { reportedModel: string | null; dispatched: boolean },
 ): Promise<TaskResult> {
   const contract = outputContract(spec);
   const prompt = workerPrompt(spec);
@@ -57,57 +76,91 @@ async function runWorker(
       (Number.isSafeInteger(spec.timeoutMs) && spec.timeoutMs > 0 && spec.timeoutMs <= 3_600_000),
     'Worker timeout must be between 1 and 3600000 milliseconds',
   );
-  await (dependencies.verifyRoot ?? verifyAssignmentRoot)(spec);
+  await awaitPreflight(
+    (dependencies.verifyRoot ?? verifyAssignmentRoot)(spec, options.signal),
+    options.signal,
+  );
   const { transport, policy } = await prepareWorkerTransport(
     spec,
     options.instanceId,
     dependencies.launch ?? launchWorkerTransport,
     options.signal,
   );
+  const detach = closeOnAbort(transport, options.signal);
   try {
     requireWorker(!options.signal.aborted, 'Worker cancelled before thread creation');
-    const params: ThreadStartParams = {
-      model: spec.model,
-      allowProviderModelFallback: false,
-      cwd: spec.assignment.ownership.cwd,
-      runtimeWorkspaceRoots: [spec.assignment.ownership.cwd],
-      approvalPolicy: 'never',
-      sandbox: spec.capability,
-      ephemeral: true,
-      dynamicTools: [],
-      selectedCapabilityRoots: [],
-      config: policy.config,
-    };
-    const thread = await workerRequest<ThreadStartResponse>(transport, 'thread/start', params);
-    observed.reportedModel = typeof thread.model === 'string' ? thread.model : null;
-    const evidence = await verifyRestrictedWorker(
+    const { threadId, environment } = await prepareWorkerThread(
       transport,
-      thread,
-      { cwd: spec.assignment.ownership.cwd, model: spec.model, effort: spec.effort },
-      spec.capability,
+      policy.config,
+      spec,
+      options,
+      observed,
     );
-    const environment = await verifyLocalEnvironment(
-      transport,
-      thread,
-      spec.assignment.ownership.cwd,
-    );
-    await options.onEvent({
-      type: 'thread',
-      threadId: thread.thread.id,
-      instructionSources: evidence.instructionSources,
-      reportedModel: thread.model,
-    });
     requireWorker(!options.signal.aborted, 'Worker cancelled before turn dispatch');
+    detach();
+    observed.dispatched = true;
     return await executeWorkerTurn(
       transport,
       spec,
       options,
-      { threadId: thread.thread.id, environment, sandbox: policy.sandbox, contract, prompt },
+      { threadId, environment, sandbox: policy.sandbox, contract, prompt },
       dependencies.interruptGraceMs ?? 5_000,
     );
   } finally {
+    detach();
     transport.close();
   }
+}
+
+async function prepareWorkerThread(
+  transport: WorkerTransport,
+  config: Record<string, JsonValue>,
+  spec: AgentSpec,
+  options: WorkerOptions,
+  observed: { reportedModel: string | null },
+) {
+  const params: ThreadStartParams = {
+    model: spec.model,
+    allowProviderModelFallback: false,
+    cwd: spec.assignment.ownership.cwd,
+    runtimeWorkspaceRoots: [spec.assignment.ownership.cwd],
+    approvalPolicy: 'never',
+    sandbox: spec.capability,
+    ephemeral: true,
+    dynamicTools: [],
+    selectedCapabilityRoots: [],
+    config,
+  };
+  const thread = await awaitPreflight(
+    workerRequest<ThreadStartResponse>(transport, 'thread/start', params),
+    options.signal,
+  );
+  observed.reportedModel = typeof thread.model === 'string' ? thread.model : null;
+  const evidence = await awaitPreflight(
+    verifyRestrictedWorker(
+      transport,
+      thread,
+      { cwd: spec.assignment.ownership.cwd, model: spec.model, effort: spec.effort },
+      spec.capability,
+    ),
+    options.signal,
+  );
+  const environment = await awaitPreflight(
+    verifyLocalEnvironment(transport, thread, spec.assignment.ownership.cwd),
+    options.signal,
+  );
+  await awaitPreflight(
+    Promise.resolve(
+      options.onEvent({
+        type: 'thread',
+        threadId: thread.thread.id,
+        instructionSources: evidence.instructionSources,
+        reportedModel: thread.model,
+      }),
+    ),
+    options.signal,
+  );
+  return { threadId: thread.thread.id, environment };
 }
 
 export const executeWorker: ExecuteWorker = createWorkerExecutor();

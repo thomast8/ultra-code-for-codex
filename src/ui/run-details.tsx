@@ -18,7 +18,9 @@ export function RunDetails({ run, runs }: { run: RunSnapshot; runs: RunSnapshot[
           Continues {parent ? <a href={`#run-${parent.id}`}>{parent.title}</a> : run.parentRunId}
         </p>
       )}
+      <h4>Worker usage</h4>
       <Usage value={run.usage} complete={run.accountingComplete} />
+      <p>Main chat token usage: unknown. Worker coverage does not include lead overhead.</p>
       <details>
         <summary>Acceptance criteria</summary>
         <ul>

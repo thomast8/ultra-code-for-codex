@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { CodexDiagnostics } from './diagnostics.js';
+import { closeOnAbort } from './worker-protocol.js';
 import packageMetadata from '../../package.json' with { type: 'json' };
 import type { InitializeParams } from './generated/InitializeParams.js';
 import type { InitializeResponse } from './generated/InitializeResponse.js';
@@ -32,6 +33,7 @@ type Subscription = {
 type RpcMessage = JsonRpcReply | ServerRequest | ServerNotification;
 
 export interface CodexLaunchOptions {
+  signal?: AbortSignal;
   configOverrides?: readonly string[];
   cwd?: string;
 }
@@ -68,14 +70,20 @@ export class CodexTransport {
     spawnChild: SpawnCodexChild = (file, args, options) => spawn(file, args, options),
     options: CodexLaunchOptions = {},
   ): Promise<CodexTransport> {
+    options.signal?.throwIfAborted();
     const overrides = (options.configOverrides ?? []).flatMap((value) => ['-c', value]);
     const child = spawnChild(executable, ['app-server', '--listen', 'stdio://', ...overrides], {
       stdio: ['pipe', 'pipe', 'pipe'],
       ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
     });
     const transport = new CodexTransport(child, timeoutMs);
-    await transport.initialize();
-    return transport;
+    const detach = closeOnAbort(transport, options.signal);
+    try {
+      await transport.initialize();
+      return transport;
+    } finally {
+      detach();
+    }
   }
 
   async initialize(): Promise<InitializeResponse> {
