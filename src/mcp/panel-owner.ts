@@ -24,8 +24,12 @@ export function assertRoutedContext(metadata: unknown, sessionId: string): void 
   // MCP progress and extension metadata do not establish chat routing.
   if (requestMetadataKind(metadata) !== 'routed') return;
   const identity = threadIdentity.safeParse(metadata);
-  if (!identity.success)
-    throw new Error('Routed chat identity is missing, invalid, or conflicting');
+  if (!identity.success) {
+    const issues = identity.error.issues
+      .map((issue) => `${String(issue.path[0] ?? 'aliases')}:${issue.code}`)
+      .join(', ');
+    throw new Error(`Routed chat identity is missing, invalid, or conflicting (${issues})`);
+  }
   if (identity.data.thread_id !== sessionId)
     throw new Error('Context handle does not belong to the routed chat');
 }

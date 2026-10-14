@@ -160,3 +160,17 @@ it.each([null, [], 7, 'invalid metadata'])(
     );
   },
 );
+
+it('reports only routing field names and validation codes on malformed identity', () => {
+  expect(() => assertRoutedContext({ thread_id: sessionId }, sessionId)).toThrow(
+    'threadId:invalid_type',
+  );
+  try {
+    assertRoutedContext({ thread_id: 'private-identity', threadId: otherId }, sessionId);
+    throw new Error('Expected malformed routing to fail');
+  } catch (error) {
+    expect(String(error)).toContain('thread_id:invalid_format');
+    expect(String(error)).not.toContain('private-identity');
+    expect(String(error)).not.toContain(otherId);
+  }
+});

@@ -248,3 +248,7 @@ and generic metadata cannot restore a manually opened panel. The response
 reports only the metadata category, allowing native QA to classify the actual
 request without logging identifiers, arbitrary keys or values. Native release
 QA remains pending the supported installation and app restart.
+
+### Native metadata readback after 0.2.2 restart
+
+On 2026-10-14, all five native MCP client paths and the shared daemon were confirmed at 0.2.2. Native `ultra_context` and `ultra_status` still rejected routed identity. This rules out the stale-client explanation for this failure; the SDK progress fixture is not the actual failing host shape. Version 0.2.3 retains the same validation and reports only known routing field names and validation codes on rejection. It never returns metadata values. Native shape diagnosis and worker-to-lead QA remain pending. The current exact-turn hook verifies Default mode and high effort; Ultra is therefore not automatically active on that turn, although the explicitly authorized QA remains permitted.
