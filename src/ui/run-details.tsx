@@ -1,6 +1,11 @@
-import type { HandoffSnapshot, PhaseRef, RunSnapshot } from '../contracts/workflow.js';
+import type {
+  HandoffSnapshot,
+  PhaseRef,
+  RunSnapshot,
+  TaskSnapshot,
+} from '../contracts/workflow.js';
 import { Acceptance, Evidence, ResultValue, StatusBadge, Usage } from './workflow-details.js';
-import { visibleHandoffs } from './workflow-summary.js';
+import { taskLabel, visibleHandoffs } from './workflow-summary.js';
 
 export function RunDetails({ run, runs }: { run: RunSnapshot; runs: RunSnapshot[] }) {
   const parent = runs.find((candidate) => candidate.id === run.parentRunId);
@@ -23,22 +28,57 @@ export function RunDetails({ run, runs }: { run: RunSnapshot; runs: RunSnapshot[
         </ul>
       </details>
       {phaseList(run, handoffs).map((phase) => (
-        <details className="workflow-phase" key={phase.id}>
-          <summary>
-            <strong>{phase.label}</strong>{' '}
-            <span className="workflow-muted">
-              {run.tasks.filter((task) => task.phase.id === phase.id).length} tasks ·{' '}
-              {handoffs.filter((handoff) => handoff.spec.phase.id === phase.id).length} handoffs
-            </span>
-          </summary>
-          {handoffs
-            .filter((handoff) => handoff.spec.phase.id === phase.id)
-            .map((handoff) => (
-              <Handoff key={handoff.id} handoff={handoff} />
-            ))}
-        </details>
+        <Phase
+          key={phase.id}
+          phase={phase}
+          tasks={run.tasks.filter((task) => task.phase.id === phase.id)}
+          handoffs={handoffs.filter((handoff) => handoff.spec.phase.id === phase.id)}
+        />
       ))}
     </div>
+  );
+}
+
+function count(value: number, noun: string): string {
+  return `${value} ${noun}${value === 1 ? '' : 's'}`;
+}
+
+function Phase({
+  phase,
+  tasks,
+  handoffs,
+}: {
+  phase: PhaseRef;
+  tasks: TaskSnapshot[];
+  handoffs: HandoffSnapshot[];
+}) {
+  const label = (
+    <>
+      <strong>{phase.label}</strong>
+      <span className="workflow-muted">
+        {count(tasks.length, 'task')} · {count(handoffs.length, 'handoff')}
+      </span>
+    </>
+  );
+  if (!tasks.length && !handoffs.length)
+    return <div className="workflow-phase phase-empty">{label}</div>;
+  return (
+    <details className="workflow-phase">
+      <summary>{label}</summary>
+      {tasks.length > 0 && (
+        <ul className="phase-tasks">
+          {tasks.map((task) => (
+            <li key={task.id}>
+              <span>{task.title}</span>
+              <span className="workflow-muted">{taskLabel(task)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {handoffs.map((handoff) => (
+        <Handoff key={handoff.id} handoff={handoff} />
+      ))}
+    </details>
   );
 }
 

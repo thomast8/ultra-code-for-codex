@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { RunSnapshot } from '../contracts/workflow.js';
 import { AgentDetail, AgentList, AgentPreview } from './agents.js';
 import { Icon } from './icons.js';
-import { RunControls } from './run-controls.js';
+import { controlsAvailable, RunControls } from './run-controls.js';
 import { RunDetails } from './run-details.js';
 import { resultSummary } from './result-value.js';
 import { Acceptance, ResultValue, StatusBadge } from './workflow-details.js';
@@ -31,6 +31,7 @@ export function RunCard({ run, runs, now, busy, error, control }: RunCardProps) 
   const returnFocus = useRef<HTMLElement | null>(null);
   const section = useRef<HTMLElement>(null);
   const lastSelected = useRef<string | null>(null);
+  const returned = useRef(false);
   useEffect(() => {
     if (selected) return;
     if (returnFocus.current?.isConnected) returnFocus.current.focus();
@@ -47,29 +48,27 @@ export function RunCard({ run, runs, now, busy, error, control }: RunCardProps) 
     setExpanded(true);
     setSelected(id);
   };
+  const back = () => {
+    returned.current = true;
+    setSelected(null);
+  };
   return (
     <section ref={section} className="workflow-run" aria-label={run.title} id={`run-${run.id}`}>
-      <div hidden={selected !== null}>
-        <RunSummary
-          run={run}
-          now={now}
-          attention={attention}
-          finished={finished}
-          expanded={expanded}
-          select={select}
-          toggle={() => {
-            setExpanded(!expanded);
-            setSelected(null);
-          }}
-        />
-      </div>
-      {selected && (
-        <div className="agent-run-context">
-          <strong>{run.title}</strong>
-          <RunCounters run={run} now={now} />
+      {selected === null ? (
+        <div className={returned.current ? 'run-overview returned' : 'run-overview'}>
+          <RunSummary
+            run={run}
+            now={now}
+            attention={attention}
+            finished={finished}
+            expanded={expanded}
+            select={select}
+            toggle={() => setExpanded(!expanded)}
+          />
         </div>
+      ) : (
+        <AgentNav run={run} now={now} back={back} />
       )}
-      {attention && selected && <Attention run={run} />}
       {error && (
         <p role="alert" className="workflow-error">
           {error}
@@ -78,13 +77,7 @@ export function RunCard({ run, runs, now, busy, error, control }: RunCardProps) 
       <div id={`agents-${run.id}`} hidden={!expanded}>
         {expanded && (
           <>
-            <AgentViews
-              run={run}
-              now={now}
-              selected={selected}
-              select={select}
-              back={() => setSelected(null)}
-            />
+            <AgentViews run={run} now={now} selected={selected} select={select} />
             <RunControls run={run} busy={busy} control={control} />
           </>
         )}
@@ -97,6 +90,26 @@ export function RunCard({ run, runs, now, busy, error, control }: RunCardProps) 
         <RunDetails run={run} runs={runs} />
       </details>
     </section>
+  );
+}
+
+function AgentNav({ run, now, back }: { run: RunSnapshot; now: number; back: () => void }) {
+  return (
+    <nav className="agent-nav" aria-label="Agent navigation">
+      <button
+        type="button"
+        className="quiet-button agent-back"
+        aria-label={`Back to all ${run.tasks.length} agents`}
+        onClick={back}
+      >
+        <Icon name="right" />
+        All agents
+      </button>
+      <span className="agent-nav-context">
+        <strong>{run.title}</strong>
+        <RunCounters run={run} now={now} />
+      </span>
+    </nav>
   );
 }
 
@@ -120,6 +133,11 @@ function Attention({ run }: { run: RunSnapshot }) {
   );
 }
 
+function eyebrow(attention: boolean, finished: boolean): string {
+  if (attention) return 'Needs attention';
+  return finished ? 'Latest result' : 'In progress';
+}
+
 function RunSummary({
   run,
   now,
@@ -137,12 +155,13 @@ function RunSummary({
   select: (id: string) => void;
   toggle: () => void;
 }) {
+  const showAgents = run.tasks.length > 0 || controlsAvailable(run);
   return (
     <>
       <header className="workflow-run-heading">
         <div className="run-title">
           <p className={`run-eyebrow ${attention ? 'attention-ink' : ''}`}>
-            {attention ? 'Needs attention' : finished ? 'Latest result' : 'In progress'}
+            {eyebrow(attention, finished)}
           </p>
           <h2>{run.title}</h2>
         </div>
@@ -151,45 +170,51 @@ function RunSummary({
       {attention && <Attention run={run} />}
       <div className="run-summary">
         {finished && <FinishedResult run={run} />}
-        <div className="agent-summary-heading">
-          <AgentPreview tasks={run.tasks} select={select} />
-          <span className="agent-summary-copy">
-            <strong>
-              {run.tasks.length} {run.tasks.length === 1 ? 'agent' : 'agents'}
-            </strong>
-            <span className="workflow-muted">{agentCounts(run.tasks)}</span>
-          </span>
-        </div>
+        {showAgents && <AgentSummary run={run} select={select} />}
         <div className="run-meta">
           <RunCounters run={run} now={now} />
           {finished && <Acceptance value={run.acceptanceOutcome} />}
         </div>
-        <button
-          type="button"
-          className="disclosure-button"
-          aria-expanded={expanded}
-          aria-controls={`agents-${run.id}`}
-          onClick={toggle}
-        >
-          <Icon name="chevron" />
-          {expanded ? 'Hide agents' : 'Show agents'}
-        </button>
+        {showAgents && (
+          <button
+            type="button"
+            className="disclosure-button"
+            aria-expanded={expanded}
+            aria-controls={`agents-${run.id}`}
+            onClick={toggle}
+          >
+            <Icon name="chevron" />
+            {expanded ? 'Hide agents' : 'Show agents'}
+          </button>
+        )}
       </div>
     </>
   );
 }
+function AgentSummary({ run, select }: { run: RunSnapshot; select: (id: string) => void }) {
+  return (
+    <div className="agent-summary-heading">
+      <AgentPreview tasks={run.tasks} select={select} />
+      <span className="agent-summary-copy">
+        <strong>
+          {run.tasks.length} {run.tasks.length === 1 ? 'agent' : 'agents'}
+        </strong>
+        <span className="workflow-muted">{agentCounts(run.tasks)}</span>
+      </span>
+    </div>
+  );
+}
+
 function AgentViews({
   run,
   now,
   selected,
   select,
-  back,
 }: {
   run: RunSnapshot;
   now: number;
   selected: string | null;
   select: (id: string) => void;
-  back: () => void;
 }) {
   const task = run.tasks.find((candidate) => candidate.id === selected);
   return (
@@ -197,7 +222,7 @@ function AgentViews({
       <div hidden={Boolean(task)}>
         <AgentList tasks={run.tasks} now={now} select={select} />
       </div>
-      {task && <AgentDetail task={task} tasks={run.tasks} now={now} select={select} back={back} />}
+      {task && <AgentDetail task={task} tasks={run.tasks} now={now} select={select} />}
     </>
   );
 }
