@@ -2,6 +2,14 @@ import type { RunSnapshot } from '../contracts/workflow.js';
 import type { RunAction } from './workflow-feed.js';
 import { terminal } from './workflow-summary.js';
 
+export function controlsAvailable(run: RunSnapshot): boolean {
+  return (
+    !terminal(run.state) ||
+    run.tasks.some((task) => task.state === 'running') ||
+    run.handoffs.some((handoff) => handoff.state === 'claimed')
+  );
+}
+
 export function RunControls({
   run,
   busy,
@@ -11,11 +19,7 @@ export function RunControls({
   busy: boolean;
   control: (action: RunAction) => void;
 }) {
-  const finished = terminal(run.state);
-  const active =
-    run.tasks.some((task) => task.state === 'running') ||
-    run.handoffs.some((handoff) => handoff.state === 'claimed');
-  if (finished && !active) return null;
+  if (!controlsAvailable(run)) return null;
   return (
     <div className="workflow-controls" aria-label={`Controls for ${run.title}`}>
       {['running', 'queued'].includes(run.state) && (

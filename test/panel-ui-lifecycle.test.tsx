@@ -93,14 +93,14 @@ it('drills from a square into current model, tokens and activity and returns to 
   expect(screen.getByRole('heading', { name: 'Finished agent' })).toBeDefined();
   expect(screen.getByText('gpt-6-luna · medium')).toBeDefined();
   expect(screen.getByText('100 input · 20 output')).toBeDefined();
-  fireEvent.click(screen.getByRole('button', { name: '‹ Back to all 2 agents' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Back to all 2 agents' }));
   expect(document.activeElement).toBe(row);
   expect(screen.getByRole('button', { name: /Finished agent · completed/ })).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'Compare document names: Working' }));
   fireEvent.click(screen.getByText('View activity and evidence'));
   expect(screen.getAllByText('40 (included in input)')[0]).toBeDefined();
   expect(screen.getAllByText('5 (included in output)')[0]).toBeDefined();
-  fireEvent.click(screen.getByRole('button', { name: '‹ Back to all 2 agents' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Back to all 2 agents' }));
   fireEvent.click(screen.getByRole('button', { name: 'Hide agents' }));
   expect(screen.queryByRole('heading', { name: 'Compare document names' })).toBeNull();
 });
@@ -150,9 +150,7 @@ it('collapses on completion and reopens with a compact latest result and expanda
     structuredContent: { runs: [finished('older', -1), complete], cursor: 2 },
   };
   await tick();
-  expect(screen.getByRole('button', { name: 'Show agents' }).getAttribute('aria-expanded')).toBe(
-    'false',
-  );
+  expect(screen.queryByRole('button', { name: 'Hide agents' })).toBeNull();
   expect(screen.queryByRole('region', { name: 'older' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'History · 1' }));
   expect(screen.getByRole('region', { name: 'older' })).toBeDefined();

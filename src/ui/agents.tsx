@@ -114,10 +114,8 @@ export function AgentDetail({
   tasks,
   now,
   select,
-  back,
 }: AgentsProps & {
   task: TaskSnapshot;
-  back: () => void;
 }) {
   const usage = taskUsage(task);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -126,14 +124,13 @@ export function AgentDetail({
   }, [task.id]);
   return (
     <div className="agent-detail-view">
-      <button type="button" className="quiet-button agent-back" onClick={back}>
-        ‹ Back to all {tasks.length} agents
-      </button>
-      <h3 tabIndex={-1} ref={heading}>
-        {task.title}
-      </h3>
-      <div className="agent-detail-card">
+      <header className="agent-detail-header">
+        <h3 tabIndex={-1} ref={heading}>
+          {task.title}
+        </h3>
         <StatusBadge state={task.state} />
+      </header>
+      <div className="agent-detail-card">
         <p className="workflow-muted">Phase: {task.phase.label}</p>
         <p className="agent-model">
           {task.reportedModel ?? `Requested: ${task.requestedModel}`} · {task.effort}
@@ -147,7 +144,7 @@ export function AgentDetail({
             output
           </p>
         )}
-        <p>{task.lastActivity ?? 'No activity detail reported'}</p>
+        <p className="agent-activity">{task.lastActivity ?? 'No activity detail reported'}</p>
         <p className="workflow-muted">Last activity {elapsed(task.lastActivityAt, now)} ago</p>
         {task.waitingReason && <p className="workflow-waiting">Waiting: {task.waitingReason}</p>}
         <details>
@@ -155,17 +152,19 @@ export function AgentDetail({
           <TaskDetails task={task} now={now} />
         </details>
       </div>
-      <details>
-        <summary>
-          <Icon name="chevron" />
-          Other agents · {tasks.length - 1}
-        </summary>
-        <AgentList
-          tasks={tasks.filter((candidate) => candidate.id !== task.id)}
-          now={now}
-          select={select}
-        />
-      </details>
+      {tasks.length > 1 && (
+        <details className="other-agents">
+          <summary>
+            <Icon name="chevron" />
+            Other agents · {tasks.length - 1}
+          </summary>
+          <AgentList
+            tasks={tasks.filter((candidate) => candidate.id !== task.id)}
+            now={now}
+            select={select}
+          />
+        </details>
+      )}
     </div>
   );
 }

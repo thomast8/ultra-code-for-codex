@@ -97,7 +97,7 @@ it('drills into rationale, actual model and token subsets without adding cached 
   expect(first.getAllByText('40 (included in input)')[0]).toBeDefined();
   expect(first.getAllByText('5 (included in output)')[0]).toBeDefined();
   expect(first.queryByText('165 tokens')).toBeNull();
-  fireEvent.click(first.getByRole('button', { name: '‹ Back to all 4 agents' }));
+  fireEvent.click(first.getByRole('button', { name: 'Back to all 4 agents' }));
   fireEvent.click(first.getByRole('button', { name: /Verify the register · completed/ }));
   fireEvent.click(first.getByText('View activity and evidence'));
   expect(first.getByText('Confirm whether the lease was uploaded.')).toBeDefined();
@@ -323,4 +323,30 @@ it('keeps historical terminal elapsed time unknown instead of running its clock'
   expect(screen.getByText(/Elapsed unknown ·/)).toBeDefined();
   await tick();
   expect(screen.getByText(/Elapsed unknown ·/)).toBeDefined();
+});
+
+it('lists each phase’s agents inside its dropdown and never opens an empty one', async () => {
+  dashboardBridge.statusResult = { structuredContent: { runs: threeRuns(), cursor: 7 } };
+  await openPanel();
+  const first = within(screen.getByRole('region', { name: 'Audit documents' }));
+  const verify = first.getByText('Source verification').closest('details') as HTMLElement;
+  expect(within(verify).getByText('1 task · 0 handoffs')).toBeDefined();
+  expect(within(verify).getByText('Verify the register')).toBeDefined();
+  const finished = within(screen.getByRole('region', { name: 'Check references' }));
+  expect(finished.queryByText('0 agents')).toBeNull();
+  expect(finished.queryByRole('button', { name: 'Show agents' })).toBeNull();
+});
+
+it('opens an agent as its own view with a back bar and run context', async () => {
+  dashboardBridge.statusResult = { structuredContent: { runs: threeRuns(), cursor: 7 } };
+  await openPanel();
+  const first = within(screen.getByRole('region', { name: 'Audit documents' }));
+  fireEvent.click(first.getByRole('button', { name: 'Compare document names: Working' }));
+  const nav = first.getByRole('navigation', { name: 'Agent navigation' });
+  expect(within(nav).getByRole('button', { name: 'Back to all 4 agents' })).toBeDefined();
+  expect(within(nav).getByText('Audit documents')).toBeDefined();
+  expect(first.queryByText('Needs attention')).toBeNull();
+  fireEvent.click(within(nav).getByRole('button', { name: 'Back to all 4 agents' }));
+  expect(first.queryByRole('navigation', { name: 'Agent navigation' })).toBeNull();
+  expect(first.getByText('Needs attention')).toBeDefined();
 });
