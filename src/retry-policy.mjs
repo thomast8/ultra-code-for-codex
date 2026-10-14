@@ -7,5 +7,5 @@ const DEFAULT_MAX_RETRIES = 3;
  * @returns {{ maxRetries: number }}
  */
 export function resolveRetryPolicy(options = {}) {
-  return { maxRetries: options.maxRetries || DEFAULT_MAX_RETRIES };
+  return { maxRetries: options.maxRetries ?? DEFAULT_MAX_RETRIES };
 }
