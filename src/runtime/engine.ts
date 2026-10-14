@@ -147,6 +147,7 @@ export class WorkflowEngine {
   }
   private afterHandoffResolution(run: RunRecord, kind: string): void {
     if (kind === 'agent') {
+      this.settleTerminalQueue(run);
       this.sessions.get(run.snapshot.id)?.close();
       this.releaseGrant(run);
       return;
@@ -156,6 +157,7 @@ export class WorkflowEngine {
   private continueReconciled(run: RunRecord): void {
     if (hasWorkerReadback(run)) {
       closeReadbackRun(run);
+      this.settleTerminalQueue(run);
       this.journal.save(run, 'run.readback_closed');
       return;
     }
@@ -192,7 +194,7 @@ export class WorkflowEngine {
     void session.launch();
   }
   private recover(run: RunRecord): void {
-    this.settleRecoveredQueue(run);
+    this.settleTerminalQueue(run);
     const uncertain = run.calls.map((call) => this.recoverCall(call)).some(Boolean);
     refreshSnapshot(run);
     if (uncertain) {
@@ -205,6 +207,7 @@ export class WorkflowEngine {
     } else if (hasWorkerReadback(run)) {
       if (['failed', 'cancelled'].includes(run.snapshot.state)) return;
       closeReadbackRun(run);
+      this.settleTerminalQueue(run);
       this.journal.save(run, 'run.readback_closed');
     } else if (['running', 'queued'].includes(run.snapshot.state)) this.launch(run);
     else if (run.snapshot.state === 'paused') {
@@ -212,7 +215,7 @@ export class WorkflowEngine {
       this.scheduler.setGrant(run.snapshot.id, grant.totalSlots - grant.reservedSlots);
     }
   }
-  private settleRecoveredQueue(run: RunRecord): void {
+  private settleTerminalQueue(run: RunRecord): void {
     if (!['completed', 'failed', 'cancelled'].includes(run.snapshot.state)) return;
     const queued = run.calls.filter((call) => call.state === 'queued' && call.task);
     if (!queued.length) return;

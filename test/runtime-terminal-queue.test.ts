@@ -98,3 +98,36 @@ it('settles legacy terminal queued tasks on recovery without redispatch', async 
   expect(dispatched).toBe(0);
   await recovered.close();
 });
+
+it('settles queued agents immediately when uncertain-worker readback closes the run', async () => {
+  const { engine, calls } = harness();
+  const grant = { ...authority, capacity: { ...authority.capacity, totalSlots: 2 } };
+  engine.start(
+    request(`const p=phase('Discover');return await parallel([0,1,2].map(n=>
+    ()=>agent({...args.spec,phase:p,title:String(n)})));`),
+    grant,
+  );
+  await until(() => calls.length === 1);
+  calls[0]!.finish(output(null, { execution: 'uncertain' }));
+  await until(() => engine.status(owner)[0]?.state === 'needs_reconciliation');
+  const id = engine.status(owner)[0]!.handoffs[0]!.id;
+  engine.handoff(owner, id, 'claim', authority.context);
+  engine.handoff(owner, id, 'resolve', authority.context, {
+    acceptance: 'incomplete',
+    value: { terminationConfirmed: true, writesReconciled: true },
+    evidence: [
+      {
+        id: 'fixture-readback',
+        description: 'Controlled worker ended; no filesystem writes were issued',
+      },
+    ],
+  });
+  expect(engine.status(owner)[0]?.state).toBe('failed');
+  expect(engine.status(owner)[0]?.tasks.map((task) => task.state)).toEqual([
+    'failed',
+    'cancelled',
+    'cancelled',
+  ]);
+  expect(calls).toHaveLength(1);
+  await engine.close();
+});

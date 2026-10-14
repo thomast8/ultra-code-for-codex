@@ -21,8 +21,10 @@ const runFile = promisify(execFile);
 export async function verifyAssignmentRoot(spec: AgentSpec, signal?: AbortSignal): Promise<void> {
   const cwd = spec.assignment.ownership.cwd;
   requireWorker(isAbsolute(cwd), 'Worker cwd must be an absolute canonical directory');
+  const canonical = await realpath(cwd).catch(() => undefined);
+  const directory = await stat(cwd).catch(() => undefined);
   requireWorker(
-    (await realpath(cwd)) === cwd && (await stat(cwd)).isDirectory(),
+    canonical === cwd && directory?.isDirectory() === true,
     'Worker cwd must be an absolute canonical directory',
   );
   for (const path of spec.assignment.ownership.paths) {

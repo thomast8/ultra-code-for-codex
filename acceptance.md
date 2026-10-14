@@ -191,10 +191,10 @@ usage is unobserved.
 
 ## 0.2.6 remaining review fixes
 
-- [x] Permission verification preserves allowlisted WorkerBlocked reasons for tasks and capability inspection.
+- [x] Permission verification preserves allowlisted WorkerBlocked reasons for tasks and capability inspection; missing assignment roots preserve the safe canonical-directory reason.
 - [x] Empty evidence description/URI/revision strings are rejected by the worker wire schema as certain output failures; null optional fields remain supported.
 - [x] Budget exhaustion, script failure and early return settle undispatched workers and remove their scheduler queue.
-- [x] Legacy terminal queued tasks are settled on recovery without redispatching or altering dispatched/uncertain work.
+- [x] Legacy terminal queued tasks are settled on recovery without redispatching or altering dispatched/uncertain work; readback closure applies the same cleanup immediately.
 - [x] Cancellation interrupts root checks, backend initialization and preflight requests. A real bundled CLI child exited in 29 ms during initialization, with no model turn.
 - [x] Worker accounting covers settled known attempts, including known-zero undispatched cancellations. In-flight, uncertain and missing usage stays partial. Main-chat usage stays explicitly unknown.
 - [x] Compiled live socket QA confirms terminal queues, budget isolation and accounting; actual bundled metadata fault injection preserves the safe feature-verification reason.
