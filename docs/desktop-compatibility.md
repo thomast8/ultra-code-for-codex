@@ -299,5 +299,26 @@ Compiled-daemon API QA rejected all four invalid writer claims before creating
 a task; a valid lease reached the production worktree check and was blocked
 there. Corrupt-journal and bounded filesystem-scan checks passed. These checks
 dispatched no model turns. Native workflow and reopen evidence above remains
-for 0.2.4; installed/native 0.2.5 readback is pending. Main-agent usage is tracked
+for 0.2.4; installed/native 0.2.5 readback is recorded below. Main-agent usage is tracked
 separately in issue #4 and remains unknown in the current panel.
+
+### Native 0.2.5 restart readback
+
+After the user restarted Codex on 2026-10-14, both live MCP client directories
+and the detached daemon were confirmed at 0.2.5. The fresh exact-turn hook
+verified Sol/High in Default mode. Native context and status requests succeeded
+with an available runtime and all six saved chat workflows. No worker was
+dispatched for these checks.
+
+The user opened Ultra from More tools without clicking Bind. The expanded
+panel was already bound and exposed no Bind button. It showed three workflows
+and a three-item History, including the completed/satisfied native metadata
+result. Native result readback retained the original one-worker result and
+resolved lead handoff; that execution occurred on 0.2.4 and was not rerun.
+
+The user then closed only the Ultra panel and reopened it from More tools,
+again without Bind. The new tab and initialization ID confirmed a fresh panel
+instance. It restored the bound status, the same three visible workflows and
+three-item History, and the completed/satisfied result. Native readback showed
+all six saved run snapshots and the resolved result unchanged. No worker calls
+were made. Full app quit during an active worker remains unverified.

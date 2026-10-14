@@ -181,7 +181,8 @@ two-chat, Plan-transition and independent account-identity gaps listed above.
 - [x] Production writer preflight retains safe linked-worktree failure reasons.
 - [x] Activation scanning fails closed within its chunk-loop deadline.
 - [x] Safe per-attempt daemon startup diagnostics and concurrent cold clients pass real isolated API QA without model calls.
-- [ ] Installed/native 0.2.5 readback after supported reload.
+- [x] Installed/native 0.2.5 exact context/status/result and saved panel binding after user restart. Both native clients and the daemon match 0.2.5; all six chat workflows and the earlier completed result remain available.
+- [x] Separate native 0.2.5 panel close/reopen from More tools: fresh instance, no Bind button, all six snapshots and the completed result unchanged. No new model calls.
 - [ ] Native full app quit during an active worker. Detached background execution is current source behavior, not a completed Desktop QA claim.
 
 Main-agent token display is a separate requested GitHub issue #4, not part of
