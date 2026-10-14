@@ -37,6 +37,11 @@ async function openPanel(content: Record<string, unknown> = {}) {
       },
     }),
   );
+  for (const button of screen.queryAllByRole('button', { name: 'Show agents' }))
+    fireEvent.click(button);
+  for (const details of document.querySelectorAll('details')) {
+    if (!details.open) fireEvent.click(details.querySelector('summary')!);
+  }
   return view;
 }
 async function tick() {
@@ -52,14 +57,14 @@ it('renders three concurrent workflows with dynamic phases and separate executio
   expect(screen.getByRole('region', { name: 'Audit documents' })).toBeDefined();
   expect(screen.getByText('Source verification')).toBeDefined();
   expect(screen.getByText('Decide the next step')).toBeDefined();
-  expect(screen.getByText('Decide whether the missing lease blocks delivery.')).toBeDefined();
+  expect(screen.getAllByText('Decide whether the missing lease blocks delivery.')[0]).toBeDefined();
   expect(screen.getByText('Waiting for the lead.')).toBeDefined();
   expect(screen.getByRole('link', { name: 'Audit documents' }).getAttribute('href')).toBe(
     '#run-run-1',
   );
   const completed = within(screen.getByRole('region', { name: 'Check references' }));
   expect(completed.getByText('completed').className).toContain('tone-completed');
-  expect(completed.getByText('Acceptance: blocked')).toBeDefined();
+  expect(completed.getAllByText('Acceptance: blocked')[0]).toBeDefined();
   expect(completed.queryByRole('button', { name: /Cancel/ })).toBeNull();
   expect(screen.getAllByText('running', { selector: '.workflow-badge' })[0]?.className).toContain(
     'tone-running',
@@ -76,31 +81,26 @@ it('renders three concurrent workflows with dynamic phases and separate executio
   expect(dashboardBridge.messages).toBe(0);
 });
 
-it('expands task rationale, actual model, token subsets, timing and unresolved evidence', async () => {
+it('drills into rationale, actual model and token subsets without adding cached or reasoning usage', async () => {
   dashboardBridge.statusResult = { structuredContent: { runs: threeRuns(), cursor: 1 } };
   await openPanel();
-  const first = screen.getByText('Compare document names').closest('details') as HTMLDetailsElement;
-  expect(first.open).toBe(false);
-  fireEvent.click(first.querySelector('summary') as HTMLElement);
-  expect(first.open).toBe(true);
-  const details = within(first);
-  expect(details.getByText('Requested model')).toBeDefined();
-  expect(details.getByText('Reported model')).toBeDefined();
-  expect(details.getByText('Luna can compare this bounded file list.')).toBeDefined();
-  expect(details.getByText('120 tokens')).toBeDefined();
-  expect(details.queryByText('165 tokens')).toBeNull();
-  expect(details.getByText('40 (included in input)')).toBeDefined();
-  expect(details.getByText('5 (included in output)')).toBeDefined();
-  expect(details.getByText('1h 1m')).toBeDefined();
-  expect(screen.getByText('Waiting: Read slot occupied')).toBeDefined();
-  expect(screen.getAllByText('Tokens unknown').length).toBeGreaterThan(0);
-  expect(screen.getByText('Not reported')).toBeDefined();
-  expect(screen.getByText('Confirm whether the lease was uploaded.')).toBeDefined();
-  expect(screen.getByRole('link', { name: 'Original register' }).getAttribute('href')).toBe(
+  const first = within(screen.getByRole('region', { name: 'Audit documents' }));
+  fireEvent.click(first.getByRole('button', { name: 'Compare document names: Working' }));
+  fireEvent.click(first.getByText('View activity and evidence'));
+  expect(first.getByText('Requested model')).toBeDefined();
+  expect(first.getByText('Reported model')).toBeDefined();
+  expect(first.getByText('Luna can compare this bounded file list.')).toBeDefined();
+  expect(first.getAllByText('40 (included in input)')[0]).toBeDefined();
+  expect(first.getAllByText('5 (included in output)')[0]).toBeDefined();
+  expect(first.queryByText('165 tokens')).toBeNull();
+  fireEvent.click(first.getByRole('button', { name: '‹ Back to all 4 agents' }));
+  fireEvent.click(first.getByRole('button', { name: /Verify the register · completed/ }));
+  fireEvent.click(first.getByText('View activity and evidence'));
+  expect(first.getByText('Confirm whether the lease was uploaded.')).toBeDefined();
+  expect(first.getByRole('link', { name: 'Original register' }).getAttribute('href')).toBe(
     'https://example.test/register',
   );
-  expect(screen.queryByRole('link', { name: 'Unusable source link' })).toBeNull();
-  expect(screen.getByText('Quiet periods do not indicate a stalled task.')).toBeDefined();
+  expect(first.queryByRole('link', { name: 'Unusable source link' })).toBeNull();
 });
 
 it('shows no-workflows only after an available engine returns a verified empty snapshot', async () => {
@@ -316,7 +316,7 @@ it('keeps historical terminal elapsed time unknown instead of running its clock'
   const run = runFixture({ state: 'cancelled', tasks: [], finishedAt: null });
   dashboardBridge.statusResult = { structuredContent: { runs: [run], cursor: 1 } };
   await openPanel();
-  expect(screen.getByText('Elapsed unknown')).toBeDefined();
+  expect(screen.getByText(/Elapsed unknown ·/)).toBeDefined();
   await tick();
-  expect(screen.getByText('Elapsed unknown')).toBeDefined();
+  expect(screen.getByText(/Elapsed unknown ·/)).toBeDefined();
 });

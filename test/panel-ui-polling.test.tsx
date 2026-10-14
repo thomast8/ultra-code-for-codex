@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act, createElement } from 'react';
+import { flushSync } from 'react-dom';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -87,12 +88,13 @@ it('ignores old-nonce failures and late control acknowledgements', async () => {
   await act(async () => oldStatus.reject(new Error('Old nonce failed')));
   const control = deferredResult();
   dashboardBridge.controlResult = control.promise;
-  fireEvent.click(screen.getByRole('button', { name: 'Pause Current workflow' }));
+  pause();
   await bind('third');
   await act(async () =>
     control.resolve({ isError: true, structuredContent: { reason: 'Stale control failed' } }),
   );
   expect(screen.queryByRole('alert')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Show agents' }));
   expect(
     (screen.getByRole('button', { name: 'Pause Current workflow' }) as HTMLButtonElement).disabled,
   ).toBe(false);
@@ -162,9 +164,7 @@ it.each(['result', 'error'])(
     const oldRead = deferredResult();
     dashboardBridge.statusResults = [oldRead.promise];
     await tick();
-    await act(async () =>
-      fireEvent.click(screen.getByRole('button', { name: 'Pause Current workflow' })),
-    );
+    await act(async () => pause());
     dashboardBridge.statusResult = {
       structuredContent: {
         runs: [runFixture({ title: 'Current workflow', state: 'paused' })],
@@ -184,11 +184,11 @@ it('advances elapsed time during a quiet pending status read without overlapping
   dashboardBridge.statusResult = snapshot();
   render(createElement(Panel));
   await bind();
-  expect(screen.getByText('19s')).toBeDefined();
+  expect(screen.getByText('20s elapsed · 120 tokens (partial)')).toBeDefined();
   const pending = deferredResult();
   dashboardBridge.statusResult = pending.promise;
   await tick(6000);
-  expect(screen.getByText('25s')).toBeDefined();
+  expect(screen.getByText('26s elapsed · 120 tokens (partial)')).toBeDefined();
   expect(dashboardBridge.calls).toHaveLength(2);
   await act(async () => pending.resolve(snapshot()));
 });
@@ -201,7 +201,7 @@ it.each([new Error('Control connection failed.'), 'unknown rejection'])(
     dashboardBridge.statusResult = snapshot();
     render(createElement(Panel));
     await bind();
-    fireEvent.click(screen.getByRole('button', { name: 'Pause Current workflow' }));
+    pause();
     await act(async () => control.reject(reason));
     expect(screen.getByRole('alert').textContent).toContain(
       reason instanceof Error ? reason.message : 'Could not control this workflow.',
@@ -216,10 +216,16 @@ it('ignores pending control failures after unmount', async () => {
   dashboardBridge.statusResult = snapshot();
   const view = render(createElement(Panel));
   await bind();
-  fireEvent.click(screen.getByRole('button', { name: 'Pause Current workflow' }));
+  pause();
   view.unmount();
   await act(async () => control.reject(new Error('Late failure')));
   await tick();
   expect(screen.queryByRole('alert')).toBeNull();
   expect(dashboardBridge.calls).toHaveLength(2);
 });
+
+function pause() {
+  const expand = screen.queryByRole('button', { name: 'Show agents' });
+  if (expand) flushSync(() => fireEvent.click(expand));
+  fireEvent.click(screen.getByRole('button', { name: 'Pause Current workflow' }));
+}

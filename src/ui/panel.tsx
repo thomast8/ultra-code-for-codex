@@ -6,6 +6,7 @@ import packageMetadata from '../../package.json' with { type: 'json' };
 import { initialState, PanelBinding, type PanelState } from './binding.js';
 import { Dashboard } from './dashboard.js';
 import { panelStyles } from './styles.js';
+import { Brand } from './icons.js';
 
 type Availability = {
   nonce: string;
@@ -58,12 +59,22 @@ export function Panel() {
   return (
     <main className="ultra-panel">
       <style>{panelStyles}</style>
-      <h1>Ultra Code</h1>
+      {(!state.bound || capability.value !== 'available') && (
+        <header className="ultra-header">
+          <h1>
+            <Brand />
+          </h1>
+        </header>
+      )}
       {!state.bound && capability.value === 'unknown' && (
         <p>Compatibility probe: waiting for workflow availability.</p>
       )}
       <BindingControls state={state} binding={binding} />
-      <p role="status" aria-live="polite">
+      <p
+        role="status"
+        aria-live="polite"
+        className={state.bound ? 'visually-hidden' : 'binding-status'}
+      >
         {state.status}
       </p>
       <CapabilityView state={state} capability={capability} app={app} />

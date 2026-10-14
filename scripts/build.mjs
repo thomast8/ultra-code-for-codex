@@ -13,9 +13,10 @@ const ui = await build({
   format: 'iife',
   target: 'es2022',
   minify: true,
+  loader: { '.svg': 'dataurl' },
 });
 const javascript = ui.outputFiles[0].text.replaceAll('</script', '<\\/script');
-const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ultra Code</title><style>body{font:14px system-ui,sans-serif;margin:0;padding:20px;color:#202124}main{max-width:520px}button{padding:10px 14px;border:0;border-radius:7px;background:#2457d6;color:white;font:inherit}button:disabled{opacity:.5}p{line-height:1.5}</style></head><body><div id="root"></div><script>${javascript}</script></body></html>`;
+const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ultra Code</title></head><body><div id="root"></div><script>${javascript}</script></body></html>`;
 await writeFile(new URL('panel.html', output), html);
 await build({
   entryPoints: ['src/mcp/entry.ts'],
