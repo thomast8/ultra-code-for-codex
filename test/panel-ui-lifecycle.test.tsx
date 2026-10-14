@@ -184,7 +184,11 @@ it('shows missing usage honestly, truncates preview overflow and keeps every age
   expect(screen.getByRole('button', { name: /running · Working/ })).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'queued: queued' }));
   expect(screen.getByText('Requested: gpt-6-luna · medium')).toBeDefined();
-  expect(screen.getByText('Not started · Tokens not reported')).toBeDefined();
+  expect(
+    within(document.querySelector('.agent-detail-card') as HTMLElement).getByText(
+      'Not started · Tokens not reported',
+    ),
+  ).toBeDefined();
 });
 
 it('resets drill-down and history when the binding changes without persisting UI state', async () => {
