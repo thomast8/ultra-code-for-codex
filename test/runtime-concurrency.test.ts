@@ -96,6 +96,90 @@ it('queues continuation after pause and stops new dispatch at observed token bud
   await engine.close();
 });
 
+it('warns once at the observed threshold, lets the worker finish, and persists the warning', async () => {
+  const { engine, calls, dataDir } = harness();
+  const run = engine.start(
+    request(
+      `const p=phase('Discover');
+      await agent({...args.spec,phase:p}); return await agent({...args.spec,phase:p});`,
+      {
+        budget: { maxObservedTokens: 5 },
+      },
+    ),
+    authority,
+  );
+  await until(() => calls.length === 1);
+  const cursor = engine.currentCursor(owner);
+  const usage = (totalTokens: number) => ({
+    inputTokens: totalTokens,
+    cachedInputTokens: 0,
+    outputTokens: 0,
+    reasoningOutputTokens: 0,
+    totalTokens,
+  });
+  await calls[0]!.options.onEvent({ type: 'usage', usage: usage(3) });
+  await calls[0]!.options.onEvent({ type: 'usage', usage: usage(6) });
+  await calls[0]!.options.onEvent({ type: 'usage', usage: usage(6) });
+  expect(engine.status(owner)[0]).toMatchObject({
+    budget: { maxObservedTokens: 5 },
+    state: 'running',
+    tasks: [{ state: 'running' }],
+  });
+  expect(
+    engine.events(owner, cursor).events.filter((event) => event.type === 'budget.exceeded'),
+  ).toHaveLength(1);
+  expect(
+    engine.events(owner, cursor).events.filter((event) => event.type === 'worker.usage'),
+  ).toHaveLength(3);
+  calls[0]!.finish(output(1, { usage: usage(9) }));
+  await until(() => engine.status(owner)[0]?.state === 'failed');
+  expect(calls).toHaveLength(1);
+  expect(engine.status(owner)[0]?.tasks[0]?.state).toBe('completed');
+  expect(engine.status(owner)[0]?.usage?.totalTokens).toBe(9);
+  expect(
+    engine.events(owner, cursor).events.filter((event) => event.type === 'budget.exceeded'),
+  ).toHaveLength(1);
+  await engine.close();
+  const { WorkflowEngine } = await import('../src/runtime/engine.js');
+  const restored = new WorkflowEngine({ dataDir, executeWorker: async () => output() });
+  expect(restored.status(owner)[0]).toMatchObject({
+    id: run.id,
+    budget: { maxObservedTokens: 5 },
+    usage: { totalTokens: 9 },
+  });
+  expect(
+    restored.events(owner, cursor).events.filter((event) => event.type === 'budget.exceeded'),
+  ).toHaveLength(1);
+  await restored.close();
+});
+
+it('warns when the final result is the first report above the threshold', async () => {
+  const { engine, calls } = harness();
+  engine.start(
+    request(`const p=phase('Inspect'); return await agent({...args.spec,phase:p});`, {
+      budget: { maxObservedTokens: 5 },
+    }),
+    authority,
+  );
+  await until(() => calls.length === 1);
+  calls[0]!.finish(
+    output(1, {
+      usage: {
+        inputTokens: 9,
+        cachedInputTokens: 0,
+        outputTokens: 0,
+        reasoningOutputTokens: 0,
+        totalTokens: 9,
+      },
+    }),
+  );
+  await until(() => engine.status(owner)[0]?.state === 'completed');
+  expect(
+    engine.events(owner, 0).events.filter((event) => event.type === 'budget.exceeded'),
+  ).toMatchObject([{ data: { maxObservedTokens: 5, observedTokens: 9 } }]);
+  await engine.close();
+});
+
 it('keeps uncertain worker capacity reserved across restart', async () => {
   const { engine, calls, dataDir } = harness();
   const oneSlot = { ...authority, capacity: { ...authority.capacity, totalSlots: 2 } };

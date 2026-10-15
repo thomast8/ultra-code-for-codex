@@ -99,10 +99,14 @@ publication through its normal tools and existing authority.
 All workflows share the lead's explicitly advertised available capacity. This is
 local scheduling, not a host-wide slot reservation. Requested models are checked
 against the live catalog; unavailable models fail without silent substitution.
-Observed worker usage includes attempts and retries. Worker accounting is complete only when every attempt is settled with known usage; main chat usage remains unknown. Cached input and reasoning output
-are subsets, not extra tokens. Unattributable lead overhead and missing usage stay
-unknown; token totals are not billed money. Optional token budgets stop new work
-but cannot impose an exact ceiling on in-flight usage.
+Observed worker usage includes attempts and retries. Worker accounting is complete
+only when every attempt is settled with known usage; main chat usage remains
+unknown. Cached input and reasoning output are subsets, not extra tokens. New
+worker snapshots also retain cache-write input. The panel shows a conditional
+[Standard rate-card credit equivalent](docs/cost-accounting.md) by reported
+worker model, never a claimed bill. Missing rates or inconsistent usage stay
+unknown. An optional observed-token threshold warns on crossing and blocks new
+worker dispatch; active work continues and can exceed it.
 
 ## Checks and limits
 

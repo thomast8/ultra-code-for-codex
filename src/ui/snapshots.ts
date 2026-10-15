@@ -22,10 +22,12 @@ const usage = z
   .object({
     inputTokens: z.number().nonnegative(),
     cachedInputTokens: z.number().nonnegative(),
+    cacheWriteInputTokens: z.number().nonnegative().optional(),
     outputTokens: z.number().nonnegative(),
     reasoningOutputTokens: z.number().nonnegative(),
     totalTokens: z.number().nonnegative(),
   })
+  .transform(presentFields)
   .nullable();
 const acceptance = z.enum(['satisfied', 'incomplete', 'blocked', 'unverified']);
 const assessment = z.object({
@@ -107,33 +109,36 @@ const handoff = z.object({
     .transform(presentFields)
     .nullable(),
 });
-const run: z.ZodType<RunSnapshot> = z.object({
-  id: z.string(),
-  title: z.string(),
-  objective: z.string(),
-  state: z.enum([
-    'queued',
-    'running',
-    'paused',
-    'cancelled',
-    'completed',
-    'failed',
-    'needs_reconciliation',
-  ]),
-  parentRunId: z.string().nullable(),
-  createdAt: z.number(),
-  updatedAt: z.number(),
-  finishedAt: z.number().nullable(),
-  acceptance: z.array(z.string()),
-  acceptanceOutcome: acceptance,
-  phases: z.array(phase),
-  tasks: z.array(task),
-  handoffs: z.array(handoff),
-  usage,
-  accountingComplete: z.boolean(),
-  result: z.json(),
-  error: z.string().nullable(),
-});
+const run: z.ZodType<RunSnapshot> = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    objective: z.string(),
+    state: z.enum([
+      'queued',
+      'running',
+      'paused',
+      'cancelled',
+      'completed',
+      'failed',
+      'needs_reconciliation',
+    ]),
+    parentRunId: z.string().nullable(),
+    createdAt: z.number(),
+    updatedAt: z.number(),
+    finishedAt: z.number().nullable(),
+    acceptance: z.array(z.string()),
+    acceptanceOutcome: acceptance,
+    phases: z.array(phase),
+    tasks: z.array(task),
+    handoffs: z.array(handoff),
+    usage,
+    budget: z.object({ maxObservedTokens: z.number().int().positive() }).optional(),
+    accountingComplete: z.boolean(),
+    result: z.json(),
+    error: z.string().nullable(),
+  })
+  .transform(presentFields);
 
 export const workflowSnapshot = z.object({
   runs: z.array(run),

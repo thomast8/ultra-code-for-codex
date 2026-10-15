@@ -4,7 +4,15 @@ import type {
   RunSnapshot,
   TaskSnapshot,
 } from '../contracts/workflow.js';
-import { Acceptance, Evidence, ResultValue, StatusBadge, Usage } from './workflow-details.js';
+import {
+  Acceptance,
+  BudgetNotice,
+  CreditDetails,
+  Evidence,
+  ResultValue,
+  StatusBadge,
+  Usage,
+} from './workflow-details.js';
 import { taskLabel, visibleHandoffs } from './workflow-summary.js';
 
 export function RunDetails({ run, runs }: { run: RunSnapshot; runs: RunSnapshot[] }) {
@@ -20,7 +28,8 @@ export function RunDetails({ run, runs }: { run: RunSnapshot; runs: RunSnapshot[
       )}
       <h4>Worker usage</h4>
       <Usage value={run.usage} complete={run.accountingComplete} />
-      <p>Main chat token usage: unknown. Worker coverage does not include lead overhead.</p>
+      <CreditDetails run={run} />
+      <BudgetNotice run={run} />
       <details>
         <summary>Acceptance criteria</summary>
         <ul>

@@ -1,6 +1,7 @@
 import type { TaskResult, TokenUsage, WorkerOptions } from '../contracts/workflow.js';
 import type { ServerNotification } from './generated/ServerNotification.js';
 import type { ThreadItem } from './generated/v2/ThreadItem.js';
+import type { TokenUsageBreakdown } from './generated/v2/TokenUsageBreakdown.js';
 import type { Turn } from './generated/v2/Turn.js';
 import { requireWorker } from './worker-protocol.js';
 
@@ -115,10 +116,11 @@ export class WorkerTurnEvents {
     }
   }
 
-  private async recordUsage(total: TokenUsage): Promise<void> {
+  private async recordUsage(total: TokenUsageBreakdown): Promise<void> {
     const usage = {
       inputTokens: total.inputTokens,
       cachedInputTokens: total.cachedInputTokens,
+      cacheWriteInputTokens: total.cacheWriteInputTokens,
       outputTokens: total.outputTokens,
       reasoningOutputTokens: total.reasoningOutputTokens,
       totalTokens: total.totalTokens,
