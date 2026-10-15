@@ -12,6 +12,7 @@ const execute = promisify(execFile);
 async function fixture() {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'ultra-worker-root-')));
   await execute('git', ['init', root]);
+  await execute('git', ['-C', root, 'config', 'core.quotePath', 'true']);
   await execute('git', [
     '-C',
     root,
@@ -46,20 +47,23 @@ it('requires a canonical existing directory and bounded assignment paths', async
   await expect(verifyAssignmentRoot(workerSpec({ assignment }))).rejects.toThrow('canonical');
 });
 
-it('verifies a real isolated linked Git worktree and rejects its primary checkout', async () => {
-  const main = await fixture();
-  const linked = `${main}-linked`;
-  await execute('git', ['-C', main, 'worktree', 'add', '--detach', linked]);
-  await expect(verifyLinkedWorktree(linked)).resolves.toBeUndefined();
-  await expect(verifyLinkedWorktree(main)).rejects.toThrow('linked Git worktree');
-  const assignment = {
-    ...workerSpec().assignment,
-    ownership: { cwd: linked, paths: [join(linked, 'new.txt')] },
-  };
-  await expect(
-    verifyAssignmentRoot(workerSpec({ assignment, capability: 'workspace-write' })),
-  ).resolves.toBeUndefined();
-});
+it.each(['-linked', '-lié', '-quote"\ttab\nline '])(
+  'verifies a real isolated linked Git worktree %j and rejects its primary checkout',
+  async (suffix) => {
+    const main = await fixture();
+    const linked = `${main}${suffix}`;
+    await execute('git', ['-C', main, 'worktree', 'add', '--detach', linked]);
+    await expect(verifyLinkedWorktree(linked)).resolves.toBeUndefined();
+    await expect(verifyLinkedWorktree(main)).rejects.toThrow('linked Git worktree');
+    const assignment = {
+      ...workerSpec().assignment,
+      ownership: { cwd: linked, paths: [join(linked, 'new.txt')] },
+    };
+    await expect(
+      verifyAssignmentRoot(workerSpec({ assignment, capability: 'workspace-write' })),
+    ).resolves.toBeUndefined();
+  },
+);
 
 it('rejects a fake worktree marker rather than trusting .git file presence', async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'ultra-worker-fake-')));

@@ -1,4 +1,5 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
+import { createWorkerExecutor } from '../src/codex/worker.js';
 import { nestedValueSchema } from '../src/codex/worker-schema.js';
 import { outputContract, parseWorkerOutput } from '../src/codex/worker-output.js';
 import { outputText, workerSpec } from './codex-worker-fixture.js';
@@ -90,9 +91,27 @@ it.each([
   { type: 'array', items: { type: 'object', properties: { item: { type: 'string' } } } },
   { anyOf: [{ type: 'object', properties: { item: { type: 'string' } } }] },
   { allOf: [{ type: 'string' }] },
+  { oneOf: [{ type: 'object', properties: { item: { type: 'string' } } }] },
 ])(
   'rejects known incompatible caller schemas without altering accepted values %#',
   (outputSchema) => {
     expect(() => outputContract(workerSpec({ outputSchema }))).toThrow('Worker value schema');
   },
 );
+
+it('rejects nested oneOf compositions before root verification or backend launch', async () => {
+  const launch = vi.fn();
+  const verifyRoot = vi.fn();
+  const result = await createWorkerExecutor({ launch, verifyRoot })(
+    workerSpec({
+      outputSchema: {
+        anyOf: [{ oneOf: [{ type: 'object', properties: { x: { type: 'string' } } }] }],
+      },
+    }),
+    { instanceId: '/unused', signal: new AbortController().signal, onEvent: async () => {} },
+  );
+  expect(result).toMatchObject({ execution: 'failed', acceptance: 'blocked', reportedModel: null });
+  expect(result.error).toContain('unsupported structured-output composition');
+  expect(verifyRoot).not.toHaveBeenCalled();
+  expect(launch).not.toHaveBeenCalled();
+});

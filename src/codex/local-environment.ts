@@ -48,7 +48,7 @@ async function git(cwd: string, args: string[], signal?: AbortSignal): Promise<s
       timeout: 10_000,
       maxBuffer: 1_048_576,
     });
-    return stdout.trim();
+    return stdout.endsWith('\n') ? stdout.slice(0, -1) : stdout;
   } catch {
     throw new WorkerBlocked('Assigned writer root Git identity could not be verified');
   }
@@ -63,7 +63,7 @@ export async function verifyLinkedWorktree(cwd: string, signal?: AbortSignal): P
     git(cwd, ['rev-parse', '--show-toplevel'], signal),
     git(cwd, ['rev-parse', '--absolute-git-dir'], signal),
     git(cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir'], signal),
-    git(cwd, ['worktree', 'list', '--porcelain'], signal),
+    git(cwd, ['worktree', 'list', '--porcelain', '-z'], signal),
   ]);
   requireWorker((await realpath(top)) === cwd, 'Writer cwd must be the worktree root');
   const [gitDirectory, commonDirectory] = await Promise.all([
@@ -75,7 +75,7 @@ export async function verifyLinkedWorktree(cwd: string, signal?: AbortSignal): P
     'Writer Git directory is not an isolated linked worktree',
   );
   requireWorker(
-    listing.split('\n').includes(`worktree ${cwd}`),
+    listing.split('\0').includes(`worktree ${cwd}`),
     'Assigned root is absent from the Git worktree inventory',
   );
 }

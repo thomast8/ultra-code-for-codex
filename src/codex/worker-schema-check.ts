@@ -1,7 +1,16 @@
 import type { JsonValue } from '../contracts/workflow.js';
 import { requireWorker } from './worker-protocol.js';
 
-const unsupported = ['allOf', 'not', 'dependentRequired', 'dependentSchemas', 'if', 'then', 'else'];
+const unsupported = [
+  'allOf',
+  'oneOf',
+  'not',
+  'dependentRequired',
+  'dependentSchemas',
+  'if',
+  'then',
+  'else',
+];
 
 function isObject(value: JsonValue | undefined): value is { [key: string]: JsonValue } {
   return value !== null && typeof value === 'object' && !Array.isArray(value);

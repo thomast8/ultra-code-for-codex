@@ -231,3 +231,13 @@ model call. Native running-agent rendering remains unverified.
 Read reassembly is bounded to 64 MiB. Larger requests fail explicitly and require
 selection of a run or task; no records are silently truncated. This transport
 change preserves the existing MCP and panel response shapes.
+
+## 0.2.10 preflight review fixes
+
+- [x] `oneOf` is explicitly rejected as unsupported composition, including under nested schema branches. The production executor returns failed/blocked before root verification or backend launch, rather than creating uncertain work.
+- [x] Writer inventory uses `git worktree list --porcelain -z` and exact NUL-delimited fields. Git command output loses only its final newline, preserving whitespace inside canonical paths.
+- [x] Compiled production-path QA verified a real linked worktree whose path contains an accent, quote, tab, newline and trailing space. The legacy line comparison failed on that path; the NUL inventory passed.
+- [x] The same compiled executor rejected `oneOf` with zero backend launches and zero model calls.
+
+These checks verify preflight and real Git behavior. Native Desktop loading of
+0.2.10 has not been exercised.
