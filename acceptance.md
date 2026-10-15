@@ -1,10 +1,13 @@
 # Acceptance ledger
 
-Updated 2026-10-14. Native research/comparison/coding QA passed on installed
-0.2.0. Installed 0.2.4 corrects generic and single-alias MCP metadata handling;
-its native worker-to-lead workflow and bound-panel close/reopen QA passed.
-The selected lead model and High effort were preserved. Automatic activation requires verified Ultra effort; explicit invocation also
-works at High.
+Updated 2026-10-15. Native research/comparison/coding QA passed on installed
+0.2.0. Installed 0.2.4 corrected generic and single-alias MCP metadata handling;
+its native worker-to-lead workflow and bound-panel close/reopen QA passed. After
+a full Codex Veridue restart, installed 0.2.7 restored the bound panel and all
+seven workflows and rendered the latest completed result with its substantive
+value. The selected GPT-5.6 Sol/Ultra lead context was preserved. Automatic
+activation requires verified Ultra effort; explicit invocation also works at
+other verified effort levels.
 The mandatory pre-push hook supplies the final combined repository gate; the
 PR records its observed result. Installed-process readback is tracked below.
 
@@ -56,7 +59,7 @@ old run stays incomplete; a retry is a new linked run, never an automatic write.
 - [x] Native 0.2.4 metadata compatibility: verified context/start/wait/result/lead claim/resolve, one completed read-only worker, and six retained workflow cards after closing/reopening from More tools.
 - [x] Real research/comparison/coding workflows completed through native MCP tools; the lead inspected evidence and resolved acceptance.
 - [x] Native multi-run controls: computer-use pause; user-assisted resume/cancel/reopen; backend readback and reopened native DOM agree. Binding and results persisted.
-- [x] Isolated coding fixture: checks, nine-case independent regression, review, push and ready [PR #2](https://github.com/thomast8/ultra-code-for-codex/pull/2) readback. It remains unmerged.
+- [x] Isolated coding fixture: checks, nine-case independent regression, review, push and ready [PR #2](https://github.com/thomast8/ultra-code-for-codex/pull/2) readback. It was merged only into its isolated QA base, not plugin main.
 - [x] One paired case produced passing patches in both arms. The sequential timing protocol was violated by overlapping execution; no speed or billing advantage is established. Broader calibration is stopped.
 - Required delivery sequence: just-in-time self-review, address valid findings, pass the final hook, push and read back PR state. Publication evidence is recorded on the PR.
 
@@ -204,3 +207,15 @@ usage is unobserved.
 The fixture PR #2 targets its isolated QA base, not plugin main. Its frozen
 93bb04b source passed its own just check: four tests, 100% source coverage and
 nine independent acceptance cases.
+
+## 0.2.7 panel integration
+
+- [x] Reproducible `just qa-panel` checks covered normal and dark themes, 370px and 720px widths, and explicit host style variables.
+- [x] After a full Codex Veridue restart, the live daemon path and native MCP client behavior matched installed 0.2.7.
+- [x] Exact-turn activation preserved GPT-5.6 Sol/Ultra and reported the runtime available; all seven saved workflow snapshots remained present.
+- [x] The native panel opened already bound, with three visible workflows and four in History. No Bind action was present.
+- [x] The latest completed LeadResult rendered `gpt-6-luna` on the card. Result details exposed the substantive fields, including `30,127` observed worker tokens and zero unresolved items.
+- [x] Run details labelled `30,127 tokens` as worker usage and kept main-chat usage explicitly unknown.
+
+The native 0.2.7 check reused saved terminal results and dispatched no worker or
+model call. Native running-agent rendering remains unverified.

@@ -13,7 +13,7 @@ const ui = await build({
   format: 'iife',
   target: 'es2022',
   minify: true,
-  loader: { '.svg': 'dataurl' },
+  loader: { '.png': 'dataurl', '.svg': 'dataurl' },
 });
 const javascript = ui.outputFiles[0].text.replaceAll('</script', '<\\/script');
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ultra Code</title></head><body><div id="root"></div><script>${javascript}</script></body></html>`;

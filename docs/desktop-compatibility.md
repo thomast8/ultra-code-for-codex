@@ -360,3 +360,21 @@ The expanded, bound native panel showed the run completed/satisfied and
 `30.1k worker tokens`. Its Run details displayed `30,127 tokens` under
 `Worker usage` and explicitly stated `Main chat token usage: unknown. Worker
 coverage does not include lead overhead.` No Bind action was present.
+
+### Native 0.2.7 panel integration
+
+After a full Codex Veridue restart on 2026-10-15, the exact-turn hook verified
+GPT-5.6 Sol/Ultra in Default mode and reported the workflow runtime available.
+Native status returned all seven saved workflow snapshots, and the live detached
+daemon path resolved to the installed 0.2.7 plugin directory.
+
+The native 0.2.7 panel opened already bound with no Bind action. It showed three
+workflows in the main view and four in History. The latest completed LeadResult
+rendered `gpt-6-luna` on its card; expanded Result details exposed the result's
+named fields, including `30,127` observed worker tokens and zero unresolved
+items. Expanded Run details retained the worker-only usage label and the exact
+main-chat-usage disclosure recorded above.
+
+This check reused the saved completed 0.2.6 run and dispatched no worker or
+model call. It verifies restart restoration and saved terminal rendering in the
+redesigned panel. Native running-agent rendering remains unverified.

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import spark from './assets/spark.svg';
+import ultraMenu from '../../plugin/assets/ultra-menu.png';
 import clock from './assets/clock.svg';
 import check from './assets/check.svg';
 import running from './assets/running.svg';
@@ -8,7 +8,6 @@ import chevron from './assets/chevron.svg';
 import right from './assets/chevron-right.svg';
 
 const icons = {
-  spark: [spark, 18],
   clock: [clock, 14],
   check: [check, 14],
   running: [running, 16],
@@ -30,7 +29,7 @@ export function Icon({ name }: { name: keyof typeof icons }) {
 export function Brand() {
   return (
     <span className="ultra-brand">
-      <Icon name="spark" />
+      <img className="ultra-logo" src={ultraMenu} alt="" />
       <span>Ultra</span>
     </span>
   );

@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import ultraMenu from '../plugin/assets/ultra-menu.png';
 import {
   dashboardBridge,
   deferredResult,
@@ -57,6 +58,10 @@ async function tick() {
 it('renders three concurrent workflows with dynamic phases and separate execution and acceptance', async () => {
   dashboardBridge.statusResult = { structuredContent: { runs: threeRuns(), cursor: 7 } };
   await openPanel();
+  const brand = screen.getByRole('heading', { name: 'Ultra' });
+  const logo = brand.querySelector('img');
+  expect(logo?.getAttribute('src')).toBe(ultraMenu);
+  expect(logo?.getAttribute('alt')).toBe('');
   expect(screen.getAllByRole('region')).toHaveLength(3);
   expect(screen.getByRole('region', { name: 'Audit documents' })).toBeDefined();
   expect(screen.getByText('Source verification')).toBeDefined();
