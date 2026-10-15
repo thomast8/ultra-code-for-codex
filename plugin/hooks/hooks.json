@@ -1,0 +1,18 @@
+{
+  "description": "Register an opaque exact-turn context handle; no task dispatch or permissions changes.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/dist/hook-entry.js\"",
+            "timeout": 8,
+            "additionalContextLimit": 500,
+            "statusMessage": "Registering Ultra Code turn context"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "ultra-code-for-codex",
+  "version": "0.2.10",
+  "description": "Local adaptive Codex workflows with bounded workers, durable results and a chat-bound panel.",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "logo": "./assets/ultra.png",
+    "composerIcon": "./assets/ultra-menu.png",
+    "displayName": "Ultra Code for Codex",
+    "shortDescription": "Selective workflows and durable results beside your chat.",
+    "longDescription": "Keep the selected chat model as lead while bounded workers execute independent tasks. Track multiple workflows, evidence, usage and lead decisions in a local panel.",
+    "category": "Developer tools",
+    "defaultPrompt": ["Open the Ultra Code panel for this chat."]
+  },
+  "skills": "./skills/"
+}

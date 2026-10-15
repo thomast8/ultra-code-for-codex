@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+# Fixture repositories must not inherit this push's Git directory or index.
+unset $(git rev-parse --local-env-vars)
+just check
