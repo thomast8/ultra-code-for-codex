@@ -23,7 +23,7 @@ async function brokenEndpoint(reply: (socket: Socket, request: { id: string }) =
   };
 }
 
-it.each(['lost-ack', 'bad-json', 'wrong-id', 'oversized'])(
+it.each(['lost-ack', 'bad-json', 'wrong-id', 'oversized', 'lost-page', 'wrong-page'])(
   'never retries a dispatched %s request',
   async (mode) => {
     const f = await brokenEndpoint((socket, request) => {
@@ -32,6 +32,13 @@ it.each(['lost-ack', 'bad-json', 'wrong-id', 'oversized'])(
       if (mode === 'wrong-id') socket.end('{"id":"other","result":true}\n');
       if (mode === 'oversized')
         socket.end(JSON.stringify({ id: request.id, result: 'x'.repeat(1_048_576) }) + '\n');
+      if (mode === 'lost-page' || mode === 'wrong-page')
+        socket.end(
+          JSON.stringify({
+            id: request.id,
+            page: { index: mode === 'lost-page' ? 0 : 1, bytes: 100, data: 'partial' },
+          }) + '\n',
+        );
     });
     try {
       await expect(f.call('start', {})).rejects.toThrow();

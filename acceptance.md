@@ -219,3 +219,15 @@ nine independent acceptance cases.
 
 The native 0.2.7 check reused saved terminal results and dispatched no worker or
 model call. Native running-agent rendering remains unverified.
+
+## 0.2.8 icon and 0.2.9 large reads
+
+- [x] Native 0.2.8 restored the bound chat and all seven workflows after restart. The header visibly uses the transparent blue-purple Ultra composer icon.
+- [x] After verifying all eleven profile runs were terminal, the idle 0.2.7 daemon was refreshed to 0.2.8. Exact-turn context and runtime capability readback succeeded with the selected GPT-6.1 Sol/Low settings.
+- [x] Large read replies are split into ordered socket pages from a single snapshot. Each frame retains the one-MiB bound; status and selected result reads preserve every value and evidence item.
+- [x] Reassembly rejects malformed, inconsistent or incomplete pages. Large control acknowledgements use the same framing; mutations are never repeated to repair an acknowledgement failure.
+- [x] Compiled MCP stdio → authenticated socket → QuickJS/SQLite integration returned a 1,052,757-byte four-worker status intact, repeated the refresh, retrieved run/task results and acknowledged a control without losing values or evidence. Deterministic fixture workers made zero model calls.
+
+Read reassembly is bounded to 64 MiB. Larger requests fail explicitly and require
+selection of a run or task; no records are silently truncated. This transport
+change preserves the existing MCP and panel response shapes.

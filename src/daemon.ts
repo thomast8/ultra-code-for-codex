@@ -6,8 +6,8 @@ import { createConnection, createServer, type Server, type Socket } from 'node:n
 import { resolve } from 'node:path';
 import { localEndpoint, type Endpoint } from './local/endpoint.js';
 import { routeDaemon, type EngineService, type CapabilitiesReader } from './local/router.js';
-import { assertPayloadBound } from './contracts/schema.js';
 import { acquireDaemonLock } from './local/lock.js';
+import { sendReply } from './local/reply.js';
 
 const requestSchema = z.strictObject({
   id: z.string().min(1).max(512),
@@ -59,9 +59,7 @@ async function respond(
     const request = authorize(JSON.parse(line) as unknown, endpoint);
     id = request.id;
     const result = await routeDaemon(engine, request.method, request.params, capabilities);
-    const reply = { id, result };
-    assertPayloadBound(reply);
-    socket.end(`${JSON.stringify(reply)}\n`);
+    await sendReply(socket, id, result);
   } catch (error) {
     socket.end(`${JSON.stringify({ id, error: safeError(error) })}\n`);
   }

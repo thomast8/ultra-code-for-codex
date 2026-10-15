@@ -6,6 +6,7 @@ import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { localEndpoint, type Endpoint } from './endpoint.js';
 import { waitForStartup } from './startup.js';
+import { ReplyReader } from './reply.js';
 
 export type DaemonCall = (method: string, params: unknown) => Promise<unknown>;
 export type LaunchDaemon = (dataDir: string) => Promise<'endpoint' | void>;
@@ -37,7 +38,7 @@ function exchange(endpoint: Endpoint, method: string, params: unknown): Promise<
   return new Promise((resolve, reject) => {
     const socket = createConnection(endpoint.socketPath);
     const id = randomUUID();
-    let buffer = '';
+    const reader = new ReplyReader(id);
     let settled = false;
     const timer = setTimeout(
       () => finish(new Error('Ultra Code runtime request timed out')),
@@ -59,21 +60,15 @@ function exchange(endpoint: Endpoint, method: string, params: unknown): Promise<
     );
     socket.setEncoding('utf8');
     socket.on('data', (chunk: string) => {
-      buffer += chunk;
-      if (Buffer.byteLength(buffer) > 1_048_576)
-        return finish(new Error('Runtime response exceeds one MiB'));
-      if (!buffer.includes('\n')) return;
       try {
-        const reply = JSON.parse(buffer.slice(0, buffer.indexOf('\n'))) as {
-          id?: string;
-          error?: string;
-          result?: unknown;
-        };
-        if (reply.id !== id)
-          return finish(new Error(reply.error ?? 'Runtime response identity mismatch'));
-        finish(reply.error ? new Error(reply.error) : undefined, reply.result);
-      } catch {
-        finish(new Error('Invalid Ultra Code runtime response'));
+        const reply = reader.accept(chunk);
+        if (reply) finish(undefined, reply.result);
+      } catch (error) {
+        finish(
+          error instanceof SyntaxError
+            ? new Error('Invalid Ultra Code runtime response')
+            : (error as Error),
+        );
       }
     });
     socket.once('end', () => finish(new Error('Ultra Code runtime closed without a response')));

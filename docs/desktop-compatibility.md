@@ -378,3 +378,23 @@ main-chat-usage disclosure recorded above.
 This check reused the saved completed 0.2.6 run and dispatched no worker or
 model call. It verifies restart restoration and saved terminal rendering in the
 redesigned panel. Native running-agent rendering remains unverified.
+
+### Native 0.2.8 icon and 0.2.9 reply framing
+
+Native Codex Veridue loaded the 0.2.8 client after restart. The idle 0.2.7 daemon
+was refreshed only after journal readback confirmed all eleven profile runs
+terminal and no active task. Exact-turn context then verified GPT-6.1 Sol/Low,
+the runtime was available, and all seven chat workflows were retained. The
+bound native panel visibly rendered the user's blue-purple icon beside Ultra.
+
+The 0.2.9 transport fixes aggregate replies that exceed one MiB by sending
+ordered pages from one immutable serialized reply. Individual frames and
+requests retain the one-MiB bound; reassembly is bounded to 64 MiB. A larger
+read fails explicitly and requires a selected run or task. Missing or invalid
+pages cannot become success. Acknowledgement failure never retries a mutation.
+
+The compiled MCP stdio/socket/QuickJS/SQLite integration verified a
+1,052,757-byte four-worker status, repeated refresh, full run/task retrieval
+and a large control acknowledgement. Every value and evidence item survived.
+These workers were deterministic integration fixtures, with no model calls.
+Native Desktop 0.2.9 loading remains separate from that integration evidence.
