@@ -45,16 +45,26 @@ export class ScriptMachine {
     vm.runtime.setMaxStackSize(512 * 1024);
     vm.runtime.setInterruptHandler(() => --this.fuel <= 0 || performance.now() > this.deadline);
     vm.newFunction('__call', (kind, payload) =>
-      this.bridge(vm.getString(kind) as CallKind, vm.getString(payload)),
+      this.host(() => this.bridge(vm.getString(kind) as CallKind, vm.getString(payload))),
     ).consume((handle) => vm.setProp(vm.global, '__call', handle));
-    vm.newFunction('__sync', (kind, payload) => {
-      const value = this.parse(vm.getString(payload));
-      const result = hooks.sync(vm.getString(kind) as 'phase' | 'log', value);
-      return vm.newString(JSON.stringify(result));
-    }).consume((handle) => vm.setProp(vm.global, '__sync', handle));
+    vm.newFunction('__sync', (kind, payload) =>
+      this.host(() => {
+        const value = this.parse(vm.getString(payload));
+        const result = hooks.sync(vm.getString(kind) as 'phase' | 'log', value);
+        return vm.newString(JSON.stringify(result));
+      }),
+    ).consume((handle) => vm.setProp(vm.global, '__sync', handle));
   }
   static async create(hooks: Hooks): Promise<ScriptMachine> {
     return new ScriptMachine((await quickJS()).newContext(), hooks);
+  }
+  private host<T>(action: () => T): T {
+    const start = performance.now();
+    try {
+      return action();
+    } finally {
+      this.deadline += performance.now() - start;
+    }
   }
   start(script: string, args: JsonValue): void {
     if (this.stopped) return;
