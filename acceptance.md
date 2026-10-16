@@ -256,5 +256,11 @@ through compiled production-path QA, not a new paid native worker.
 
 The rate-card estimate is conditional on Standard speed and current published
 rates. The threshold is a warning and new-dispatch stop, not a hard cap on an
-already-running worker. Native Codex Desktop loading of 0.2.11 remains to be
-verified after installation and a fresh client load.
+already-running worker. After a full Codex Veridue restart on 16 October 2026,
+the native client verified GPT-6 Sol/Ultra, matched the live 0.2.11 daemon, and
+restored this chat's binding and seven saved workflows. Its latest completed
+worker card showed a 0.007233–0.0516255 Standard-rate credit range; expanded
+details showed 29,789 input, 12,032 cached input, 17,757 uncached input, 338
+output, cache writes unreported, the rate-card source and actual charges
+unknown. The live threshold transition remains verified through the compiled
+service and browser preview, not a new paid native worker.
