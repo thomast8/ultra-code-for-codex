@@ -6,7 +6,9 @@ import type {
   TaskResult,
   TaskSnapshot,
   TokenUsage,
+  RunSnapshot,
 } from '../contracts/workflow.js';
+import { creditLabel, estimateRunCredits, RATE_CARD_URL, validUsage } from './credit-estimate.js';
 
 const tones: Record<string, string> = {
   running: 'running',
@@ -50,6 +52,9 @@ export function Usage({
   complete?: boolean;
 }) {
   if (!value) return <span className="workflow-muted">Tokens not reported</span>;
+  const valid = validUsage(value);
+  const uncached = valid ? value.inputTokens - value.cachedInputTokens : null;
+  const writes = value.cacheWriteInputTokens;
   return (
     <details className="workflow-usage">
       <summary>
@@ -60,12 +65,64 @@ export function Usage({
         <dd>{value.inputTokens.toLocaleString()}</dd>
         <dt>Cached input</dt>
         <dd>{value.cachedInputTokens.toLocaleString()} (included in input)</dd>
+        <dt>Uncached input</dt>
+        <dd>
+          {uncached === null
+            ? 'Unknown (inconsistent usage)'
+            : `${uncached.toLocaleString()} (includes possible free cache writes)`}
+        </dd>
+        <dt>Cache writes</dt>
+        <dd>{writes === undefined ? 'Not reported' : `${writes.toLocaleString()} (free)`}</dd>
+        <dt>New input after cache writes</dt>
+        <dd>
+          {uncached === null
+            ? 'Unknown (inconsistent usage)'
+            : writes === undefined
+              ? 'Unknown'
+              : (uncached - writes).toLocaleString()}
+        </dd>
         <dt>Output</dt>
         <dd>{value.outputTokens.toLocaleString()}</dd>
         <dt>Reasoning output</dt>
         <dd>{value.reasoningOutputTokens.toLocaleString()} (included in output)</dd>
       </dl>
     </details>
+  );
+}
+
+export function BudgetNotice({ run }: { run: RunSnapshot }) {
+  const limit = run.budget?.maxObservedTokens;
+  const observed = run.usage?.totalTokens;
+  if (!limit || observed === undefined || observed < limit) return null;
+  return (
+    <p className="workflow-waiting" role="note">
+      Soft token threshold reached: {observed.toLocaleString()} / {limit.toLocaleString()} observed
+      worker tokens ({(observed - limit).toLocaleString()} over). Running workers finish; later
+      worker dispatch is blocked.
+    </p>
+  );
+}
+
+export function CreditDetails({ run }: { run: RunSnapshot }) {
+  const estimate = estimateRunCredits(run);
+  return (
+    <div className="workflow-credit-details">
+      <p>
+        Standard-rate worker estimate: {estimate ? creditLabel(estimate) : 'unknown'}
+        {estimate && !run.accountingComplete ? ' (partial)' : ''}
+        {estimate && !estimate.cacheWritesKnown ? ' (cache writes unreported)' : ''}.
+      </p>
+      {estimate && estimate.models.length > 0 && (
+        <p>Reported models: {estimate.models.join(', ')}.</p>
+      )}
+      <p className="workflow-muted">
+        <a href={RATE_CARD_URL} target="_blank" rel="noreferrer">
+          OpenAI ChatGPT Work and Codex Standard rate card
+        </a>{' '}
+        checked 15 October 2026. Actual charged credits unknown; plan allowances and speed mode may
+        differ. Main chat usage is excluded.
+      </p>
+    </div>
   );
 }
 

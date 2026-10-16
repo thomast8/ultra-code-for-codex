@@ -148,6 +148,7 @@ export class Workers {
   private event(run: RunRecord, call: CallRecord, event: WorkerEvent): void {
     assertPayloadBound(event);
     const task = call.task!;
+    const beforeTokens = run.snapshot.usage?.totalTokens ?? 0;
     task.lastActivityAt = Date.now();
     if (event.type === 'usage') task.usage = maximumUsage(task.usage, event.usage);
     if (event.type === 'activity') task.lastActivity = event.message;
@@ -161,6 +162,8 @@ export class Workers {
       call.turnId = event.turnId;
     }
     refreshSnapshot(run);
+    if (event.type === 'usage' && this.crossedBudget(run, beforeTokens))
+      this.journal.save(run, 'budget.exceeded', this.budgetWarning(run, call.id));
     this.journal.save(run, `worker.${event.type}`, { taskId: call.id, ...event });
   }
   private complete(
@@ -170,6 +173,7 @@ export class Workers {
     deliver: (value: JsonValue) => void,
   ): void {
     const task = call.task!;
+    const beforeTokens = run.snapshot.usage?.totalTokens ?? 0;
     task.finishedAt = Date.now();
     task.reportedModel = result.reportedModel ?? task.reportedModel;
     if (result.usage) task.usage = maximumUsage(task.usage, result.usage);
@@ -191,7 +195,24 @@ export class Workers {
       ensureWorkerHandoff(call);
     }
     refreshSnapshot(run);
+    if (this.crossedBudget(run, beforeTokens))
+      this.journal.save(run, 'budget.exceeded', this.budgetWarning(run, call.id));
     deliver(result as unknown as JsonValue);
+  }
+  private crossedBudget(run: RunRecord, beforeTokens: number): boolean {
+    const maximum = run.request.budget?.maxObservedTokens;
+    return (
+      maximum !== undefined &&
+      beforeTokens < maximum &&
+      (run.snapshot.usage?.totalTokens ?? 0) >= maximum
+    );
+  }
+  private budgetWarning(run: RunRecord, taskId: string): JsonValue {
+    return {
+      taskId,
+      maxObservedTokens: run.request.budget!.maxObservedTokens,
+      observedTokens: run.snapshot.usage!.totalTokens,
+    };
   }
   private waiting(run: RunRecord, call: CallRecord): void {
     if (call.task!.waitingReason === 'Resource claims are busy') return;

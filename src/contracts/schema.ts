@@ -92,6 +92,7 @@ export function assertPayloadBound(value: unknown): void {
 export const tokenUsageSchema = z.strictObject({
   inputTokens: z.number().int().nonnegative(),
   cachedInputTokens: z.number().int().nonnegative(),
+  cacheWriteInputTokens: z.number().int().nonnegative().optional(),
   outputTokens: z.number().int().nonnegative(),
   reasoningOutputTokens: z.number().int().nonnegative(),
   totalTokens: z.number().int().nonnegative(),

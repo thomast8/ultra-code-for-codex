@@ -239,5 +239,28 @@ change preserves the existing MCP and panel response shapes.
 - [x] Compiled production-path QA verified a real linked worktree whose path contains an accent, quote, tab, newline and trailing space. The legacy line comparison failed on that path; the NUL inventory passed.
 - [x] The same compiled executor rejected `oneOf` with zero backend launches and zero model calls.
 
-These checks verify preflight and real Git behavior. Native Desktop loading of
-0.2.10 has not been exercised.
+These checks verify preflight and real Git behavior. After the Codex Veridue
+restart, native 0.2.10 exact-turn GPT-6 Sol/Ultra, the matching daemon, bound
+panel and retained seven workflows were verified. A closed and reopened side
+tab retained its binding and saved result. The preflight edge cases were checked
+through compiled production-path QA, not a new paid native worker.
+
+## 0.2.11 worker credit estimates and soft threshold
+
+- [x] Worker usage retains the backend's cache-write input field on new attempts. Older records with no such field remain unknown and load from the version-1 journal.
+- [x] Each task's exact reported model and observed input/cached input/output are valued at the published 15 October 2026 Codex Standard credit rates. Known cache writes are free; legacy unknown cache writes produce a conditional range, never a fabricated point charge.
+- [x] The previous two Luna/Low workers have a combined conditional Standard-rate equivalent of 0.1189205–0.3050955 credits. Backend per-thread credit and USD estimates were unavailable for both workers and their lead chat on this ChatGPT profile. Lead overhead and actual deductions remain unknown.
+- [x] Crossing an observed-token threshold produces one durable `budget.exceeded` event and panel warning. The active worker finishes; later worker dispatch is blocked. Final-only usage and duplicate notifications preserve that rule across restart.
+- [x] Compiled MCP stdio → authenticated socket → QuickJS/SQLite QA observed a threshold crossing at six against a limit of five, final usage of nine with one cache-write token, a completed first worker and blocked second worker. The fixture made no model calls.
+- [x] Browser QA of the built panel showed 170,923 / 50,000 observed tokens with 120,923 overshoot and a conditional 0.0611145–0.1513095 credit estimate, marked partial and cache-write-unknown.
+
+The rate-card estimate is conditional on Standard speed and current published
+rates. The threshold is a warning and new-dispatch stop, not a hard cap on an
+already-running worker. After a full Codex Veridue restart on 16 October 2026,
+the native client verified GPT-6 Sol/Ultra, matched the live 0.2.11 daemon, and
+restored this chat's binding and seven saved workflows. Its latest completed
+worker card showed a 0.007233–0.0516255 Standard-rate credit range; expanded
+details showed 29,789 input, 12,032 cached input, 17,757 uncached input, 338
+output, cache writes unreported, the rate-card source and actual charges
+unknown. The live threshold transition remains verified through the compiled
+service and browser preview, not a new paid native worker.

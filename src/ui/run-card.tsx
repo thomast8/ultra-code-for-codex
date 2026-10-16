@@ -5,7 +5,8 @@ import { Icon } from './icons.js';
 import { controlsAvailable, RunControls } from './run-controls.js';
 import { RunDetails } from './run-details.js';
 import { resultSummary, unwrapLeadResult } from './result-value.js';
-import { Acceptance, ResultValue, StatusBadge } from './workflow-details.js';
+import { Acceptance, BudgetNotice, ResultValue, StatusBadge } from './workflow-details.js';
+import { creditLabel, estimateRunCredits } from './credit-estimate.js';
 import type { RunAction } from './workflow-feed.js';
 import {
   agentCounts,
@@ -168,6 +169,7 @@ function RunSummary({
         <StatusBadge state={run.state} />
       </header>
       {attention && <Attention run={run} />}
+      <BudgetNotice run={run} />
       <div className="run-summary">
         {finished && <FinishedResult run={run} />}
         {showAgents && <AgentSummary run={run} select={select} />}
@@ -175,6 +177,7 @@ function RunSummary({
           <RunCounters run={run} now={now} />
           {finished && <Acceptance value={run.acceptanceOutcome} />}
         </div>
+        <CreditPreview run={run} />
         {showAgents && (
           <button
             type="button"
@@ -189,6 +192,17 @@ function RunSummary({
         )}
       </div>
     </>
+  );
+}
+function CreditPreview({ run }: { run: RunSnapshot }) {
+  const estimate = estimateRunCredits(run);
+  if (!estimate) return null;
+  return (
+    <p className="run-credit-preview workflow-muted">
+      Standard-rate worker estimate: {creditLabel(estimate)}
+      {!run.accountingComplete && ' (partial)'}
+      {!estimate.cacheWritesKnown && ' (cache writes unreported)'}
+    </p>
   );
 }
 function AgentSummary({ run, select }: { run: RunSnapshot; select: (id: string) => void }) {

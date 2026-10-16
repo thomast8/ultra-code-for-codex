@@ -8,6 +8,7 @@ import {
   deferredResult,
   resetBridge,
   runFixture,
+  taskFixture,
   threeRuns,
 } from './panel-ui-dashboard-fixture.js';
 
@@ -110,6 +111,39 @@ it('drills into rationale, actual model and token subsets without adding cached 
     'https://example.test/register',
   );
   expect(first.queryByRole('link', { name: 'Unusable source link' })).toBeNull();
+});
+
+it('shows a live soft threshold warning and a conditional credit estimate without changing acceptance', async () => {
+  const usage = {
+    inputTokens: 168_686,
+    cachedInputTokens: 132_608,
+    outputTokens: 2_237,
+    reasoningOutputTokens: 1_000,
+    totalTokens: 170_923,
+  };
+  dashboardBridge.statusResult = {
+    structuredContent: {
+      runs: [
+        runFixture({
+          usage,
+          budget: { maxObservedTokens: 50_000 },
+          tasks: [taskFixture({ usage })],
+        }),
+      ],
+      cursor: 1,
+    },
+  };
+  await openPanel();
+  const card = within(screen.getByRole('region', { name: 'Audit documents' }));
+  expect(card.getAllByText(/Soft token threshold reached/)).toHaveLength(2);
+  expect(card.getAllByText(/120,923 over/)).toHaveLength(2);
+  expect(
+    card.getAllByText(/Running workers finish; later worker dispatch is blocked/),
+  ).toHaveLength(2);
+  expect(card.getAllByText(/0.0611145–0.1513095 credits/)).toHaveLength(2);
+  expect(card.getByText('Cache writes')).toBeDefined();
+  expect(card.getByText('Not reported')).toBeDefined();
+  expect(card.queryByText('Acceptance: satisfied')).toBeNull();
 });
 
 it('shows no-workflows only after an available engine returns a verified empty snapshot', async () => {

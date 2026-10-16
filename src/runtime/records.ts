@@ -24,6 +24,7 @@ export function createRun(request: StartRequest, authority: RunAuthority): RunRe
       id: randomUUID(),
       title: request.title,
       objective: request.objective,
+      ...(request.budget ? { budget: structuredClone(request.budget) } : {}),
       state: 'queued',
       parentRunId: request.parentRunId ?? null,
       createdAt: now,
@@ -98,17 +99,30 @@ export function emptyUsage(): TokenUsage {
   return {
     inputTokens: 0,
     cachedInputTokens: 0,
+    cacheWriteInputTokens: 0,
     outputTokens: 0,
     reasoningOutputTokens: 0,
     totalTokens: 0,
   };
 }
 export function maximumUsage(left: TokenUsage | null, right: TokenUsage): TokenUsage {
-  const output = { ...right };
-  for (const key of Object.keys(output) as (keyof TokenUsage)[]) {
-    output[key] = Math.max(left?.[key] ?? 0, right[key]);
-  }
-  return output;
+  const prior = left ?? emptyUsage();
+  const output = {
+    inputTokens: Math.max(prior.inputTokens, right.inputTokens),
+    cachedInputTokens: Math.max(prior.cachedInputTokens, right.cachedInputTokens),
+    outputTokens: Math.max(prior.outputTokens, right.outputTokens),
+    reasoningOutputTokens: Math.max(prior.reasoningOutputTokens, right.reasoningOutputTokens),
+    totalTokens: Math.max(prior.totalTokens, right.totalTokens),
+  };
+  const cacheWrite = maximumKnownCacheWrite(left, right);
+  return cacheWrite !== undefined ? { ...output, cacheWriteInputTokens: cacheWrite } : output;
+}
+function maximumKnownCacheWrite(left: TokenUsage | null, right: TokenUsage): number | undefined {
+  if (right.cacheWriteInputTokens !== undefined)
+    return Math.max(left?.cacheWriteInputTokens ?? 0, right.cacheWriteInputTokens);
+  if (left?.cacheWriteInputTokens !== undefined && right.totalTokens <= left.totalTokens)
+    return left.cacheWriteInputTokens;
+  return undefined;
 }
 export function refreshSnapshot(run: RunRecord): void {
   run.snapshot.tasks = run.calls.flatMap((call) => (call.task ? [call.task] : []));
@@ -120,7 +134,14 @@ export function refreshSnapshot(run: RunRecord): void {
   run.snapshot.usage =
     usage.length || !run.snapshot.tasks.length
       ? usage.reduce((sum, value) => {
-          for (const key of Object.keys(sum) as (keyof TokenUsage)[]) sum[key] += value[key];
+          sum.inputTokens += value.inputTokens;
+          sum.cachedInputTokens += value.cachedInputTokens;
+          sum.outputTokens += value.outputTokens;
+          sum.reasoningOutputTokens += value.reasoningOutputTokens;
+          sum.totalTokens += value.totalTokens;
+          if (sum.cacheWriteInputTokens !== undefined && value.cacheWriteInputTokens !== undefined)
+            sum.cacheWriteInputTokens += value.cacheWriteInputTokens;
+          else delete sum.cacheWriteInputTokens;
           return sum;
         }, emptyUsage())
       : null;

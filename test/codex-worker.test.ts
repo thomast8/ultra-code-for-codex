@@ -144,6 +144,7 @@ it('records cumulative usage snapshots without double counting', async () => {
   const usage = {
     inputTokens: 10,
     cachedInputTokens: 3,
+    cacheWriteInputTokens: 2,
     outputTokens: 5,
     reasoningOutputTokens: 2,
     totalTokens: 15,

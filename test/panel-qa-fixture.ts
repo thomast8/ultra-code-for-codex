@@ -79,5 +79,21 @@ function explicitZeroRun(now: number): RunSnapshot {
 
 export function qaRuns(now: number): RunSnapshot[] {
   const live = threeRuns().map((run) => shiftRun(run, now - fixtureNow));
-  return [explicitZeroRun(now), ...live];
+  const costUsage = {
+    inputTokens: 168_686,
+    cachedInputTokens: 132_608,
+    outputTokens: 2_237,
+    reasoningOutputTokens: 1_000,
+    totalTokens: 170_923,
+  };
+  const cost = runFixture({
+    id: 'qa-cost',
+    title: 'QA fixture · Cost and soft threshold',
+    createdAt: now - 60_000,
+    updatedAt: now,
+    budget: { maxObservedTokens: 50_000 },
+    usage: costUsage,
+    tasks: [taskFixture({ id: 'qa-cost-worker', usage: costUsage })],
+  });
+  return [cost, explicitZeroRun(now), ...live];
 }

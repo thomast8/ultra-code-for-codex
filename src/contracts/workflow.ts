@@ -42,6 +42,7 @@ export type AgentSpec = {
 export type TokenUsage = {
   inputTokens: number;
   cachedInputTokens: number;
+  cacheWriteInputTokens?: number;
   outputTokens: number;
   reasoningOutputTokens: number;
   totalTokens: number;
@@ -134,6 +135,7 @@ export type RunSnapshot = {
   id: string;
   title: string;
   objective: string;
+  budget?: { maxObservedTokens: number };
   state:
     'queued' | 'running' | 'paused' | 'cancelled' | 'completed' | 'failed' | 'needs_reconciliation';
   parentRunId: string | null;

@@ -75,6 +75,7 @@ const snapshotSchema = z.strictObject({
   id: z.string(),
   title: z.string(),
   objective: z.string(),
+  budget: startSchema.shape.budget,
   state: z.enum([
     'queued',
     'running',
@@ -132,5 +133,7 @@ export function parseRecord(serialized: string): RunRecord {
     if (call.id !== `${run.snapshot.id}:${index + 1}`)
       throw new Error('Corrupt workflow call identity');
   });
+  if (run.request.budget) run.snapshot.budget = structuredClone(run.request.budget);
+  else delete run.snapshot.budget;
   return run;
 }
