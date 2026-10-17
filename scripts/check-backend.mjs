@@ -8,7 +8,7 @@ import { build } from 'esbuild';
 
 const cli = '/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex';
 const cliVersion = execFileSync(cli, ['--version'], { encoding: 'utf8' }).trim();
-assert.equal(cliVersion, 'codex-cli 0.162.0-alpha.17.2');
+assert.equal(cliVersion, 'codex-cli 0.163.0-alpha.10.2');
 await mkdir('work', { recursive: true });
 const output = resolve('work/backend-probe.mjs');
 await build({

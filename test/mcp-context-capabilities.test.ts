@@ -84,9 +84,11 @@ it('does not inspect or launch a backend for unknown context', async () => {
       resolutionStatus: 'unknown',
       resolutionReason: 'Unverified turn',
       capabilityAvailability: 'unavailable',
+      capabilityReason: 'Current-turn context is unverified: Unverified turn',
     });
     expect(result.structuredContent).not.toHaveProperty('executionCapabilities');
     expect(runtime).not.toHaveBeenCalled();
+    expect(JSON.stringify(result)).not.toContain('Compatibility probe');
   } finally {
     await f.close();
   }

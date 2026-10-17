@@ -41,7 +41,7 @@ and resolve the final handoff.
 ## Setup and installation
 
 Use Node **26.10.0** and `just`. The worker adapter and generated protocol are
-verified against the Desktop-bundled CLI **0.162.0-alpha.17.2** at
+verified against the Desktop-bundled CLI **0.163.0-alpha.10.2** at
 `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`.
 
 ```sh
@@ -126,9 +126,15 @@ from manual code style and coverage.
 
 See [Desktop compatibility evidence](docs/desktop-compatibility.md). Local tests
 and standalone MCP checks do not establish native Desktop QA. The exact-turn log
-adapter accepts the verified 0.160.0, 0.160.1 and 0.162.0-alpha.17.2 formats; unknown
+adapter accepts the verified 0.160.0, 0.160.1, 0.162.0-alpha.17.2 and 0.163.0-alpha.10.2 formats; unknown
 versions remain unknown. Plan Mode stays read-only. Changing mode does not silently
 cancel an already authorized immutable run.
+
+With Ultra selected in Plan Mode, the hook activates the planning policy. The
+lead uses bounded read-only investigations where useful and produces a concrete
+implementation plan. A `lead({kind: "planning", ...})` handoff can be accepted
+in Plan Mode and permits only read resource claims. Ordinary action handoffs
+still require Default mode; writing workers remain blocked in Plan Mode.
 
 V1 does not promise automatic wakeup of a closed chat, recovery of an interrupted
 worker's private conversation, or fencing against unrelated processes deleting a

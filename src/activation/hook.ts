@@ -43,9 +43,11 @@ export async function runUserPromptHook(
   const { contextKey } = await registerContext(input, dataDir);
   const context = await resolveContext(contextKey, dataDir);
   const active = context.resolutionStatus === 'verified' && context.effort === 'ultra';
-  const policy = active
-    ? 'Ultra policy active: delegate bounded independent work worth total cost; lead owns intent and delivery. Plan Mode is read-only. Read the ultra-code skill.'
-    : 'Ultra policy inactive: effort is not verified as ultra. Explicit invocation remains subject to verified capabilities and existing authority.';
+  const policy = !active
+    ? 'Ultra policy inactive: effort is not verified as ultra. Explicit invocation remains subject to verified capabilities and existing authority.'
+    : context.collaborationMode === 'plan'
+      ? 'Ultra planning policy active: read-only investigations; lead produces an implementation-ready plan. Plan Mode is read-only. Read the ultra-code skill.'
+      : 'Ultra policy active: delegate bounded independent work worth total cost; lead owns intent and delivery. Plan Mode is read-only. Read the ultra-code skill.';
   const pending = pendingWorkNotice(dataDir, context);
   return {
     hookSpecificOutput: {

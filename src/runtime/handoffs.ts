@@ -50,6 +50,7 @@ function changeLeadHandoff(input: HandoffInput): HandoffSnapshot {
   const handoff = call.handoff!;
   if (action === 'claim') {
     if (
+      handoff.spec.kind !== 'planning' &&
       [context, run.authority.context].some((lead) =>
         lead.collaborationMode.toLowerCase().includes('plan'),
       )

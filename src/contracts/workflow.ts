@@ -59,6 +59,7 @@ export type TaskResult = {
   error?: string;
 };
 export type LeadHandoffSpec = {
+  kind?: 'action' | 'planning';
   phase: PhaseRef;
   objective: string;
   resources: ResourceClaim[];

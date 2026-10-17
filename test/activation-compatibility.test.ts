@@ -8,7 +8,7 @@ import {
 } from './activation-compatibility-fixture.js';
 
 describe('versioned Desktop activation compatibility', () => {
-  it.each(['0.160.0', '0.160.1', '0.162.0-alpha.17.2'])(
+  it.each(['0.160.0', '0.160.1', '0.162.0-alpha.17.2', '0.163.0-alpha.10.2'])(
     'verifies the exact session, turn, and profile for %s',
     (version) => {
       expect(parseExactTurn(compatibilityLog(version), fixtureInput)).toEqual({

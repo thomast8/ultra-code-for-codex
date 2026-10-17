@@ -46,13 +46,19 @@ export const agentSchema = z.strictObject({
   outputSchema: z.record(z.string(), json),
   timeoutMs: z.number().int().min(1_000).max(3_600_000).optional(),
 });
-export const handoffSchema = z.strictObject({
-  phase: phaseSchema,
-  objective: text,
-  resources: z.array(resourceSchema).max(100),
-  evidence: z.array(artifactSchema).max(1_000),
-  revision: identifier.optional(),
-});
+export const handoffSchema = z
+  .strictObject({
+    kind: z.enum(['action', 'planning']).optional(),
+    phase: phaseSchema,
+    objective: text,
+    resources: z.array(resourceSchema).max(100),
+    evidence: z.array(artifactSchema).max(1_000),
+    revision: identifier.optional(),
+  })
+  .refine(
+    (value) => value.kind !== 'planning' || value.resources.every((claim) => claim.mode === 'read'),
+    'Planning handoffs require read-only resource claims',
+  );
 export const leadResultSchema = z.strictObject({
   acceptance: z.enum(['satisfied', 'incomplete', 'blocked']),
   value: json,
