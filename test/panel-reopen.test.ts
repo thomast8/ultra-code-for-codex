@@ -70,6 +70,7 @@ it('restores an exact saved chat through SDK metadata after the server reconnect
   expect(opened.structuredContent).toEqual({
     bindingNonce: nonce,
     bound: true,
+    panelKey: expect.stringMatching(/^[a-f0-9]{64}$/),
     sessionId,
     capabilityAvailability: 'unavailable',
     capabilityReason: expect.stringContaining('workflow execution is unavailable'),
@@ -78,7 +79,7 @@ it('restores an exact saved chat through SDK metadata after the server reconnect
   expect(
     (await reopened.client.callTool({ name: 'ultra_panel_status', arguments: { nonce } }))
       .structuredContent,
-  ).toEqual({ state: 'bound' });
+  ).toEqual({ state: 'bound', panelKey: expect.stringMatching(/^[a-f0-9]{64}$/) });
   await reopened.close();
 });
 

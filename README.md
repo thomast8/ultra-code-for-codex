@@ -30,8 +30,11 @@ its exact-turn context without another message. After that first verified bindin
 opening from **More tools > Plugins and MCPs** restores the same chat when Desktop
 supplies its routed identity. Missing or conflicting metadata retains the explicit
 **Show this chat’s workflows** fallback. No global latest-chat lookup is used.
-Before opening a panel for workflow work, the lead checks this chat's open MCP App
-tabs and reuses an existing Ultra panel, including one opened manually.
+The opener's display guard uses a browser-owned lock for the verified profile and
+chat. Repeated calls reuse an open panel, including one opened manually, without
+promoting another tab. Closing the panel releases the lock so a later call can
+open it again. Automatic opening requires Web Locks; unsupported hosts remain
+inline rather than opening an unchecked duplicate.
 
 The panel keeps active and unresolved workflows visible, with agent status squares,
 live time/tokens and drill-down details. The latest settled result stays compact;

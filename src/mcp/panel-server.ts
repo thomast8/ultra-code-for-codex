@@ -1,13 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import packageMetadata from '../../package.json' with { type: 'json' };
 import { readFile } from 'node:fs/promises';
-import { closeSync, mkdirSync, openSync } from 'node:fs';
-import { join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import ultraMenu from '../../plugin/assets/ultra-menu.png';
+import { openBindings, panelKey, panelKeyForNonce } from './panel-bindings.js';
 import type { LeadContext } from '../activation/types.js';
 import {
   assertRoutedContext,
@@ -42,20 +41,6 @@ const bindingSchema = z.object({
   owner: z.string().nullable(),
 });
 type PendingBinding = z.infer<typeof bindingSchema>;
-
-function openBindings(dataDir: string): DatabaseSync {
-  const directory = join(dataDir, 'panel');
-  mkdirSync(directory, { recursive: true, mode: 0o700 });
-  const path = join(directory, 'bindings.sqlite');
-  closeSync(openSync(path, 'a', 0o600));
-  const database = new DatabaseSync(path, { timeout: 5_000 });
-  database.exec(`CREATE TABLE IF NOT EXISTS bindings (
-    nonce TEXT PRIMARY KEY,
-    state TEXT NOT NULL CHECK (state IN ('pending', 'binding', 'bound', 'failed')),
-    owner TEXT
-  )`);
-  return database;
-}
 
 export function createPanelServer(
   resolveContext: ContextResolver,
@@ -144,7 +129,7 @@ function registerPanelView(
     {
       title: 'Open Ultra Code panel',
       description:
-        'Open Ultra Code only if this chat has no open Ultra panel, or the user explicitly requests a new one. Inspect this chat’s MCP App tabs first and reuse an existing Ultra panel without calling this tool. Manual launches bind automatically when verified chat routing is available.',
+        'Open or reuse the Ultra panel for this verified chat. The display guard prevents a second panel tab while one is already open. Manual launches bind automatically when verified chat routing is available.',
       inputSchema: { contextKey: z.string().min(1).optional() },
       _meta: {
         ui: { resourceUri: PANEL_URI },
@@ -181,6 +166,7 @@ function registerPanelView(
               bindingNonce: nonce,
               bound: true,
               sessionId,
+              panelKey: panelKeyForNonce(bindings, nonce),
               capabilityAvailability: 'unavailable',
               capabilityReason: RUNTIME_UNVERIFIED,
             },
@@ -226,7 +212,10 @@ function registerPanelStatus(server: McpServer, bindings: DatabaseSync) {
       const { state } = bindingSchema.parse(row);
       return {
         content: [{ type: 'text', text: `Panel binding state: ${state}.` }],
-        structuredContent: { state },
+        structuredContent: {
+          state,
+          ...(state === 'bound' ? { panelKey: panelKeyForNonce(bindings, nonce) } : {}),
+        },
       };
     },
   );
@@ -382,6 +371,7 @@ function boundResult(context: LeadContext, message: string) {
       bound: true,
       sessionId: context.sessionId,
       turnId: context.turnId,
+      panelKey: panelKey(ownerOf(context)),
       capabilityAvailability: 'unavailable',
       capabilityReason: RUNTIME_UNVERIFIED,
     },

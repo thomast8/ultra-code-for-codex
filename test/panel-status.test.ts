@@ -51,15 +51,21 @@ it('exposes a private app-only read that observes binding in a separate server',
     name: 'ultra_panel_bind',
     arguments: { nonce, contextKey: 'current' },
   });
-  expect((await read()).structuredContent).toEqual({ state: 'bound' });
-  expect((await read()).structuredContent).toEqual({ state: 'bound' });
+  expect((await read()).structuredContent).toEqual({
+    state: 'bound',
+    panelKey: expect.stringMatching(/^[a-f0-9]{64}$/),
+  });
+  expect((await read()).structuredContent).toEqual({
+    state: 'bound',
+    panelKey: expect.stringMatching(/^[a-f0-9]{64}$/),
+  });
   expect(resolutions).toBe(0);
   await Promise.all([panel.close(), binder.close()]);
   const reopened = await connect(dataDir, async () => context);
   expect(
     (await reopened.client.callTool({ name: 'ultra_panel_status', arguments: { nonce } }))
       .structuredContent,
-  ).toEqual({ state: 'bound' });
+  ).toEqual({ state: 'bound', panelKey: expect.stringMatching(/^[a-f0-9]{64}$/) });
   await reopened.close();
 });
 
@@ -141,7 +147,7 @@ it('opens already bound only when the lead supplies a verified exact context', a
   expect(
     (await panel.client.callTool({ name: 'ultra_panel_status', arguments: { nonce } }))
       .structuredContent,
-  ).toEqual({ state: 'bound' });
+  ).toEqual({ state: 'bound', panelKey: expect.stringMatching(/^[a-f0-9]{64}$/) });
   await panel.close();
 });
 
