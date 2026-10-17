@@ -67,9 +67,10 @@ it.each([
     );
     const notice = output.hookSpecificOutput.additionalContext;
     expect(notice).toContain(policy);
+    expect(notice).toContain('ultra_start, never native subagents');
     if (effort === 'ultra' && mode === 'plan') {
-      expect(notice).toContain('read-only investigations');
-      expect(notice).toContain('lead produces an implementation-ready plan');
+      expect(notice).toContain('read-only via ultra_start');
+      expect(notice).toContain('lead plans');
       expect(notice).toContain('Plan Mode is read-only');
     }
     const key = notice.match(/^uctx_[0-9a-f-]{36}/)?.[0];
