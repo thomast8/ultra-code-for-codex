@@ -30,6 +30,8 @@ its exact-turn context without another message. After that first verified bindin
 opening from **More tools > Plugins and MCPs** restores the same chat when Desktop
 supplies its routed identity. Missing or conflicting metadata retains the explicit
 **Show this chat’s workflows** fallback. No global latest-chat lookup is used.
+Before opening a panel for workflow work, the lead checks this chat's open MCP App
+tabs and reuses an existing Ultra panel, including one opened manually.
 
 The panel keeps active and unresolved workflows visible, with agent status squares,
 live time/tokens and drill-down details. The latest settled result stays compact;

@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import type { LeadContext } from '../src/activation/types.js';
 import { createPanelServer } from '../src/mcp/panel-server.js';
+import ultraMenu from '../plugin/assets/ultra-menu.png';
 
 const context: LeadContext = {
   instanceId: '/codex',
@@ -48,6 +49,7 @@ async function nonceFrom(client: Client): Promise<string> {
 describe('panel chat binding', () => {
   it('publishes the thread side-panel entrypoint and inline MCP App resource', async () => {
     const { server, client } = await connected(async () => context);
+    expect(client.getServerVersion()?.icons).toEqual([{ src: ultraMenu, mimeType: 'image/png' }]);
     const listed = await client.listTools();
     const panelTool = listed.tools.find((tool) => tool.name === 'ultra_panel');
     expect(panelTool?._meta?.ui).toEqual({ resourceUri: 'ui://ultra-code/panel.html' });

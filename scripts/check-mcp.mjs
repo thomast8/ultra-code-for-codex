@@ -32,6 +32,12 @@ let report;
 let daemonPid;
 try {
   await client.connect(transport);
+  assert.deepEqual(client.getServerVersion()?.icons, [
+    {
+      src: `data:image/png;base64,${(await readFile('plugin/assets/ultra-menu.png')).toString('base64')}`,
+      mimeType: 'image/png',
+    },
+  ]);
   const tools = await client.listTools();
   const panel = tools.tools.find((tool) => tool.name === 'ultra_panel');
   assert.ok(panel, 'ultra_panel was not registered');

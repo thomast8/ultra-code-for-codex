@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
+import ultraMenu from '../../plugin/assets/ultra-menu.png';
 import type { LeadContext } from '../activation/types.js';
 import {
   assertRoutedContext,
@@ -62,7 +63,11 @@ export function createPanelServer(
   loadPanelHtml: PanelHtmlLoader = () => readFile(new URL('./panel.html', import.meta.url), 'utf8'),
   runtime?: DaemonCall,
 ): McpServer {
-  const server = new McpServer({ name: 'ultra-code-for-codex', version: packageMetadata.version });
+  const server = new McpServer({
+    name: 'ultra-code-for-codex',
+    version: packageMetadata.version,
+    icons: [{ src: ultraMenu, mimeType: 'image/png' }],
+  });
   const bindings = openBindings(dataDir);
   const close = server.server.onclose;
   server.server.onclose = () => {
@@ -139,7 +144,7 @@ function registerPanelView(
     {
       title: 'Open Ultra Code panel',
       description:
-        'Open Ultra Code beside the chat with its verified contextKey. Manual launches also bind automatically when exact verified chat routing is available.',
+        'Open Ultra Code only if this chat has no open Ultra panel, or the user explicitly requests a new one. Inspect this chat’s MCP App tabs first and reuse an existing Ultra panel without calling this tool. Manual launches bind automatically when verified chat routing is available.',
       inputSchema: { contextKey: z.string().min(1).optional() },
       _meta: {
         ui: { resourceUri: PANEL_URI },

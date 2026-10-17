@@ -84,7 +84,7 @@ export function Panel() {
   return (
     <main className="ultra-panel">
       <style>{panelStyles}</style>
-      {(!state.bound || capability.value !== 'available') && (
+      {(!state.bound || capability.value === 'unknown') && (
         <header className="ultra-header">
           <h1>
             <Brand />
@@ -137,11 +137,12 @@ function CapabilityView({
   capability: Availability;
   app: App;
 }) {
-  if (capability.value === 'unavailable')
+  if (capability.value === 'unavailable' && !state.bound)
     return <p role="alert">{capability.reason ?? 'Workflow execution is unavailable.'}</p>;
   if (!state.bound) return null;
   if (capability.value === 'unknown') return <p>Workflow availability has not been reported.</p>;
   if (!state.nonce) return null;
+  // A bound panel reads current status rather than retaining a stale startup failure.
   return <Dashboard app={app} nonce={state.nonce} />;
 }
 

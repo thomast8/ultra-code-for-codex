@@ -29,10 +29,15 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
-async function bind(nonce = 'dashboard') {
+async function bind(nonce = 'dashboard', content: Record<string, unknown> = {}) {
   await act(async () =>
     dashboardBridge.instance?.emit({
-      structuredContent: { bindingNonce: nonce, bound: true, capabilityAvailability: 'available' },
+      structuredContent: {
+        bindingNonce: nonce,
+        bound: true,
+        capabilityAvailability: 'available',
+        ...content,
+      },
     }),
   );
 }
@@ -233,3 +238,44 @@ function pause() {
   if (expand) flushSync(() => fireEvent.click(expand));
   fireEvent.click(screen.getByRole('button', { name: 'Pause Current workflow' }));
 }
+
+it('reads current workflow status when a bound panel’s initial startup probe failed', async () => {
+  dashboardBridge.statusResult = { structuredContent: { runs: [runFixture()], cursor: 1 } };
+  render(createElement(Panel));
+  await bind('dashboard', {
+    capabilityAvailability: 'unavailable',
+    capabilityReason: 'Runtime did not report readiness within five seconds.',
+  });
+  expect(screen.getByRole('region', { name: 'Audit documents' })).toBeDefined();
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.getAllByRole('heading', { name: /^Ultra$/ })).toHaveLength(1);
+  expect(dashboardBridge.calls).toEqual([
+    { name: 'ultra_status', arguments: { nonce: 'dashboard' } },
+  ]);
+  expect(dashboardBridge.messages).toBe(0);
+});
+
+it('retries an unavailable bound panel in place without opening or rebinding it', async () => {
+  dashboardBridge.statusResult = {
+    isError: true,
+    content: [{ type: 'text', text: 'Runtime is still starting.' }],
+  };
+  render(createElement(Panel));
+  await bind('dashboard', { capabilityAvailability: 'unavailable' });
+  const originalApp = dashboardBridge.instance;
+  expect(screen.getByRole('alert').textContent).toContain('Runtime is still starting.');
+  await tick();
+  expect(dashboardBridge.calls).toHaveLength(1);
+  dashboardBridge.statusResult = { structuredContent: { runs: [runFixture()], cursor: 1 } };
+  await act(async () =>
+    fireEvent.click(screen.getByRole('button', { name: 'Retry workflow status' })),
+  );
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.getByRole('region', { name: 'Audit documents' })).toBeDefined();
+  expect(dashboardBridge.instance).toBe(originalApp);
+  expect(dashboardBridge.calls).toEqual([
+    { name: 'ultra_status', arguments: { nonce: 'dashboard' } },
+    { name: 'ultra_status', arguments: { nonce: 'dashboard' } },
+  ]);
+  expect(dashboardBridge.messages).toBe(0);
+});

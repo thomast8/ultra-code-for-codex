@@ -28,6 +28,7 @@ const mcp = await build({
   format: 'esm',
   target: 'node26',
   outfile: new URL('mcp-entry.js', output).pathname,
+  loader: { '.png': 'dataurl' },
 });
 
 const hookEntry = new URL('../src/activation/hook-entry.ts', import.meta.url);

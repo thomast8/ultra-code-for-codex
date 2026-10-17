@@ -154,8 +154,9 @@ it('shows no-workflows only after an available engine returns a verified empty s
   ]);
 });
 
-it('shows the actual unavailable capability reason without polling or claiming an empty engine', async () => {
+it('shows an unbound panel’s unavailable reason without reading workflow data', async () => {
   await openPanel({
+    bound: false,
     capabilityAvailability: 'unavailable',
     capabilityReason: 'Local workflow engine could not connect.',
   });
