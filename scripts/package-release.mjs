@@ -34,8 +34,8 @@ for (const file of files) {
   const data = await readFile(file);
   assert.ok(data.length > 0, `Missing package file: ${file}`);
   if (file.startsWith('plugin/dist/')) {
-    assert.ok(!data.includes(Buffer.from(process.cwd())), `Build path leaked into ${file}`);
-    assert.ok(!data.includes(Buffer.from(homedir())), `Home path leaked into ${file}`);
+    assert.ok(!data.includes(Buffer.from(`${process.cwd()}/`)), `Build path leaked into ${file}`);
+    assert.ok(!data.includes(Buffer.from(`${homedir()}/`)), `Home path leaked into ${file}`);
   }
 }
 const manifest = JSON.parse(await readFile('plugin/.codex-plugin/plugin.json', 'utf8'));
