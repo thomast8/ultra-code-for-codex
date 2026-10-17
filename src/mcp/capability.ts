@@ -4,6 +4,8 @@ import type { DaemonCall } from '../local/client.js';
 
 const available =
   'Workflow runtime is available. Worker permissions and model availability are verified before each dispatch.';
+export const RUNTIME_UNVERIFIED =
+  'Local workflow execution is unavailable until the runtime and current-turn context are verified.';
 
 export async function withRuntimeCapability(
   value: CallToolResult,
@@ -18,10 +20,7 @@ export async function withRuntimeCapability(
         item.type === 'text'
           ? {
               ...item,
-              text: item.text.replace(
-                'Compatibility probe; workflow execution is unavailable until the Desktop gate passes.',
-                available,
-              ),
+              text: item.text.replace(RUNTIME_UNVERIFIED, available),
             }
           : item,
       ),
@@ -44,7 +43,10 @@ export async function withContextCapabilities(
   context: LeadContext,
   runtime?: DaemonCall,
 ): Promise<CallToolResult> {
-  if (!runtime || context.resolutionStatus !== 'verified') return value;
+  if (context.resolutionStatus !== 'verified') {
+    return unavailable(value, `Current-turn context is unverified: ${context.resolutionReason}`);
+  }
+  if (!runtime) return value;
   const available = await withRuntimeCapability(value, runtime);
   if (available.structuredContent?.capabilityAvailability !== 'available') return available;
   try {

@@ -4,7 +4,12 @@ import { StringDecoder } from 'node:string_decoder';
 import type { HookInput, LeadContext } from './types.js';
 
 export const PARSER_ADAPTER_VERSION = 'codex-turn-context-v1';
-export const SUPPORTED_CLI_VERSIONS = ['0.160.0', '0.160.1', '0.162.0-alpha.17.2'] as const;
+export const SUPPORTED_CLI_VERSIONS = [
+  '0.160.0',
+  '0.160.1',
+  '0.162.0-alpha.17.2',
+  '0.163.0-alpha.10.2',
+] as const;
 
 type JsonObject = Record<string, unknown>;
 const MAX_METADATA_LINE = 64 * 1024;
@@ -16,6 +21,14 @@ function isObject(value: unknown): value is JsonObject {
 
 function text(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function versionLabel(value: unknown): string {
+  const version = text(value);
+  if (!version) return '(missing)';
+  return version.length <= 64 && /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(version)
+    ? version
+    : '(invalid)';
 }
 
 function validId(value: string): boolean {
@@ -158,7 +171,9 @@ function makeContext(meta: JsonObject, turn: JsonObject, input: HookInput): Lead
       text(meta.cli_version) as (typeof SUPPORTED_CLI_VERSIONS)[number],
     )
   ) {
-    throw new Error(`Unsupported Codex log version for ${PARSER_ADAPTER_VERSION}`);
+    throw new Error(
+      `Unsupported Codex log version ${versionLabel(meta.cli_version)} for ${PARSER_ADAPTER_VERSION}`,
+    );
   }
   const sessionId = requiredText(meta.session_id ?? meta.id, 'session_id');
   const turnId = requiredText(turn.turn_id, 'turn_id');

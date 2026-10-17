@@ -398,3 +398,40 @@ The compiled MCP stdio/socket/QuickJS/SQLite integration verified a
 and a large control acknowledgement. Every value and evidence item survived.
 These workers were deterministic integration fixtures, with no model calls.
 Native Desktop 0.2.9 loading remains separate from that integration evidence.
+
+### Codex 0.163 fresh-session activation and Ultra planning
+
+The 0.2.12 compatibility checks missed a fresh-session failure. Codex
+0.163.0-alpha.10.2 writes its version into a new chat's session header, while
+resumed chats can retain a supported 0.162 header. The old exact-version gate
+therefore accepted resumed chats but rejected new ones before model, effort and
+mode could be verified.
+
+Version 0.2.13 accepts the observed 0.163.0-alpha.10.2 metadata projection and
+regenerates protocol bindings from that bundled CLI. Exact session, turn, cwd,
+profile, partial-line and conflicting-metadata checks remain in place. Other
+unvalidated versions remain unsupported. Failure messages now identify the
+observed version and actual context failure instead of describing the product
+as a compatibility probe.
+
+Ultra plus Plan Mode emits a planning policy. The lead produces an
+implementation-ready plan using bounded read-only investigations where useful.
+An explicitly tagged `kind: "planning"` handoff permits lead synthesis in Plan
+Mode and rejects write resource claims in every mode. Untagged and action
+handoffs retain the Default-mode requirement. Writing workers and uncertain
+worker reconciliation retain their existing Plan Mode restrictions.
+
+Regression coverage includes a sanitized fresh 0.163 session, Ultra/High and
+Default/Plan combinations, mismatch and unsupported-version rejection, planning
+handoff recovery, action/write rejection and the 500-character hook limit.
+The compiled hook/MCP/socket/SQLite fixture exercises automatic planning,
+binding/restoration and accepted planning handoffs without worker calls.
+
+The production executor completed one Luna/Low worker against the actual 0.163
+backend: it read the fixture receipt and reported write denial, with the target
+file absent afterward. The worker activity stream did not include a command
+denial receipt, so that self-report alone is not treated as proof. A separate
+deterministic run through the official 0.163 read-only OS sandbox returned a
+permission denial and left the target absent. There was no additional model
+call for that check. Fresh native Desktop activation still requires loading
+the installed 0.2.13 client and submitting a new prompt in a newly created chat.

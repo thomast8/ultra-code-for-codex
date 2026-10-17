@@ -140,7 +140,7 @@ it('gracefully omits missing, corrupt and locked journals without creating one',
   db.close();
 });
 
-function hookFixture() {
+function hookFixture(mode = 'default') {
   const root = directory();
   const dataDir = join(root, 'plugin-data');
   const transcriptPath = join(root, 'sessions', 'current.jsonl');
@@ -151,6 +151,7 @@ function hookFixture() {
     sessionId: '01a1090e-4f83-7a73-8500-f87c808e0e85',
     turnId: '01a1090e-4f83-7a73-8500-f87c808e0e86',
     effort: 'ultra',
+    collaborationMode: mode,
   };
   const rows = [
     {
@@ -168,7 +169,7 @@ function hookFixture() {
         cwd: context.cwd,
         model: context.model,
         effort: 'ultra',
-        collaboration_mode: { mode: 'default', settings: { model: context.model } },
+        collaboration_mode: { mode, settings: { model: context.model } },
       },
     },
   ];
@@ -197,45 +198,56 @@ it('adds the compact notice and skill instruction to the exact verified Ultra tu
   expect(text.length).toBeLessThanOrEqual(500);
 });
 
-it('preserves every policy and notice field at the configured limit with maximal safe counts', async () => {
-  const { dataDir, context, transcriptPath } = hookFixture();
-  const states = [
-    'queued',
-    'running',
-    'paused',
-    'cancelled',
-    'completed',
-    'failed',
-    'needs_reconciliation',
-  ];
-  const counts = new Map(states.map((state) => [state, Number.MAX_SAFE_INTEGER]));
-  const pending = formatPendingWorkNotice(counts, Number.MAX_SAFE_INTEGER);
-  vi.spyOn(pendingWork, 'pendingWorkNotice').mockReturnValue(pending);
-  const result = await runUserPromptHook(
-    {
-      hook_event_name: 'UserPromptSubmit',
-      session_id: context.sessionId,
-      turn_id: context.turnId,
-      cwd: context.cwd,
-      transcript_path: transcriptPath,
-    },
-    { PLUGIN_DATA: dataDir },
-  );
-  const text = result.hookSpecificOutput.additionalContext;
-  const configuredLimit =
-    hookConfiguration.hooks.UserPromptSubmit[0]!.hooks[0]!.additionalContextLimit;
-  expect(configuredLimit).toBe(500);
-  expect(text.length).toBeLessThanOrEqual(configuredLimit);
-  expect(text).toMatch(/^uctx_[a-f0-9-]{36}: ultra_context with this exact handle\./);
-  expect(text).toContain('Keep lead model/effort.');
-  expect(text).toContain('delegate bounded independent work worth total cost');
-  expect(text).toContain('lead owns intent and delivery');
-  expect(text).toContain('Plan Mode is read-only. Read the ultra-code skill.');
-  expect(text.endsWith(pending)).toBe(true);
-  for (const state of states) {
-    expect(pending).toContain(
-      `${state === 'needs_reconciliation' ? 'reconcile' : state}:${Number.MAX_SAFE_INTEGER}`,
+it.each(['default', 'plan'])(
+  'preserves %s policy and notice fields at the configured limit',
+  async (mode) => {
+    const { dataDir, context, transcriptPath } = hookFixture(mode);
+    const states = [
+      'queued',
+      'running',
+      'paused',
+      'cancelled',
+      'completed',
+      'failed',
+      'needs_reconciliation',
+    ];
+    const counts = new Map(states.map((state) => [state, Number.MAX_SAFE_INTEGER]));
+    const pending = formatPendingWorkNotice(counts, Number.MAX_SAFE_INTEGER);
+    vi.spyOn(pendingWork, 'pendingWorkNotice').mockReturnValue(pending);
+    const result = await runUserPromptHook(
+      {
+        hook_event_name: 'UserPromptSubmit',
+        session_id: context.sessionId,
+        turn_id: context.turnId,
+        cwd: context.cwd,
+        transcript_path: transcriptPath,
+      },
+      { PLUGIN_DATA: dataDir },
     );
-  }
-  expect(pending).toContain(`unresolved lead handoffs:${Number.MAX_SAFE_INTEGER}`);
-});
+    const text = result.hookSpecificOutput.additionalContext;
+    const configuredLimit =
+      hookConfiguration.hooks.UserPromptSubmit[0]!.hooks[0]!.additionalContextLimit;
+    expect(configuredLimit).toBe(500);
+    expect(text.length).toBeLessThanOrEqual(configuredLimit);
+    expect(text).toMatch(/^uctx_[a-f0-9-]{36}: ultra_context with this exact handle\./);
+    expect(text).toContain('Keep lead model/effort.');
+    expect(text).toContain(
+      mode === 'plan'
+        ? 'Ultra planning policy active: read-only investigations'
+        : 'delegate bounded independent work worth total cost',
+    );
+    expect(text).toContain(
+      mode === 'plan'
+        ? 'lead produces an implementation-ready plan'
+        : 'lead owns intent and delivery',
+    );
+    expect(text).toContain('Plan Mode is read-only. Read the ultra-code skill.');
+    expect(text.endsWith(pending)).toBe(true);
+    for (const state of states) {
+      expect(pending).toContain(
+        `${state === 'needs_reconciliation' ? 'reconcile' : state}:${Number.MAX_SAFE_INTEGER}`,
+      );
+    }
+    expect(pending).toContain(`unresolved lead handoffs:${Number.MAX_SAFE_INTEGER}`);
+  },
+);

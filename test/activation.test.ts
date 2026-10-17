@@ -360,7 +360,9 @@ describe('verified Ultra policy', () => {
       { hook_event_name: 'UserPromptSubmit', ...input, transcript_path: sourcePath },
       { PLUGIN_DATA: dataDir },
     );
-    expect(output.hookSpecificOutput.additionalContext).toContain('Ultra policy active:');
+    expect(output.hookSpecificOutput.additionalContext).toContain(
+      mode === 'plan' ? 'Ultra planning policy active:' : 'Ultra policy active:',
+    );
     expect(output.hookSpecificOutput.additionalContext).toContain('Plan Mode is read-only');
   });
 

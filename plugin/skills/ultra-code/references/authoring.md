@@ -79,6 +79,8 @@ The returned `TaskResult` includes `execution`, `acceptance`, `value`, `evidence
 
 ## Lead handoffs and acceptance
 
+In Plan Mode, workers perform read-only investigation and the lead produces the implementation-ready plan. Use `lead({kind: "planning", phase, objective, resources: [], evidence})` to ask the lead to resolve design choices, dependencies, ordered edits, acceptance checks and stop conditions. Its resolution verifies the plan, not implementation or publication. Planning handoffs reject write resource claims in every mode. Omitting `kind`, or specifying `kind: "action"`, preserves the existing action handoff, which cannot be claimed when the current or original run is in Plan Mode. The runtime also rejects writing workers in Plan Mode.
+
 Call `lead({phase, objective, resources, evidence, revision?})` when the lead must inspect results, make a decision or perform an authorized consequential action. The objective should state the required acceptance checks and point to the saved task results. A handoff has no separate `inputs` or `acceptance` property.
 
 Use `ultra_handoff({contextKey, id, action:"claim"})`, inspect the evidence and real system, then resolve with `action:"resolve"` and `resolution:{acceptance, value, evidence, revision?}`. Resolution acceptance is `satisfied`, `incomplete` or `blocked`. A claimed handoff belongs to that exact lead turn; if it was interrupted, read back the real state before resolving from a new verified turn. Identical resolutions are idempotent; conflicting resolutions fail.

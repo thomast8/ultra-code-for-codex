@@ -11,11 +11,13 @@ import type { LeadContext } from '../activation/types.js';
 import { assertRoutedContext, requestMetadataKind, restorePanelOwner } from './panel-owner.js';
 import type { DaemonCall } from '../local/client.js';
 import { registerWorkflowTools } from './workflow-tools.js';
-import { withRuntimeCapability, withContextCapabilities } from './capability.js';
+import {
+  withRuntimeCapability,
+  withContextCapabilities,
+  RUNTIME_UNVERIFIED,
+} from './capability.js';
 
 const PANEL_URI = 'ui://ultra-code/panel.html';
-const PROBE_LIMIT =
-  'Compatibility probe; workflow execution is unavailable until the Desktop gate passes.';
 
 export type ContextResolver = (contextKey: string, dataDir: string) => Promise<LeadContext>;
 export type PanelHtmlLoader = () => Promise<string>;
@@ -168,7 +170,7 @@ function registerPanelView(
               bound: true,
               sessionId,
               capabilityAvailability: 'unavailable',
-              capabilityReason: PROBE_LIMIT,
+              capabilityReason: RUNTIME_UNVERIFIED,
             },
           },
           runtime,
@@ -179,13 +181,13 @@ function registerPanelView(
           content: [
             {
               type: 'text',
-              text: `${PROBE_LIMIT} Ask the user to choose “Show this chat’s workflows” to bind this panel.`,
+              text: `${RUNTIME_UNVERIFIED} Ask the user to choose “Show this chat’s workflows” to bind this panel.`,
             },
           ],
           structuredContent: {
             bindingNonce: nonce,
             capabilityAvailability: 'unavailable',
-            capabilityReason: PROBE_LIMIT,
+            capabilityReason: RUNTIME_UNVERIFIED,
           },
         },
         runtime,
@@ -256,12 +258,12 @@ function registerContextTool(
             : context.resolutionReason;
         return withContextCapabilities(
           {
-            content: [{ type: 'text', text: `${message} ${PROBE_LIMIT}` }],
+            content: [{ type: 'text', text: `${message} ${RUNTIME_UNVERIFIED}` }],
             structuredContent: {
               ...context,
               requestMetadataKind: requestMetadataKind(extra._meta),
               capabilityAvailability: 'unavailable',
-              capabilityReason: PROBE_LIMIT,
+              capabilityReason: RUNTIME_UNVERIFIED,
             },
           },
           context,
@@ -363,13 +365,13 @@ function errorMessage(error: unknown): string {
 
 function boundResult(context: LeadContext, message: string) {
   return {
-    content: [{ type: 'text' as const, text: `${message} ${PROBE_LIMIT}` }],
+    content: [{ type: 'text' as const, text: `${message} ${RUNTIME_UNVERIFIED}` }],
     structuredContent: {
       bound: true,
       sessionId: context.sessionId,
       turnId: context.turnId,
       capabilityAvailability: 'unavailable',
-      capabilityReason: PROBE_LIMIT,
+      capabilityReason: RUNTIME_UNVERIFIED,
     },
   };
 }
