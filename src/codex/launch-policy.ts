@@ -22,13 +22,22 @@ export type LaunchWorkerTransport = (
   overrides: readonly string[],
   cwd: string,
   signal?: AbortSignal,
+  instanceId?: string,
 ) => Promise<WorkerTransport>;
-export const launchWorkerTransport: LaunchWorkerTransport = (configOverrides, cwd, signal) =>
-  CodexTransport.launch(BUNDLED_CODEX, 15_000, undefined, {
+export const launchWorkerTransport: LaunchWorkerTransport = (
+  configOverrides,
+  cwd,
+  signal,
+  instanceId,
+) => {
+  requireWorker(typeof instanceId === 'string', 'Worker requires the verified lead profile');
+  return CodexTransport.launch(BUNDLED_CODEX, 15_000, undefined, {
     configOverrides,
     cwd,
+    env: { ...process.env, CODEX_HOME: instanceId },
     ...(signal ? { signal } : {}),
   });
+};
 
 type LaunchPolicy = { config: Record<string, JsonValue>; sandbox: SandboxPolicy };
 
@@ -113,10 +122,11 @@ async function launchPreflight(
   launch: LaunchWorkerTransport,
   args: string[],
   cwd: string,
+  instanceId: string,
   signal?: AbortSignal,
 ): Promise<WorkerTransport> {
   requireWorker(!signal?.aborted, 'Worker cancelled before backend launch');
-  const opening = launch(args, cwd, signal);
+  const opening = launch(args, cwd, signal, instanceId);
   void opening.then(
     (transport) => {
       if (signal?.aborted) transport.close();
@@ -133,7 +143,13 @@ export async function openRestrictedBackend(
   launch: LaunchWorkerTransport,
   signal?: AbortSignal,
 ): Promise<WorkerTransport> {
-  const discovery = await launchPreflight(launch, configArguments(overrides), cwd, signal);
+  const discovery = await launchPreflight(
+    launch,
+    configArguments(overrides),
+    cwd,
+    instanceId,
+    signal,
+  );
   const detachDiscovery = closeOnAbort(discovery, signal);
   try {
     requireWorker(!signal?.aborted, 'Worker cancelled during discovery');
@@ -160,7 +176,13 @@ export async function openRestrictedBackend(
     discovery.close();
   }
   requireWorker(!signal?.aborted, 'Worker cancelled during discovery');
-  const transport = await launchPreflight(launch, configArguments(overrides), cwd, signal);
+  const transport = await launchPreflight(
+    launch,
+    configArguments(overrides),
+    cwd,
+    instanceId,
+    signal,
+  );
   const detach = closeOnAbort(transport, signal);
   try {
     await awaitPreflight(verifyWorkerProfile(transport, instanceId), signal);

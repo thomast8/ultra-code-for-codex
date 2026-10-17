@@ -384,8 +384,8 @@ it('opens an agent as its own view with a back bar and run context', async () =>
   const nav = first.getByRole('navigation', { name: 'Agent navigation' });
   expect(within(nav).getByRole('button', { name: 'Back to all 4 agents' })).toBeDefined();
   expect(within(nav).getByText('Audit documents')).toBeDefined();
-  expect(first.queryByText('Needs attention')).toBeNull();
+  expect(first.queryByText('Waiting for lead')).toBeNull();
   fireEvent.click(within(nav).getByRole('button', { name: 'Back to all 4 agents' }));
   expect(first.queryByRole('navigation', { name: 'Agent navigation' })).toBeNull();
-  expect(first.getByText('Needs attention')).toBeDefined();
+  expect(first.getByText('Waiting for lead')).toBeDefined();
 });

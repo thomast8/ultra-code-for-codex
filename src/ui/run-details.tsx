@@ -21,6 +21,7 @@ export function RunDetails({ run, runs }: { run: RunSnapshot; runs: RunSnapshot[
   return (
     <div className="run-details">
       <p>{run.objective}</p>
+      {run.error && <p className="workflow-error">{run.error}</p>}
       {run.parentRunId && (
         <p className="workflow-muted">
           Continues {parent ? <a href={`#run-${parent.id}`}>{parent.title}</a> : run.parentRunId}
@@ -107,7 +108,7 @@ function phaseList(run: RunSnapshot, handoffs: HandoffSnapshot[]): PhaseRef[] {
 
 function Handoff({ handoff }: { handoff: HandoffSnapshot }) {
   return (
-    <details className="workflow-handoff" open={handoff.state !== 'resolved'}>
+    <details className="workflow-handoff">
       <summary>
         Lead handoff <StatusBadge state={handoff.state} />
       </summary>

@@ -1,7 +1,6 @@
 import packageMetadata from '../../package.json' with { type: 'json' };
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
 import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { localEndpoint, type Endpoint } from './endpoint.js';
@@ -12,14 +11,9 @@ export type DaemonCall = (method: string, params: unknown) => Promise<unknown>;
 export type LaunchDaemon = (dataDir: string) => Promise<'endpoint' | void>;
 
 async function launchInstalledDaemon(dataDir: string): Promise<'endpoint' | void> {
-  const runtime = JSON.parse(
-    await readFile(new URL('./runtime.json', import.meta.url), 'utf8'),
-  ) as {
-    nodeExecutable: string;
-  };
   const attemptId = randomUUID();
   const child = spawn(
-    runtime.nodeExecutable,
+    process.execPath,
     [fileURLToPath(new URL('./daemon-entry.js', import.meta.url)), dataDir, attemptId],
     {
       detached: true,
@@ -27,7 +21,7 @@ async function launchInstalledDaemon(dataDir: string): Promise<'endpoint' | void
     },
   );
   await new Promise<void>((resolve, reject) => {
-    child.once('error', () => reject(new Error('Could not start the pinned Ultra Code runtime')));
+    child.once('error', () => reject(new Error('Could not start the Ultra Code runtime')));
     child.once('spawn', resolve);
   });
   child.unref();

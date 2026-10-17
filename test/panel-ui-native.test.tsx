@@ -2,7 +2,7 @@
 import { afterEach, expect, it } from 'vitest';
 import { applyHostContext } from '../src/ui/panel.js';
 import { panelStyles } from '../src/ui/styles.js';
-import { attentionMessage } from '../src/ui/workflow-summary.js';
+import { attentionMessage, leadStatus, needsAttention } from '../src/ui/workflow-summary.js';
 import { runFixture, taskFixture } from './panel-ui-dashboard-fixture.js';
 
 afterEach(() => {
@@ -62,6 +62,46 @@ it('names the agent whose acceptance needs review instead of a generic message',
     'The run finished with acceptance blocked.',
   );
   expect(attentionMessage({ ...run, state: 'running', tasks: [] })).toBe(
-    'A lead decision needs review.',
+    'The lead is handling the next decision.',
+  );
+});
+
+it('keeps pending and claimed verification with the lead without exposing the payload', () => {
+  const pending = {
+    id: 'lead',
+    state: 'pending' as const,
+    claimedTurnId: null,
+    result: null,
+    spec: {
+      phase: { id: 'verify', label: 'Verify' },
+      objective: 'private worker JSON'.repeat(500),
+      resources: [],
+      evidence: [],
+    },
+  };
+  const run = runFixture({ handoffs: [pending], tasks: [] });
+  expect(leadStatus(run)).toBe('Waiting for lead');
+  expect(attentionMessage(run)).toBe('The lead is handling the returned work.');
+  expect(leadStatus({ ...run, handoffs: [{ ...pending, state: 'claimed' }] })).toBe(
+    'Lead is verifying',
+  );
+  expect(leadStatus({ ...run, handoffs: [{ ...pending, state: 'resolved' }] })).toBeNull();
+  expect(leadStatus({ ...run, state: 'completed' })).toBeNull();
+  expect(leadStatus({ ...run, state: 'needs_reconciliation' })).toBeNull();
+  expect(leadStatus({ ...run, error: 'Failure' })).toBeNull();
+});
+
+it('honors the lead’s accepted outcome without hiding uncertain execution', () => {
+  const run = runFixture({
+    state: 'completed',
+    acceptanceOutcome: 'satisfied',
+    handoffs: [],
+    tasks: [taskFixture({ state: 'failed' })],
+  });
+  expect(needsAttention(run)).toBe(false);
+  expect(needsAttention({ ...run, acceptanceOutcome: 'incomplete' })).toBe(true);
+  expect(needsAttention({ ...run, error: 'Still unresolved' })).toBe(true);
+  expect(needsAttention({ ...run, tasks: [taskFixture({ state: 'needs_reconciliation' })] })).toBe(
+    true,
   );
 });

@@ -1,6 +1,12 @@
 {
   "name": "ultra-code-for-codex",
-  "version": "0.2.14",
+  "version": "0.2.15",
+  "author": {
+    "name": "Thomas Tiotto",
+    "url": "https://github.com/thomast8"
+  },
+  "homepage": "https://github.com/thomast8/ultra-code-for-codex",
+  "license": "MIT",
   "description": "Local adaptive Codex workflows with bounded workers, durable results and a chat-bound panel.",
   "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",
@@ -8,6 +14,8 @@
     "logo": "./assets/ultra.png",
     "composerIcon": "./assets/ultra-menu.png",
     "displayName": "Ultra Code for Codex",
+    "developerName": "Thomas Tiotto",
+    "websiteUrl": "https://github.com/thomast8/ultra-code-for-codex",
     "shortDescription": "Selective workflows and durable results beside your chat.",
     "longDescription": "Keep the selected chat model as lead while bounded workers execute independent tasks. Track multiple workflows, evidence, usage and lead decisions in a local panel.",
     "category": "Developer tools",

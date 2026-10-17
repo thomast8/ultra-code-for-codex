@@ -1,6 +1,6 @@
 # Ultra Code for Codex
 
-A personal local plugin for selective, adaptive workflows beside a Codex chat.
+A local Codex plugin for selective, adaptive workflows beside a chat.
 The selected chat model remains the lead. It delegates bounded work when the
 benefit justifies worker usage and coordination, and retains decisions, real QA,
 integration and verified completion.
@@ -38,9 +38,51 @@ preserves edits. Closing the panel does not stop the local daemon. Results persi
 A returned worker result is not a verified goal: the lead must inspect evidence
 and resolve the final handoff.
 
-## Setup and installation
+Verification and worker problems always return to the lead. The panel shows
+“Waiting for lead” or “Lead is verifying”, with internal handoff payloads kept
+inside closed details. A worker's incomplete result does not override the lead's
+verified final outcome. Uncertain execution remains visible until reconciled.
+Only the lead asks the user directly in chat for a necessary decision or authority.
 
-Use Node **26.10.0** and `just`. The worker adapter and generated protocol are
+## Install the plugin
+
+The GitHub plugin includes the built runtime, panel, authoring skill and hooks.
+No source build, npm install or hosted service is needed to use it. This release
+is verified on macOS with Codex Desktop CLI **0.163.0-alpha.10.2**, the official
+app at `/Applications/ChatGPT.app`, and Node **26.10.0 or 26.12.0** on the app's
+PATH. Other operating systems and unlisted Codex versions are not qualified.
+
+```sh
+codex plugin marketplace add thomast8/ultra-code-for-codex --ref v0.2.15
+codex plugin add ultra-code-for-codex@ultra-code-for-codex-local
+```
+
+If `codex` is not on PATH, use the bundled executable shown below. The marketplace
+name retains its original `-local` suffix to preserve existing workflow storage.
+For an isolated or Doppel-managed instance, run both commands with that instance's
+`CODEX_HOME`; install separately for each profile. Account access, workflows and
+bindings are not copied between profiles. The plugin uses the selected profile's
+existing ChatGPT authentication and never asks for an API key.
+
+Codex reviews the plugin-owned hook through its normal trust flow. Enable the
+plugin in the app's Plugins settings. Reload the plugin connection after an update;
+close and reopen an old panel to load the new UI. Reopening from More tools restores
+the verified chat binding without a Bind click. Ultra activates the authoring policy
+automatically; Plan + Ultra keeps investigations read-only and produces a plan.
+
+The [GitHub release](https://github.com/thomast8/ultra-code-for-codex/releases/latest)
+also provides a standalone archive and SHA-256 checksums. Extract it and register
+the extracted directory with `codex plugin marketplace add /path/to/extracted`.
+To change a pinned release or switch from a source checkout, unregister the old
+marketplace source with `codex plugin marketplace remove ultra-code-for-codex-local`,
+then run the installation commands with the desired release tag. This removes the
+source registration, not the plugin or its workflow data. Do not use `plugin remove`
+for an update. Keep the same profile and marketplace name. Workers can continue using
+tokens when Codex is closed; pause or cancel runs before updating the runtime.
+
+## Develop from source
+
+Use Node **26.10.0 or 26.12.0** and `just`. The worker adapter and generated protocol are
 verified against the Desktop-bundled CLI **0.163.0-alpha.10.2** at
 `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`.
 
@@ -63,8 +105,11 @@ MCP server can retain its previous build; confirm the live version before assess
 an update. If Desktop retains the previous connection across turns, fully quit
 and reopen the app hosting this chat. An already-open panel can also need
 closing and reopening to load its new UI. Saved chat bindings and workflows stay
-in the plugin data directory. Do not edit the generated plugin cache. The daemon uses the pinned Node
-executable recorded by the local build, so rebuild after moving that executable.
+in the plugin data directory. Do not edit the generated plugin cache. The daemon uses
+the same local Node executable as the MCP server; published builds contain no
+developer-machine runtime path. `npm run package:release` creates the installable
+archive and checksums from an explicit file allowlist. Bundled dependency licenses
+are included in `plugin/dist/THIRD_PARTY_NOTICES.txt`.
 
 When workflows start, the authoring policy asks the lead to open the dashboard
 with its verified context. The app requests the host's expanded display mode

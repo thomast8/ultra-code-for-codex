@@ -3,11 +3,12 @@ import { executeWorker, readWorkerCapabilities } from './codex/worker.js';
 import { serveDaemon } from './daemon.js';
 import { join } from 'node:path';
 import { startupFailureReason, writeStartupReceipt } from './local/startup.js';
+import { verifyNodeRuntime } from './local/node-runtime.js';
 
 const dataDir = process.argv[2];
 if (!dataDir) throw new Error('Plugin data directory is required');
 try {
-  if (process.versions.node !== '26.10.0') throw new Error('Node 26.10.0 is required');
+  verifyNodeRuntime();
   const daemon = await serveDaemon(
     dataDir,
     () =>

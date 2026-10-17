@@ -456,3 +456,23 @@ support. This is the standard host API, not private Desktop IPC. Repeated
 results do not repeat the request, and unsupported or rejecting hosts keep the
 inline app usable. Actual Codex side-panel expansion remains a separate native
 QA requirement from the passing fixture-host protocol request.
+
+## Native 0.2.15 follow-up, 17 October 2026
+
+The previously pending automatic expansion check passed in the installed Codex
+build. Fresh Ultra chats in both primary and Doppel-managed Personal instances
+opened the side panel and bound it automatically, without naming the plugin in
+the initial request. Fresh Plan + Ultra chats also activated the policy, ran
+read-only workers concurrently and returned implementation-ready plans.
+
+Personal initially failed profile verification before dispatch. Explicitly passing
+the verified profile to both worker backend launches fixed the boundary; the
+identity check remains mandatory. Actual Personal workers subsequently returned
+through lead-owned handoffs in both Default and Plan modes.
+
+Native close/reopen from More tools retained binding and all three records in
+each planning chat, including failed/incomplete attempts and their accepted
+linked recoveries. No Bind click or queued binding message was needed. The panel
+keeps verification with the lead and does not request human review of worker
+output. See the latest [acceptance ledger](../acceptance.md) for the deliberately
+preserved negative outcomes and observed usage.

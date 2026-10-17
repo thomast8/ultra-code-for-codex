@@ -2,10 +2,12 @@ import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { URL } from 'node:url';
 import { build } from 'esbuild';
 import './check-runtime.mjs';
+import { thirdPartyNotices } from './notices.mjs';
 
 const output = new URL('../plugin/dist/', import.meta.url);
 await mkdir(output, { recursive: true });
 const ui = await build({
+  metafile: true,
   entryPoints: ['src/ui/panel.tsx'],
   bundle: true,
   write: false,
@@ -18,7 +20,8 @@ const ui = await build({
 const javascript = ui.outputFiles[0].text.replaceAll('</script', '<\\/script');
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ultra Code</title></head><body><div id="root"></div><script>${javascript}</script></body></html>`;
 await writeFile(new URL('panel.html', output), html);
-await build({
+const mcp = await build({
+  metafile: true,
   entryPoints: ['src/mcp/entry.ts'],
   bundle: true,
   platform: 'node',
@@ -29,7 +32,8 @@ await build({
 
 const hookEntry = new URL('../src/activation/hook-entry.ts', import.meta.url);
 await readFile(hookEntry);
-await build({
+const hook = await build({
+  metafile: true,
   entryPoints: [hookEntry.pathname],
   bundle: true,
   platform: 'node',
@@ -38,7 +42,8 @@ await build({
   outfile: new URL('hook-entry.js', output).pathname,
 });
 
-await build({
+const daemon = await build({
+  metafile: true,
   entryPoints: ['src/daemon-entry.ts'],
   bundle: true,
   platform: 'node',
@@ -57,6 +62,8 @@ await copyFile(
   new URL('quickjs.wasm', output),
 );
 await writeFile(
-  new URL('runtime.json', output),
-  JSON.stringify({ nodeExecutable: process.execPath }),
+  new URL('THIRD_PARTY_NOTICES.txt', output),
+  await thirdPartyNotices(
+    [ui, mcp, hook, daemon].flatMap((result) => Object.keys(result.metafile.inputs)),
+  ),
 );

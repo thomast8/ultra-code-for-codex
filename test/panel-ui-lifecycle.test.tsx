@@ -197,8 +197,8 @@ it('keeps old failed, unverified and reconciliation work in current view', async
   reconcile.tasks = [taskFixture({ state: 'needs_reconciliation' })];
   await loaded([failed, blocked, reconcile, finished('newest', 3)]);
   expect(screen.getAllByRole('region')).toHaveLength(4);
-  expect(screen.getByText('Test runner unavailable')).toBeDefined();
-  expect(screen.getAllByText('Needs attention')).toHaveLength(3);
+  expect(screen.getAllByText('Test runner unavailable')).toHaveLength(2);
+  expect(screen.getAllByText('Lead follow-up')).toHaveLength(3);
 });
 
 it('shows missing usage honestly, truncates preview overflow and keeps every agent reachable', async () => {

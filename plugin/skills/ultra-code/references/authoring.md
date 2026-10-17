@@ -40,6 +40,28 @@ Replay requires the same host calls and payloads in the same order. Completed ca
 
 ## Worker contracts and cost assessment
 
+`agent()` returns a `TaskResult`, not a task snapshot. Its fields are `execution`,
+`acceptance`, `value`, `evidence`, `unresolved`, `usage`, `requestedModel`,
+`reportedModel` and optional `error`. There is no `taskId` or `id` on this return
+value. Use `result.evidence` directly in a handoff; obtain task IDs from
+`ultra_status` when needed. Do not invent an artifact ID from an undefined field
+or put the serialized worker result into the handoff objective.
+
+```js
+const result = await agent(args.spec);
+return await lead({
+  kind: 'planning',
+  phase: phase('Lead verifies the source findings'),
+  objective: 'Verify the saved worker result and prepare the requested plan.',
+  resources: [],
+  evidence: result.evidence,
+});
+```
+
+If a later script step fails after a worker returns, preserve the failed run and
+read its saved result. Continue with a linked run and valid evidence references;
+do not repeat the investigation to repair a handoff or formatting mistake.
+
 `agent(spec)` requires:
 
 ```js

@@ -1,10 +1,10 @@
 {
   "name": "ultra-code-for-codex",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "private": true,
   "type": "module",
   "engines": {
-    "node": "26.10.0"
+    "node": "26.10.0 || 26.12.0"
   },
   "scripts": {
     "lint": "eslint src test scripts",
@@ -14,7 +14,8 @@
     "test:coverage": "vitest run --coverage",
     "build": "node scripts/build.mjs",
     "quality": "npm run lint && npm run typecheck",
-    "check": "npm run format:check && npm run quality && npm run test:coverage && npm run build"
+    "check": "npm run format:check && npm run quality && npm run test:coverage && npm run build",
+    "package:release": "node scripts/package-release.mjs"
   },
   "dependencies": {
     "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
@@ -45,5 +46,6 @@
   },
   "allowScripts": {
     "esbuild@0.28.2": true
-  }
+  },
+  "license": "MIT"
 }

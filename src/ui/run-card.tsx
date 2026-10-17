@@ -11,6 +11,7 @@ import type { RunAction } from './workflow-feed.js';
 import {
   agentCounts,
   attentionMessage,
+  leadStatus,
   needsAttention,
   runElapsed,
   terminal,
@@ -127,16 +128,39 @@ function Attention({ run }: { run: RunSnapshot }) {
     <div className="run-attention" role="note">
       <Icon name="alert" />
       <div>
-        <strong>Review needed</strong>
-        <p>{attentionMessage(run)}</p>
+        <strong>Execution details</strong>
+        <p>{resultSummary(attentionMessage(run))?.text}</p>
       </div>
     </div>
   );
 }
 
 function eyebrow(attention: boolean, finished: boolean): string {
-  if (attention) return 'Needs attention';
+  if (attention) return 'Lead follow-up';
   return finished ? 'Latest result' : 'In progress';
+}
+
+function RunHeading({
+  run,
+  attention,
+  finished,
+}: {
+  run: RunSnapshot;
+  attention: boolean;
+  finished: boolean;
+}) {
+  const lead = leadStatus(run);
+  return (
+    <header className="workflow-run-heading">
+      <div className="run-title">
+        <p className={`run-eyebrow ${attention && !lead ? 'attention-ink' : ''}`}>
+          {lead ?? eyebrow(attention, finished)}
+        </p>
+        <h2>{run.title}</h2>
+      </div>
+      <StatusBadge state={run.state} />
+    </header>
+  );
 }
 
 function RunSummary({
@@ -157,18 +181,11 @@ function RunSummary({
   toggle: () => void;
 }) {
   const showAgents = run.tasks.length > 0 || controlsAvailable(run);
+  const lead = leadStatus(run);
   return (
     <>
-      <header className="workflow-run-heading">
-        <div className="run-title">
-          <p className={`run-eyebrow ${attention ? 'attention-ink' : ''}`}>
-            {eyebrow(attention, finished)}
-          </p>
-          <h2>{run.title}</h2>
-        </div>
-        <StatusBadge state={run.state} />
-      </header>
-      {attention && <Attention run={run} />}
+      <RunHeading run={run} attention={attention} finished={finished} />
+      {attention && !lead && <Attention run={run} />}
       <BudgetNotice run={run} />
       <div className="run-summary">
         {finished && <FinishedResult run={run} />}
