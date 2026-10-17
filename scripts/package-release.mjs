@@ -43,7 +43,9 @@ assert.equal(manifest.version, packageMetadata.version);
 await mkdir('release', { recursive: true });
 const name = `ultra-code-for-codex-${packageMetadata.version}.tar.gz`;
 const archive = `release/${name}`;
-execFileSync('tar', ['-czf', archive, ...files]);
+execFileSync('tar', ['-czf', archive, ...files], {
+  env: { ...process.env, COPYFILE_DISABLE: '1' },
+});
 const listing = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8' }).trim().split('\n');
 assert.deepEqual(listing.sort(), [...files].sort(), 'Release contents differ from the allowlist');
 const hash = createHash('sha256')
