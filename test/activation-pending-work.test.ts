@@ -233,14 +233,11 @@ it.each(['default', 'plan'])(
     expect(text).toContain('Keep lead model/effort.');
     expect(text).toContain(
       mode === 'plan'
-        ? 'Ultra planning policy active: read-only investigations'
-        : 'delegate bounded independent work worth total cost',
+        ? 'Ultra planning policy active: read-only via ultra_start'
+        : 'Ultra policy active: delegate via ultra_start',
     );
-    expect(text).toContain(
-      mode === 'plan'
-        ? 'lead produces an implementation-ready plan'
-        : 'lead owns intent and delivery',
-    );
+    expect(text).toContain('never native subagents');
+    expect(text).toContain(mode === 'plan' ? 'lead plans' : 'lead owns intent and delivery');
     expect(text).toContain('Plan Mode is read-only. Read the ultra-code skill.');
     expect(text.endsWith(pending)).toBe(true);
     for (const state of states) {

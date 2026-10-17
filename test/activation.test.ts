@@ -364,6 +364,8 @@ describe('verified Ultra policy', () => {
       mode === 'plan' ? 'Ultra planning policy active:' : 'Ultra policy active:',
     );
     expect(output.hookSpecificOutput.additionalContext).toContain('Plan Mode is read-only');
+    expect(output.hookSpecificOutput.additionalContext).toContain('ultra_start');
+    expect(output.hookSpecificOutput.additionalContext).toContain('never native subagents');
   });
 
   it.each(['0.160.1', '0.161.0'])('does not activate unverified Ultra in %s', async (version) => {
@@ -376,6 +378,9 @@ describe('verified Ultra policy', () => {
       { PLUGIN_DATA: dataDir },
     );
     expect(output.hookSpecificOutput.additionalContext).toContain('Ultra policy inactive:');
+    expect(output.hookSpecificOutput.additionalContext).toContain(
+      'Explicit Ultra: use ultra_start, never native subagents',
+    );
   });
 });
 
