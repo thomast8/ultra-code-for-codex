@@ -66,6 +66,13 @@ closing and reopening to load its new UI. Saved chat bindings and workflows stay
 in the plugin data directory. Do not edit the generated plugin cache. The daemon uses the pinned Node
 executable recorded by the local build, so rebuild after moving that executable.
 
+When workflows start, the authoring policy asks the lead to open the dashboard
+with its verified context. The app requests the host's expanded display mode
+when supported. On a first manual open, exact routed chat identity can also
+bind through that chat's verified current registration, without a queued message
+or an earlier panel binding. Missing or conflicting identity still requires the
+explicit binding fallback; the server never selects a global latest chat.
+
 ## Runtime and boundaries
 
 The lead tools are `ultra_context`, `ultra_start`, `ultra_status`, `ultra_wait`,

@@ -110,6 +110,18 @@ function currentFile(dataDir: string, sessionId: string): string {
   return join(dataDir, 'activation', `current-${identity}`);
 }
 
+export async function currentSessionKey(
+  dataDir: string,
+  sessionId: string,
+): Promise<string | undefined> {
+  try {
+    return await readFile(currentFile(dataDir, sessionId), 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw error;
+  }
+}
+
 export async function resolveCurrentContext(
   contextKey: string,
   dataDir: string,

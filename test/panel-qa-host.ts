@@ -25,6 +25,12 @@ const bridge = new AppBridge(
     hostContext: {
       theme,
       platform: 'desktop',
+      ...(params.has('auto')
+        ? {
+            displayMode: 'inline' as const,
+            availableDisplayModes: ['inline' as const, 'fullscreen' as const],
+          }
+        : {}),
       ...(params.has('vars') ? { styles: { variables: loudVariables } } : {}),
     },
   },
@@ -35,11 +41,23 @@ bridge.oncalltool = async ({ name }) => {
   return { content: [] };
 };
 bridge.onmessage = async () => ({});
+bridge.onrequestdisplaymode = async ({ mode }) => {
+  const status = document.createElement('output');
+  status.setAttribute('aria-label', 'Display request');
+  status.textContent = `Host accepted display request: ${mode}`;
+  document.body.append(status);
+  return { mode };
+};
 bridge.oninitialized = async () => {
   await bridge.sendToolInput({ arguments: {} });
   await bridge.sendToolResult({
     content: [],
-    structuredContent: { bindingNonce: 'qa', bound: true, capabilityAvailability: 'available' },
+    structuredContent: {
+      bindingNonce: 'qa',
+      bound: true,
+      capabilityAvailability: 'available',
+      openInPanel: params.has('auto'),
+    },
   });
 };
 iframe.addEventListener('load', () => {
