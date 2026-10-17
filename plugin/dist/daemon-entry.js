@@ -30281,7 +30281,7 @@ Codex stderr summary: ${labels.join("; ") || "unrecognized diagnostic"}; raw det
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.2.16",
+  version: "0.2.17",
   private: true,
   type: "module",
   engines: {
