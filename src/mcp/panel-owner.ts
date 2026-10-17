@@ -1,6 +1,9 @@
 import { isAbsolute, resolve } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
+import { currentSessionKey } from '../activation/registry.js';
+import type { ContextResolver } from './panel-server.js';
+import { realpath } from 'node:fs/promises';
 
 // Manual launches lack a context handle, so restoration keeps both host aliases.
 const threadIdentity = z
@@ -59,6 +62,38 @@ export function restorePanelOwner(
     )
     .get(owner, nonce, owner);
   return restored ? sessionId : undefined;
+}
+
+export async function currentPanelContextKey(
+  dataDir: string,
+  metadata: unknown,
+  resolver: ContextResolver,
+): Promise<string | undefined> {
+  const sessionId = currentPanelSessionId(metadata);
+  const profile = profileFrom(dataDir);
+  if (!sessionId || !profile) return;
+  try {
+    const key = await currentSessionKey(dataDir, sessionId);
+    if (!key) return;
+    const context = await resolver(key, dataDir);
+    if (
+      context.resolutionStatus !== 'verified' ||
+      context.instanceId !== (await realpath(profile)) ||
+      context.sessionId !== sessionId
+    )
+      return;
+    return key;
+  } catch {
+    return undefined;
+  }
+}
+
+function currentPanelSessionId(metadata: unknown): string | undefined {
+  const identity = routedContextIdentity.safeParse(metadata);
+  if (!identity.success) return;
+  const { thread_id, threadId } = identity.data;
+  if (thread_id && threadId && thread_id !== threadId) return;
+  return thread_id ?? threadId;
 }
 
 function profileFrom(dataDir: string): string | undefined {

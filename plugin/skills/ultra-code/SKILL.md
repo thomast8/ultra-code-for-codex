@@ -7,6 +7,8 @@ Use this skill for explicit Ultra Code requests or verified Ultra turns when a t
 
 Before starting, resolve the exact current `ultra_context` handle. Preserve the selected lead model and effort. Unknown context blocks execution; Plan Mode remains read-only. Existing task scope, repository quality gates and approval requirements still apply.
 
+Before starting workflows, call `ultra_panel` with the verified `contextKey` to bind the dashboard and request display beside the chat. Do this once for the current work rather than waiting for the user to open and bind it. If the host keeps the app inline, say so and use its Open app in tab control; never claim it opened without host confirmation. Do not ask the user to send a binding message when verified chat routing is available.
+
 In Plan Mode, produce an Ultra plan: the selected lead resolves the design and synthesizes an implementation-ready plan from repository evidence. Use bounded read-only investigations for independent questions where the benefit justifies their total cost. Keep tightly coupled reasoning with the lead. Do not implement the plan, edit project files, dispatch writing workers or publish changes.
 
 The plan must state the outcome and acceptance criteria, the evidence behind the chosen design, precise interfaces and behavior, ordered file-level changes, dependencies, verification and stop conditions. Surface unresolved decisions explicitly. Use `kind: "planning"` for read-only lead handoffs and resolve them only against the plan's acceptance criteria; planning completion does not establish implemented or production-verified behavior. Use arbitrary task phases appropriate to the request; no fixed planning pipeline or critic panel is required.

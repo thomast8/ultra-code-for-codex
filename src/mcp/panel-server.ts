@@ -8,7 +8,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import type { LeadContext } from '../activation/types.js';
-import { assertRoutedContext, requestMetadataKind, restorePanelOwner } from './panel-owner.js';
+import {
+  assertRoutedContext,
+  requestMetadataKind,
+  restorePanelOwner,
+  currentPanelContextKey,
+} from './panel-owner.js';
 import type { DaemonCall } from '../local/client.js';
 import { registerWorkflowTools } from './workflow-tools.js';
 import {
@@ -134,7 +139,7 @@ function registerPanelView(
     {
       title: 'Open Ultra Code panel',
       description:
-        'Open the local Ultra Code panel. Supply this turn’s verified contextKey to bind automatically. Omit it only for a manual launch requiring chat binding.',
+        'Open Ultra Code beside the chat with its verified contextKey. Manual launches also bind automatically when exact verified chat routing is available.',
       inputSchema: { contextKey: z.string().min(1).optional() },
       _meta: {
         ui: { resourceUri: PANEL_URI },
@@ -144,6 +149,8 @@ function registerPanelView(
     async ({ contextKey }, extra) => {
       const nonce = randomBytes(24).toString('base64url');
       bindings.prepare("INSERT INTO bindings (nonce, state) VALUES (?, 'pending')").run(nonce);
+      const openInPanel = Boolean(contextKey);
+      contextKey ??= await currentPanelContextKey(dataDir, extra._meta, resolveContext);
       if (contextKey) {
         const result = await withRuntimeCapability(
           await bindPanel(
@@ -157,7 +164,7 @@ function registerPanelView(
         );
         return {
           ...result,
-          structuredContent: { ...result.structuredContent, bindingNonce: nonce },
+          structuredContent: { ...result.structuredContent, bindingNonce: nonce, openInPanel },
         };
       }
       const sessionId = restorePanelOwner(bindings, nonce, dataDir, extra._meta);

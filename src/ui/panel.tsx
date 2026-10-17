@@ -14,6 +14,7 @@ import { initialState, PanelBinding, type PanelState } from './binding.js';
 import { Dashboard } from './dashboard.js';
 import { panelStyles } from './styles.js';
 import { Brand } from './icons.js';
+import { PanelDisplay } from './panel-display.js';
 
 type Availability = {
   nonce: string;
@@ -55,17 +56,26 @@ export function Panel() {
   const [availability, setAvailability] = useState(unknownAvailability);
   const [binding] = useState(() => new PanelBinding(app, setState));
   useEffect(() => {
+    const display = new PanelDisplay(app);
     app.addEventListener('toolresult', (result) => {
       binding.receive(result);
       setAvailability((previous) => readAvailability(result, previous));
+      display.receive(result);
     });
-    app.onhostcontextchanged = applyHostContext;
+    app.onhostcontextchanged = (context) => {
+      applyHostContext(context);
+      display.contextChanged();
+    };
     void app.connect(new PostMessageTransport(window.parent, window.parent)).then(
-      () => applyHostContext(app.getHostContext()),
+      () => {
+        applyHostContext(app.getHostContext());
+        display.ready();
+      },
       () => binding.connectionFailed(),
     );
     return () => {
       binding.close();
+      display.close();
       void app.close();
     };
   }, [app, binding]);

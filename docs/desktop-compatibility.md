@@ -435,3 +435,24 @@ deterministic run through the official 0.163 read-only OS sandbox returned a
 permission denial and left the target absent. There was no additional model
 call for that check. Fresh native Desktop activation still requires loading
 the installed 0.2.13 client and submitting a new prompt in a newly created chat.
+
+### First-use panel ownership and requested display
+
+The fresh native audit exposed two omissions in 0.2.13: the lead never invoked
+the panel tool, and manual restoration required an earlier saved panel owner.
+An exact verified prompt context alone could not bind the first manual panel.
+The explicit Bind button consequently queued a message behind the running lead.
+
+Version 0.2.14 resolves a manual launch through only its routed UUID and that
+profile/chat's current context registration. The resolver revalidates the
+current handle, canonical profile and session before binding. One valid host
+alias suffices with that verified registration; conflicting aliases, a foreign
+profile/chat and unknown contexts do not bind. Saved-binding restoration and
+the explicit fallback remain available when no verified current context exists.
+
+The skill now opens the dashboard before workflow dispatch. Bound agent-opened
+results request the MCP App host's fullscreen display mode when it advertises
+support. This is the standard host API, not private Desktop IPC. Repeated
+results do not repeat the request, and unsupported or rejecting hosts keep the
+inline app usable. Actual Codex side-panel expansion remains a separate native
+QA requirement from the passing fixture-host protocol request.
