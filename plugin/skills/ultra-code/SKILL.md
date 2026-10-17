@@ -5,6 +5,8 @@ description: Run bounded, cost-aware workflows when independent work warrants or
 
 Use this skill for explicit Ultra Code requests or verified Ultra turns when a task benefits from independent workers. A small, tightly coupled task should stay with the lead. Ultra is permission to consider orchestration, not a requirement to create workers.
 
+When Ultra delegates, use the workflow engine through `ultra_start`. Do not use native subagents or another delegation tool instead, including for planning, research or review. If the engine or required worker capability is unavailable, report the blocker; do not fall back to native subagents. Opening the panel does not start a workflow. Verify a saved run ID with `ultra_status` before claiming Ultra delegated work, then inspect the saved results and resolve required lead handoffs before claiming completion.
+
 Before starting, resolve the exact current `ultra_context` handle. Preserve the selected lead model and effort. Unknown context blocks execution; Plan Mode remains read-only. Existing task scope, repository quality gates and approval requirements still apply.
 
 Before starting workflows, call `ultra_panel` with the verified `contextKey` to bind the dashboard and request display beside the chat. Do this once for the current work rather than waiting for the user to open and bind it. If the host keeps the app inline, say so and use its Open app in tab control; never claim it opened without host confirmation. Do not ask the user to send a binding message when verified chat routing is available.

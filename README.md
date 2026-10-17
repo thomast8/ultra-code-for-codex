@@ -17,6 +17,9 @@ automatically. You do not need to say “Use Ultra Code.” For example, ask
 **“Investigate these three independent questions, then compare the evidence.”**
 The lead decides whether delegation is useful; a small task such as correcting
 one label stays with the lead. Ultra does not require fan-out or grant authority.
+When Ultra delegates, it uses the workflow engine and records a run in the panel.
+Native subagents are not a fallback. An unavailable engine or worker capability
+is reported as a blocker; opening the panel alone does not start a workflow.
 
 At another reasoning level, explicit invocation also works when capabilities are
 verified: **“Use Ultra Code to investigate these independent questions.”** Native
