@@ -14,6 +14,13 @@ const loudVariables = {
 const params = new URLSearchParams(location.search);
 const theme = params.get('theme') === 'dark' ? 'dark' : 'light';
 const runs = qaRuns(Date.now());
+if (params.has('lead')) {
+  const run = runs.find((candidate) => candidate.handoffs.length > 0);
+  if (run?.handoffs[0]) {
+    run.handoffs[0].state = 'claimed';
+    run.handoffs[0].spec.objective = `Verify returned work: ${JSON.stringify({ workerResult: 'x'.repeat(6000) })}`;
+  }
+}
 const iframe = document.querySelector('iframe') as HTMLIFrameElement;
 iframe.style.width = `${Number(params.get('width')) || 370}px`;
 

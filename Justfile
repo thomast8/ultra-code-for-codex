@@ -20,6 +20,9 @@ test *args:
 build:
     npm run build
 
+package-release:
+    npm run package:release
+
 check:
     npm run check
 

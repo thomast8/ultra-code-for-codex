@@ -1,5 +1,10 @@
 # Acceptance ledger
 
+Latest native qualification: **0.2.15, 17 October 2026**. Fresh primary and
+Doppel-managed Personal chats exercised Ultra, Plan + Ultra, automatic panel
+opening/binding, concurrent workers and lead-owned recovery. See the final entry
+for the positive and negative outcomes; earlier entries are historical.
+
 Updated 2026-10-15. Native research/comparison/coding QA passed on installed
 0.2.0. Installed 0.2.4 corrected generic and single-alias MCP metadata handling;
 its native worker-to-lead workflow and bound-panel close/reopen QA passed. After
@@ -264,3 +269,43 @@ details showed 29,789 input, 12,032 cached input, 17,757 uncached input, 338
 output, cache writes unreported, the rate-card source and actual charges
 unknown. The live threshold transition remains verified through the compiled
 service and browser preview, not a new paid native worker.
+
+## 0.2.15 public plugin qualification, 17 October 2026
+
+The first Personal run exposed a real defect: the child backend inherited the
+default Codex profile. Profile verification blocked dispatch before any worker
+model call. Both discovery and restricted launches now receive the verified
+lead profile explicitly through `CODEX_HOME`, and still verify the backend's
+canonical profile before dispatch. A fresh Personal retest completed both
+worker-to-lead workflows without changing authentication or weakening checks.
+
+| Fresh native case                | Observed outcome                                                                                                                                                                                                                                |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Veridue, Ultra / Default         | Automatic activation, side-panel opening and binding; two lead-accepted runs. Initial workers were sequential because the lead submitted the second late.                                                                                       |
+| Veridue, Plan + Ultra            | Read-only workers overlapped for 56.309 seconds. A script used a nonexistent result `taskId`; validation rejected the handoffs. The lead autonomously reused both results in an accepted linked planning run, with zero extra workers.          |
+| Doppel Personal, Ultra / Default | Both workers ran under the verified Personal profile, overlapped for 30.818 seconds and reached lead-accepted outcomes. Automatic panel opening/binding worked.                                                                                 |
+| Doppel Personal, Plan + Ultra    | Workers overlapped for 81.150 seconds. One contradictory worker acceptance was rejected and its original incomplete outcome retained. The lead verified the sources and completed a linked lead-only planning recovery with zero extra workers. |
+
+In both planning chats, closing the Ultra tabs and reopening from More tools
+without clicking Bind restored the correct chat and all three saved records.
+The selected leads stayed Sol/Ultra and Astra/Ultra respectively. Plan-mode
+handoffs were explicitly `planning`; the QA chats made no repository edits.
+
+The dashboard now shows compact “Waiting for lead” / “Lead is verifying” labels.
+Raw handoff objectives stay inside closed details, error previews are bounded,
+and an accepted lead outcome no longer inherits a warning from an earlier worker
+limitation. Uncertain execution remains visible. A live browser fixture with a
+6,000-character handoff and the real Personal dashboard verified the display.
+
+The eight workers used 1,203,429 observed tokens, including 893,696 cached input
+tokens. Failed attempts are included; no worker was retried. The bundled rate-card
+calculator reports a 36.8268895-credit equivalent, not an actual charge. Lead usage
+and billing remain unknown. Personal's older global routing policy selected
+GPT-5.6 Sol; global guidance was preserved. This QA does not establish cost savings.
+
+Both installed runtime bundles matched the checked build. The public package
+contains prebuilt runtime/UI files, hooks, the authoring skill and dependency
+license notices. Its explicit archive allowlist excludes developer runtime paths,
+source credentials and generated local state. Node 26.10.0 and 26.12.0 are the
+supported runtime versions; the release gate and CI retain the existing quality
+thresholds.

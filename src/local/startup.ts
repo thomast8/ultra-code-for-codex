@@ -2,13 +2,14 @@ import { readFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { NODE_RUNTIME_REQUIRED } from './node-runtime.js';
 
 const messages = {
   ready: '',
   journal: 'Ultra Code workflow journal could not be opened or restored',
   permissions: 'Ultra Code runtime filesystem access was denied',
   endpoint: 'Ultra Code runtime endpoint could not be acquired',
-  version: 'Ultra Code runtime requires Node 26.10.0',
+  version: NODE_RUNTIME_REQUIRED,
   initialization: 'Ultra Code runtime initialization failed',
 } as const;
 const receiptSchema = z.strictObject({
@@ -29,7 +30,7 @@ export function startupFailureReason(error: unknown): Reason {
   )
     return 'journal';
   if (code === 'EADDRINUSE' || message.includes('runtime already running')) return 'endpoint';
-  if (message === 'Node 26.10.0 is required') return 'version';
+  if (message === NODE_RUNTIME_REQUIRED) return 'version';
   return 'initialization';
 }
 

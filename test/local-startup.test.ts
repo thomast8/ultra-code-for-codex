@@ -13,7 +13,7 @@ it.each([
   [new SyntaxError('private-record-json'), 'journal'],
   [Object.assign(new Error('private-endpoint'), { code: 'EADDRINUSE' }), 'endpoint'],
   [new Error('Ultra Code runtime already running'), 'endpoint'],
-  [new Error('Node 26.10.0 is required'), 'version'],
+  [new Error('Node 26.10.0 or 26.12.0 is required'), 'version'],
   [new Error('private-unknown'), 'initialization'],
   [null, 'initialization'],
 ])('projects startup errors to an allowlisted category %#', (error, expected) => {

@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { expect, it } from 'vitest';
 import { CodexDiagnostics } from '../src/codex/diagnostics.js';
 import { CodexTransport } from '../src/codex/transport.js';
@@ -49,15 +50,24 @@ it.each(['exit', 'reply', 'timeout'])(
         '-e',
         `process.stdin.once('data',()=>{
     process.stderr.write('authentication failed; token=sentinel-token\\n',()=>{${action}});
-  });`,
+  });
+  process.stdout.write('ready\\n');`,
       ],
       { stdio: ['pipe', 'pipe', 'pipe'] },
     );
-    const transport = new CodexTransport(child, 300);
+    let transport: CodexTransport | undefined;
     try {
-      await expect(transport.initialize()).rejects.toThrow('authentication failed');
+      await expect(once(child.stdout, 'data')).resolves.toEqual([Buffer.from('ready\n')]);
+      transport = new CodexTransport(child, 300);
+      const failure = transport.initialize();
+      const reason =
+        kind === 'exit' ? 'exited (7)' : kind === 'reply' ? 'Initialize rejected' : 'timed out';
+      await expect(failure).rejects.toThrow(reason);
+      await expect(failure).rejects.toThrow('authentication failed');
+      await expect(failure).rejects.not.toThrow('sentinel-token');
     } finally {
-      transport.close();
+      transport?.close();
+      child.kill();
     }
   },
 );

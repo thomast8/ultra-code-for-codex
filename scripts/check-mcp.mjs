@@ -143,8 +143,7 @@ function isRunning(pid) {
 
 async function stopFixtureDaemon(pid) {
   if (pid === undefined) return;
-  const runtime = JSON.parse(await readFile(join(pluginRoot, 'dist/runtime.json'), 'utf8'));
-  const expected = `${runtime.nodeExecutable} ${join(pluginRoot, 'dist/daemon-entry.js')} ${dataDir}`;
+  const expected = `${process.execPath} ${join(pluginRoot, 'dist/daemon-entry.js')} ${dataDir}`;
   const command = execFileSync('ps', ['-ww', '-p', String(pid), '-o', 'command='], {
     encoding: 'utf8',
   }).trim();

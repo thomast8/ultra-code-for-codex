@@ -10,13 +10,29 @@ export function visibleHandoffs(run: RunSnapshot) {
   return run.handoffs.filter((handoff) => !terminal(run.state) || handoff.state !== 'pending');
 }
 
+export function leadStatus(run: RunSnapshot): string | null {
+  if (terminal(run.state) || run.state === 'needs_reconciliation' || run.error) return null;
+  const handoff = run.handoffs.find((item) => item.state !== 'resolved');
+  if (handoff?.state === 'pending') return 'Waiting for lead';
+  return handoff?.state === 'claimed' ? 'Lead is verifying' : null;
+}
+
 export function needsAttention(run: RunSnapshot): boolean {
+  if (run.state === 'completed') return completedNeedsAttention(run);
   return (
     run.state === 'failed' ||
     run.state === 'needs_reconciliation' ||
     Boolean(run.error) ||
-    (run.state === 'completed' && run.acceptanceOutcome !== 'satisfied') ||
     run.tasks.some(taskNeedsAttention) ||
+    visibleHandoffs(run).some((handoff) => handoff.state !== 'resolved')
+  );
+}
+
+function completedNeedsAttention(run: RunSnapshot): boolean {
+  return (
+    run.acceptanceOutcome !== 'satisfied' ||
+    Boolean(run.error) ||
+    run.tasks.some((task) => task.state === 'needs_reconciliation') ||
     visibleHandoffs(run).some((handoff) => handoff.state !== 'resolved')
   );
 }
@@ -86,7 +102,7 @@ export function finishedAgentLabel(tasks: TaskSnapshot[]): string {
 export function attentionMessage(run: RunSnapshot): string {
   if (run.error) return run.error;
   const handoff = run.handoffs.find((item) => item.state !== 'resolved');
-  if (handoff && !terminal(run.state)) return handoff.spec.objective;
+  if (handoff && !terminal(run.state)) return 'The lead is handling the returned work.';
   return taskAttentionMessage(run.tasks) ?? runAcceptanceMessage(run);
 }
 
@@ -102,5 +118,5 @@ function taskAttentionMessage(tasks: TaskSnapshot[]): string | null {
 function runAcceptanceMessage(run: RunSnapshot): string {
   if (run.state === 'completed' && run.acceptanceOutcome !== 'satisfied')
     return `The run finished with acceptance ${run.acceptanceOutcome}.`;
-  return 'A lead decision needs review.';
+  return 'The lead is handling the next decision.';
 }

@@ -10,7 +10,7 @@ import type { ServerRequest } from './generated/ServerRequest.js';
 export type SpawnCodexChild = (
   executable: string,
   args: string[],
-  options: { stdio: ['pipe', 'pipe', 'pipe']; cwd?: string },
+  options: { stdio: ['pipe', 'pipe', 'pipe']; cwd?: string; env?: NodeJS.ProcessEnv },
 ) => ChildProcessWithoutNullStreams;
 
 type JsonRpcReply = {
@@ -36,6 +36,7 @@ export interface CodexLaunchOptions {
   signal?: AbortSignal;
   configOverrides?: readonly string[];
   cwd?: string;
+  env?: NodeJS.ProcessEnv;
 }
 
 export class CodexTransport {
@@ -75,6 +76,7 @@ export class CodexTransport {
     const child = spawnChild(executable, ['app-server', '--listen', 'stdio://', ...overrides], {
       stdio: ['pipe', 'pipe', 'pipe'],
       ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+      ...(options.env === undefined ? {} : { env: options.env }),
     });
     const transport = new CodexTransport(child, timeoutMs);
     const detach = closeOnAbort(transport, options.signal);

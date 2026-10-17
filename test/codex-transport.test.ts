@@ -91,6 +91,28 @@ it('rejects process launch errors without exposing executable paths', async () =
   await expect(CodexTransport.launch('/bundled/codex', 500, brokenSpawn)).rejects.toThrow('ENOENT');
 });
 
+it('applies an explicit profile environment to the actual child process', async () => {
+  const launchChild: SpawnCodexChild = (_file, _args, options) =>
+    spawn(
+      process.execPath,
+      [
+        '-e',
+        `
+    process.stdin.once('data', chunk => {
+      const message = JSON.parse(chunk.toString());
+      process.stdout.write(JSON.stringify({id:message.id,result:{codexHome:process.env.CODEX_HOME}})+'\\n');
+    });
+  `,
+      ],
+      options,
+    );
+  const transport = await CodexTransport.launch('/bundled/codex', 500, launchChild, {
+    env: { ...process.env, CODEX_HOME: '/verified-secondary' },
+  });
+  expect(transport.initializeMetadata?.codexHome).toBe('/verified-secondary');
+  transport.close();
+});
+
 it('closes the child when initialization fails', async () => {
   const transport = makeTransport(`
       process.stdin.once('data', chunk => {
