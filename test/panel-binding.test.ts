@@ -21,6 +21,33 @@ const context: LeadContext = {
   resolutionReason: '',
 };
 
+it('keeps a stable opaque display key per profile and chat across opener calls', async () => {
+  let selected = context;
+  const { server, client } = await connected(async () => selected);
+  const open = async () =>
+    z
+      .object({
+        panelKey: z.string().regex(/^[a-f0-9]{64}$/),
+        bindingNonce: z.string(),
+      })
+      .parse(
+        (await client.callTool({ name: 'ultra_panel', arguments: { contextKey: 'current' } }))
+          .structuredContent,
+      );
+  try {
+    const first = await open();
+    const again = await open();
+    expect(again.panelKey).toBe(first.panelKey);
+    expect(again.bindingNonce).not.toBe(first.bindingNonce);
+    selected = { ...context, instanceId: '/another-profile' };
+    expect((await open()).panelKey).not.toBe(first.panelKey);
+    selected = { ...context, sessionId: 'another-chat' };
+    expect((await open()).panelKey).not.toBe(first.panelKey);
+  } finally {
+    await Promise.all([client.close(), server.close()]);
+  }
+});
+
 async function connected(
   resolveContext: (key: string, dataDir: string) => Promise<LeadContext>,
   loadPanelHtml = async () => '<main>panel test</main>',

@@ -14,7 +14,7 @@ import { initialState, PanelBinding, type PanelState } from './binding.js';
 import { Dashboard } from './dashboard.js';
 import { panelStyles } from './styles.js';
 import { Brand } from './icons.js';
-import { PanelDisplay } from './panel-display.js';
+import { PanelDisplay, type PanelDisplayState } from './panel-display.js';
 
 type Availability = {
   nonce: string;
@@ -54,9 +54,11 @@ export function Panel() {
   const [app] = useState(() => new App({ name: 'Ultra Code', version: packageMetadata.version }));
   const [state, setState] = useState(initialState);
   const [availability, setAvailability] = useState(unknownAvailability);
+  const [displayState, setDisplayState] = useState<PanelDisplayState>('active');
+  const [display] = useState(() => new PanelDisplay(app, setDisplayState));
   const [binding] = useState(() => new PanelBinding(app, setState));
+  useEffect(() => display.bind(state), [display, state]);
   useEffect(() => {
-    const display = new PanelDisplay(app);
     app.addEventListener('toolresult', (result) => {
       binding.receive(result);
       setAvailability((previous) => readAvailability(result, previous));
@@ -78,7 +80,7 @@ export function Panel() {
       display.close();
       void app.close();
     };
-  }, [app, binding]);
+  }, [app, binding, display]);
 
   const capability = availability.nonce === state.nonce ? availability : unknownAvailability;
   return (
@@ -102,7 +104,13 @@ export function Panel() {
       >
         {state.status}
       </p>
-      <CapabilityView state={state} capability={capability} app={app} />
+      {displayState === 'reused' ? (
+        <p role="status">Using the Ultra panel already open in this chat.</p>
+      ) : displayState === 'blocked' ? (
+        <p role="alert">This host could not safely open another Ultra panel.</p>
+      ) : (
+        <CapabilityView state={state} capability={capability} app={app} />
+      )}
     </main>
   );
 }

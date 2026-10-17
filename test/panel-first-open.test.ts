@@ -62,7 +62,7 @@ it.each([
       expect(
         (await f.client.callTool({ name: 'ultra_panel_status', arguments: { nonce } }))
           .structuredContent,
-      ).toEqual({ state: 'bound' });
+      ).toEqual({ state: 'bound', panelKey: expect.stringMatching(/^[a-f0-9]{64}$/) });
     } finally {
       await f.close();
     }

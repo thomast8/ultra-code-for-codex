@@ -3,6 +3,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 export type PanelState = {
   nonce: string;
+  panelKey: string;
   status: string;
   request: 'idle' | 'sending' | 'queued';
   terminal: boolean;
@@ -12,6 +13,7 @@ export type PanelState = {
 
 export const initialState: PanelState = {
   nonce: '',
+  panelKey: '',
   status: 'Open the panel tool to prepare a chat binding.',
   request: 'idle',
   terminal: false,
@@ -50,7 +52,7 @@ export class PanelBinding {
       return;
     }
     if (data?.bound === true) {
-      this.finish('This chat is bound to the Ultra Code panel.', true);
+      this.finish('This chat is bound to the Ultra Code panel.', true, data.panelKey);
     } else if (data?.bound === false && typeof data.reason === 'string') {
       this.finish(data.reason);
     }
@@ -151,7 +153,7 @@ export class PanelBinding {
       return true;
     }
     if (data.bound === true) {
-      this.finish('This chat is bound to the Ultra Code panel.', true);
+      this.finish('This chat is bound to the Ultra Code panel.', true, data.panelKey);
       return true;
     }
     return false;
@@ -179,9 +181,15 @@ export class PanelBinding {
     this.readPending = false;
   }
 
-  private finish(status: string, bound = false) {
+  private finish(status: string, bound = false, panelKey: unknown = '') {
     this.stopPolling();
-    this.publish({ status, terminal: true, bound, retry: false });
+    this.publish({
+      status,
+      terminal: true,
+      bound,
+      retry: false,
+      panelKey: bound && typeof panelKey === 'string' ? panelKey : '',
+    });
   }
 
   private readFailure(status: string) {
@@ -201,7 +209,7 @@ export class PanelBinding {
     }
     switch (data?.state) {
       case 'bound':
-        this.finish('This chat is bound to the Ultra Code panel.', true);
+        this.finish('This chat is bound to the Ultra Code panel.', true, data.panelKey);
         break;
       case 'failed':
         this.finish('This panel’s binding failed. Open a fresh panel to try again.');

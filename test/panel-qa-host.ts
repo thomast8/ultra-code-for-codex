@@ -61,6 +61,7 @@ bridge.oninitialized = async () => {
     content: [],
     structuredContent: {
       bindingNonce: 'qa',
+      panelKey: 'f'.repeat(64),
       bound: true,
       capabilityAvailability: 'available',
       openInPanel: params.has('auto'),
