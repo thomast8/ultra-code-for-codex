@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { TaskSnapshot } from '../contracts/workflow.js';
 import { Icon } from './icons.js';
-import { elapsed, StatusBadge, TaskDetails } from './workflow-details.js';
+import { elapsed, StatusBadge, TaskDetails, taskRoutingLabel } from './workflow-details.js';
 import {
   finishedAgentLabel,
   taskElapsed,
@@ -98,6 +98,7 @@ function AgentRow({
         <span>
           {task.title} · {taskLabel(task)}
         </span>
+        <small className="agent-model">{taskRoutingLabel(task)}</small>
         <small>
           {taskElapsed(task, now)} · {tokenLabel(taskUsage(task), terminal(task.state))}
         </small>
@@ -132,9 +133,7 @@ export function AgentDetail({
       </header>
       <div className="agent-detail-card">
         <p className="workflow-muted">Phase: {task.phase.label}</p>
-        <p className="agent-model">
-          {task.reportedModel ?? `Requested: ${task.requestedModel}`} · {task.effort}
-        </p>
+        <p className="agent-model">{taskRoutingLabel(task)}</p>
         <p className="workflow-muted">
           {taskElapsed(task, now)} · {tokenLabel(usage, terminal(task.state))}
         </p>
