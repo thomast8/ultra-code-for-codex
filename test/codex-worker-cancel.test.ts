@@ -102,6 +102,25 @@ it('handles a transport failure after dispatch without claiming completion', asy
   });
 });
 
+it.each([
+  ['sent an oversized JSON-RPC message', 'message exceeds 16 MiB'],
+  ['sent malformed JSON-RPC data', 'malformed JSON-RPC'],
+  ['notification handler failed', 'notification handler failed'],
+  ['exited (7)', 'backend exited'],
+])('retains the safe transport category %s without raw diagnostics', async (reason, category) => {
+  const h = workerHarness();
+  h.backend.execute = async () => {
+    await h.backend.fail?.(new Error(`Codex app-server ${reason}\nprivate-sentinel`));
+  };
+  const result = await h.execute(workerSpec(), h.options);
+  expect(result).toMatchObject({
+    execution: 'uncertain',
+    error: `Worker transport failed (${category}); termination is unconfirmed`,
+  });
+  expect(JSON.stringify(result)).not.toContain('private-sentinel');
+  expect(h.backend.close).toHaveBeenCalledOnce();
+});
+
 it('ignores unrelated thread and turn notifications', async () => {
   const h = workerHarness();
   h.backend.execute = async () => {

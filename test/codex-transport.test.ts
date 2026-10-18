@@ -173,21 +173,24 @@ it.each(['null', '[]', '"not-an-object"'])(
 );
 
 it('rejects oversized messages and terminates the child', async () => {
-  const transport = makeTransport(
-    `process.stdout.write('x'.repeat(1048577)); process.stdin.resume();`,
-  );
-  await expect(transport.request('oversized')).rejects.toThrow('oversized JSON-RPC');
+  const stream = makeStreamTransport();
+  const pending = stream.transport.request('oversized');
+  stream.send('x'.repeat(16_777_217));
+  await expect(pending).rejects.toThrow('oversized JSON-RPC');
+  expect(stream.kills()).toBe(1);
 });
 
 it('rejects oversized complete lines and trailing fragments', async () => {
-  const fullLine = makeTransport(
-    `process.stdout.write('x'.repeat(1048577)+'\\n'); process.stdin.resume();`,
-  );
-  await expect(fullLine.request('oversized-line')).rejects.toThrow('oversized JSON-RPC');
+  const fullLine = makeStreamTransport();
+  const linePending = fullLine.transport.request('oversized-line');
+  fullLine.send('x'.repeat(16_777_217) + '\n');
+  await expect(linePending).rejects.toThrow('oversized JSON-RPC');
+  expect(fullLine.kills()).toBe(1);
   const stream = makeStreamTransport();
   const pending = stream.transport.request('oversized-tail');
-  stream.send('{}\n' + 'x'.repeat(1048577));
+  stream.send('{}\n' + 'x'.repeat(16_777_217));
   await expect(pending).rejects.toThrow('oversized JSON-RPC');
+  expect(stream.kills()).toBe(1);
 });
 
 it('ignores unsubscribed notifications and replies for unknown request IDs', async () => {
