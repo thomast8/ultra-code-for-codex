@@ -91,7 +91,11 @@ it('drills from a square into current model, tokens and activity and returns to 
   row.focus();
   fireEvent.click(row);
   expect(screen.getByRole('heading', { name: 'Finished agent' })).toBeDefined();
-  expect(screen.getByText('gpt-6-luna · medium')).toBeDefined();
+  expect(
+    within(document.querySelector('.agent-detail-card') as HTMLElement).getByText(
+      'Reported model: gpt-6-luna · Requested reasoning effort: medium',
+    ),
+  ).toBeDefined();
   expect(screen.getByText('100 input · 20 output')).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'Back to all 2 agents' }));
   expect(document.activeElement).toBe(row);
@@ -130,6 +134,61 @@ it('keeps authored phase membership visible in agent rows and drill-down details
     ),
   ).toBeDefined();
 });
+
+it.each(['running', 'completed'] as const)(
+  'keeps %s row routing, accessible name and details consistent',
+  async (state) => {
+    const requestedModel = `requested-${'model'.repeat(40)}`;
+    const reportedModel = `reported-${'model'.repeat(40)}`;
+    const tasks = [
+      taskFixture({
+        id: 'reported',
+        title: 'Reported worker',
+        state,
+        requestedModel,
+        reportedModel,
+      }),
+      taskFixture({
+        id: 'requested',
+        title: 'Requested worker',
+        state,
+        requestedModel,
+        reportedModel: null,
+      }),
+    ];
+    await loaded([runFixture({ tasks })]);
+    fireEvent.click(screen.getByRole('button', { name: 'Show agents' }));
+    if (state === 'completed') fireEvent.click(screen.getByText('2 completed · 240 worker tokens'));
+    for (const task of tasks) {
+      const model = task.reportedModel
+        ? `Reported model: ${reportedModel}`
+        : `Requested model: ${requestedModel} (unverified)`;
+      const routing = `${model} · Requested reasoning effort: medium`;
+      const row = screen.getByRole('button', {
+        name: new RegExp(
+          `${task.title} · .*${task.reportedModel ? 'Reported model:' : 'Requested model:'}`,
+        ),
+      });
+      expect(within(row).getByText(routing)).toBeDefined();
+      row.focus();
+      expect(document.activeElement).toBe(row);
+      fireEvent.click(row);
+      const card = within(document.querySelector('.agent-detail-card') as HTMLElement);
+      expect(card.getByText(routing)).toBeDefined();
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: task.title }));
+      fireEvent.click(card.getByText('View activity and evidence'));
+      expect(card.getByText('Requested reasoning effort')).toBeDefined();
+      expect(
+        card.getByText(task.reportedModel ? requestedModel : `${requestedModel} (unverified)`),
+      ).toBeDefined();
+      expect(card.getByText('Reported model').nextElementSibling?.textContent).toBe(
+        task.reportedModel ?? 'Not reported',
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Back to all 2 agents' }));
+      expect(document.activeElement).toBe(row);
+    }
+  },
+);
 
 it('collapses on completion and reopens with a compact latest result and expandable history', async () => {
   const current = runFixture({ id: 'new', title: 'Current run', tasks: [taskFixture()] });
@@ -231,7 +290,11 @@ it('shows missing usage honestly, truncates preview overflow and keeps every age
   fireEvent.click(screen.getByRole('button', { name: 'Show agents' }));
   expect(screen.getByRole('button', { name: /running · Working/ })).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'queued: queued' }));
-  expect(screen.getByText('Requested: gpt-6-luna · medium')).toBeDefined();
+  expect(
+    within(document.querySelector('.agent-detail-card') as HTMLElement).getByText(
+      'Requested model: gpt-6-luna (unverified) · Requested reasoning effort: medium',
+    ),
+  ).toBeDefined();
   expect(
     within(document.querySelector('.agent-detail-card') as HTMLElement).getByText(
       'Not started · Tokens not reported',

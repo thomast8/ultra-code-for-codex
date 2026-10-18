@@ -172,16 +172,26 @@ export function ResultValue({
   );
 }
 
+export function taskRoutingLabel(task: TaskSnapshot): string {
+  const model = task.reportedModel
+    ? `Reported model: ${task.reportedModel}`
+    : `Requested model: ${task.requestedModel} (unverified)`;
+  return `${model} · Requested reasoning effort: ${task.effort}`;
+}
+
 export function TaskDetails({ task, now }: { task: TaskSnapshot; now: number }) {
   const result = task.result;
   return (
     <div className="workflow-detail">
       <dl className="workflow-facts">
         <dt>Requested model</dt>
-        <dd>{task.requestedModel}</dd>
+        <dd>
+          {task.requestedModel}
+          {!task.reportedModel && ' (unverified)'}
+        </dd>
         <dt>Reported model</dt>
         <dd>{task.reportedModel ?? 'Not reported'}</dd>
-        <dt>Effort</dt>
+        <dt>Requested reasoning effort</dt>
         <dd>{task.effort}</dd>
         <dt>Elapsed</dt>
         <dd>{taskElapsed(task, now)}</dd>
