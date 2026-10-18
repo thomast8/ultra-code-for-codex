@@ -1,5 +1,5 @@
 // Pass this complete body to ultra_start.script with maxAgentCalls: 2.
-// args: {cwd, brief, lenses:[first,second]}; choose distinct lenses before launch.
+// args: optional routing {model,effort}; other args: {cwd, brief, lenses:[first,second]}; choose distinct lenses before launch.
 if (
   !Array.isArray(args.lenses) ||
   args.lenses.length !== 2 ||
@@ -35,13 +35,12 @@ const alternatives = await parallel(
           consequence: 'Options only; the lead owns selection and validation.',
           verificationBurden: 'Compare each option with the same brief and acceptance criteria.',
           modelRationale:
-            'Sol suits this synthesis; a larger worker lacks a demonstrated additional benefit.',
+            'Inherit the captured lead route for synthesis unless deliberately overridden.',
           delegationBenefit: 'Two isolated alternatives reduce anchoring on one early draft.',
-          coordinationOverhead:
-            'Two concise proposals and one lead comparison; no automatic critic panel.',
+          coordinationOverhead: 'Two independent proposals feed an evidence-based lead comparison.',
         },
-        model: 'gpt-6.1-sol',
-        effort: 'high',
+        model: args.routing?.model,
+        effort: args.routing?.effort,
         capability: 'read-only',
         resources: [],
         outputSchema: {

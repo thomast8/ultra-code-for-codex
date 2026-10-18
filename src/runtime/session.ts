@@ -8,6 +8,7 @@ import {
 import type { AgentSpec, JsonValue, LeadHandoffSpec } from '../contracts/workflow.js';
 import type { Journal } from './journal.js';
 import { attachTask, createCall, refreshSnapshot } from './records.js';
+import { resolveAgentRequest } from './agent-request.js';
 import { requireWriterLease, snapshotClaims } from './resources.js';
 import { ScriptMachine } from './sandbox.js';
 import type { CallKind, CallRecord, RunRecord } from './types.js';
@@ -95,6 +96,7 @@ export class RunSession {
   private call(kind: CallKind, value: JsonValue): Promise<JsonValue> {
     try {
       if (kind !== 'agent' && kind !== 'lead') throw new Error('Unknown asynchronous host call');
+      if (kind === 'agent') value = resolveAgentRequest(value, this.run.authority.context);
       const { call, replay } = this.intent(kind, value);
       if (!replay) this.prepare(call);
       const result = new Promise<JsonValue>((resolve) => this.replies.set(call.id, resolve));

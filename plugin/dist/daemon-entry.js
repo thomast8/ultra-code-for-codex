@@ -28322,6 +28322,10 @@ var agentSchema = external_exports.strictObject({
   outputSchema: external_exports.record(external_exports.string(), json2),
   timeoutMs: external_exports.number().int().min(1e3).max(36e5).optional()
 });
+var agentRequestSchema = agentSchema.extend({
+  model: identifier.optional(),
+  effort: identifier.optional()
+});
 var handoffSchema = external_exports.strictObject({
   kind: external_exports.enum(["action", "planning"]).optional(),
   phase: phaseSchema,
@@ -29132,6 +29136,21 @@ function asError(error62) {
 // src/runtime/session.ts
 import { isDeepStrictEqual as isDeepStrictEqual2 } from "node:util";
 
+// src/runtime/agent-request.ts
+function resolveAgentRequest(value, context) {
+  const request = agentRequestSchema.parse(value);
+  const resolved = { ...value };
+  for (const field of ["model", "effort"]) {
+    if (request[field] !== void 0) continue;
+    const inherited = context[field];
+    if (typeof inherited !== "string" || !inherited.trim())
+      throw new Error(`Verified lead ${field} is unavailable for inheritance`);
+    resolved[field] = inherited;
+  }
+  agentSchema.parse(resolved);
+  return resolved;
+}
+
 // src/runtime/quickjs.ts
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -29440,6 +29459,7 @@ var RunSession = class {
   call(kind, value) {
     try {
       if (kind !== "agent" && kind !== "lead") throw new Error("Unknown asynchronous host call");
+      if (kind === "agent") value = resolveAgentRequest(value, this.run.authority.context);
       const { call, replay } = this.intent(kind, value);
       if (!replay) this.prepare(call);
       const result = new Promise((resolve3) => this.replies.set(call.id, resolve3));
@@ -30335,7 +30355,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.2.21",
+  version: "0.3.0",
   private: true,
   type: "module",
   engines: {

@@ -7,8 +7,8 @@ import type { AgentSpec, JsonValue, LeadResult, TaskResult } from '../src/contra
 import { WorkflowEngine } from '../src/runtime/engine.js';
 import { authority, output, owner, request, until } from './runtime-fixture.js';
 
-export type ExampleName = 'research' | 'concepts' | 'coding';
-export const callLimits = { research: 3, concepts: 2, coding: 1 };
+export type ExampleName = 'research' | 'concepts' | 'coding' | 'investigate-verify';
+export const callLimits = { research: 3, concepts: 2, coding: 1, 'investigate-verify': 4 };
 export const questions = [
   { question: 'Check the first source', sourceIds: ['source-a'] },
   { question: 'Check the second source', sourceIds: ['source-b'] },
@@ -22,6 +22,18 @@ export function exampleArgs(name: ExampleName, root: string): JsonValue {
       sourceIndex: [
         { id: 'source-a', excerpt: 'First fact' },
         { id: 'source-b', excerpt: 'Second fact' },
+      ],
+    },
+    'investigate-verify': {
+      cwd: root,
+      sourceSetId: 'frozen-sources',
+      sourceIndex: [
+        { id: 'source-a', excerpt: 'First fact' },
+        { id: 'source-b', excerpt: 'Second fact' },
+      ],
+      items: [
+        { id: 'a', question: 'First fact?', sourceIds: ['source-a'] },
+        { id: 'b', question: 'Second fact?', sourceIds: ['source-b'] },
       ],
     },
     concepts: { cwd: root, brief: 'A compact offline task view', lenses: ['timeline', 'priority'] },
@@ -40,6 +52,11 @@ export function exampleArgs(name: ExampleName, root: string): JsonValue {
 }
 
 export function fixtureValue(name: ExampleName, spec: AgentSpec): JsonValue {
+  if (name === 'investigate-verify') {
+    return spec.title.startsWith('Verify:')
+      ? { supported: true, issues: [] }
+      : { finding: 'Fixture fact', sourceIds: ['source-a'] };
+  }
   if (name === 'research') {
     return spec.title === 'Identify up to two source questions'
       ? { questions }

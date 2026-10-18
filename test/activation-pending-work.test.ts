@@ -192,9 +192,9 @@ it('adds the compact notice and skill instruction to the exact verified Ultra tu
   );
   const text = result.hookSpecificOutput.additionalContext;
   expect(text).toContain('Ultra policy active:');
-  expect(text).toContain('Read the ultra-code skill');
+  expect(text).toContain('Read ultra-code skill');
   expect(text).toContain('unresolved lead handoffs:1');
-  expect(text).toContain('Plan Mode is read-only');
+  expect(text).toContain('Plan is read-only');
   expect(text.length).toBeLessThanOrEqual(500);
 });
 
@@ -233,12 +233,13 @@ it.each(['default', 'plan'])(
     expect(text).toContain('Keep lead model/effort.');
     expect(text).toContain(
       mode === 'plan'
-        ? 'Ultra planning policy active: read-only via ultra_start'
-        : 'Ultra policy active: delegate via ultra_start',
+        ? 'Ultra planning policy active: substantive read-only work via ultra_start'
+        : 'Ultra policy active: substantive work via ultra_start',
     );
     expect(text).toContain('never native subagents');
-    expect(text).toContain(mode === 'plan' ? 'lead plans' : 'lead owns intent and delivery');
-    expect(text).toContain('Plan Mode is read-only. Read the ultra-code skill.');
+    expect(text).toContain(mode === 'plan' ? 'lead plans' : 'lead delivers');
+    expect(text).toContain('Read ultra-code skill.');
+    if (mode !== 'plan') expect(text).toContain('Plan is read-only.');
     expect(text.endsWith(pending)).toBe(true);
     for (const state of states) {
       expect(pending).toContain(

@@ -363,7 +363,9 @@ describe('verified Ultra policy', () => {
     expect(output.hookSpecificOutput.additionalContext).toContain(
       mode === 'plan' ? 'Ultra planning policy active:' : 'Ultra policy active:',
     );
-    expect(output.hookSpecificOutput.additionalContext).toContain('Plan Mode is read-only');
+    expect(output.hookSpecificOutput.additionalContext).toContain(
+      mode === 'plan' ? 'substantive read-only work' : 'Plan is read-only',
+    );
     expect(output.hookSpecificOutput.additionalContext).toContain('ultra_start');
     expect(output.hookSpecificOutput.additionalContext).toContain('never native subagents');
   });

@@ -1,6 +1,6 @@
 # Writing a workflow
 
-The selected chat remains the lead. The runtime executes an immutable JavaScript body, records its calls and results, and schedules bounded workers. It has no research, concepts or coding presets. The three repository examples are ordinary scripts with illustrative phase labels.
+The selected chat remains the lead. The runtime executes an immutable JavaScript body, records its calls and results, and schedules bounded workers. It has no research, concepts or coding presets. The repository examples are ordinary scripts with illustrative phase labels.
 
 ## Start and wait
 
@@ -31,13 +31,13 @@ assignments together. For example, partition fourteen transcripts into nonoverla
 batches with the same extraction contract while the lead reads authenticated course
 pages. Pass only each batch's sources and shared definitions to its worker; the lead
 compares the returned evidence. Do not replicate the full corpus in every assignment.
-Choose the number of batches from useful work, cost and observed capacity, not a fixed
+Choose the number of batches from useful coverage, dependencies and observed capacity, not a fixed
 agent count. A single coupled patch in one writable worktree can remain one assignment.
 
 Record that decision using `log()` before dispatch. Include dependencies, the reason
 for the partition, and actual capacity reservations. Reserve the lead plus observed
 occupied slots, not a spare slot with no workload. `maxAgentCalls` covers the resulting
-graph, not just the first call. A one-worker plan must name the dependency or cost
+graph, not just the first call. A one-worker plan must name the dependency
 reason that makes parallel work unhelpful.
 
 For already-prepared independent read-only specs in `args.assignments`, a script can
@@ -78,7 +78,7 @@ The script runs inside QuickJS, not Node. It has no filesystem, network, imports
 
 Replay requires the same host calls and payloads in the same order. Completed calls reuse journaled results. Do not mutate a launched script, add nondeterministic inputs, or bypass exposed functions. A changed strategy is a new run with a fresh `requestId`, optional `parentRunId` and saved evidence references. Incomplete or uncertain calls need explicit reconciliation.
 
-## Worker contracts and cost assessment
+## Worker contracts and quality assessment
 
 `agent()` returns a `TaskResult`, not a task snapshot. Its fields are `execution`,
 `acceptance`, `value`, `evidence`, `unresolved`, `usage`, `requestedModel`,
@@ -119,7 +119,7 @@ do not repeat the investigation to repair a handoff or formatting mistake.
     difficulty, uncertainty, consequence, verificationBurden,
     modelRationale, delegationBenefit, coordinationOverhead
   },
-  model, effort,
+  model, effort,             // optional independently; inherit the frozen lead context
   capability,                // "read-only" or "workspace-write"
   resources,                 // resource claims below
   outputSchema,              // JSON Schema for the result's value field only
@@ -127,7 +127,13 @@ do not repeat the investigation to repair a handoff or formatting mistake.
 }
 ```
 
-Choose model and effort before dispatch, using current availability and the actual problem. Luna is a useful initial choice for a short source extraction; Sol is appropriate when an implementation requires understanding several interacting callers. Astra needs a specific reason, such as unresolved ambiguity with a consequential architectural decision that a cheaper model cannot reliably settle. The names are not automatic routing rules or performance guarantees. The backend reads all live model-catalog pages, checks the requested effort and verifies the reported selection. An unavailable pair blocks the worker. Reassess and author a new request explicitly; do not conceal a substitution.
+Omit model and effort to inherit each field independently from the run's frozen,
+verified lead context. An explicit override replaces only that field. Choose an
+override for the assignment's needs, with a concrete rationale; do not default to
+a smaller model to justify delegation. The backend checks the live model catalog,
+requested effort and reported selection. An unavailable pair blocks the worker;
+it never silently substitutes another route. A new request requires an explicit
+choice. Existing concrete calls and saved results retain their original routes.
 
 The worker deadline is a hard wall-time bound from turn dispatch, not an inactivity
 timeout. Choose an explicit deadline when the assignment needs a different bound;
@@ -149,6 +155,28 @@ Every object in `outputSchema`, including nested objects, must declare
 `additionalProperties: false`. A worker may report `acceptance: "satisfied"` only
 when its acceptance checks pass and `unresolved` is empty; limitations that leave
 required work open belong in an incomplete or blocked result.
+
+## Build verification into the graph
+
+Use `pipeline(items, async (item) => { ... })` when each independent item needs
+investigation followed by verification. Await the investigation inside that item,
+then start its verifier immediately when execution and acceptance both succeed.
+Other items need not finish first. Use a cross-item barrier only when the next
+stage needs all their evidence, such as a completeness check across the corpus.
+See `workflows/investigate-verify.js` for an executable example.
+
+Give reviewers the original sources and ask them to try to disprove consequential
+claims. Preserve supporting evidence, refutations and uncertainty separately.
+Independent lenses can test different failure modes; agreement or a majority vote
+is not proof. For open-ended research, add a completeness critic or bounded repeat
+round when it can uncover meaningful omissions. State the stop rule and include
+all possible verifier, critic and repeat calls in `maxAgentCalls` before launch.
+Keep unreviewed sources and gaps visible when the bound is reached.
+
+Quality and coverage guide the graph. Respect actual capacity, user budgets and
+quotas; neither a fixed team size nor a cost-justification gate determines useful
+work. One coupled writer can be appropriate, while independent source checks run
+in parallel. Never dispatch filler to reach a target count.
 
 ## Lead handoffs and acceptance
 
@@ -193,13 +221,15 @@ The receipt is saved separately from the original uncertain task result, then re
 
 ## Repository examples
 
-Load each file's complete text into `ultra_start.script`; these files are script bodies, not executable Node modules. Set the matching ceiling and supply the indicated JSON arguments. Replace illustrative paths and source identifiers with canonical paths and actual evidence. The lead performs the cost and scope decision before launching.
+Load each file's complete text into `ultra_start.script`; these files are script bodies, not executable Node modules. Set the matching ceiling and supply the indicated JSON arguments. Replace illustrative paths and source identifiers with canonical paths and actual evidence. The lead resolves useful coverage, dependencies and scope before launching.
 
 | File                    | `maxAgentCalls` | Arguments and purpose                                                                                                                                                                                                                |
 | ----------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `workflows/research.js` | 3               | `{cwd, sourceSetId, sourceIndex}`. One bounded discovery call identifies up to two distinct questions; only successful discovery fans out to source checks. The lead verifies the synthesis.                                         |
-| `workflows/concepts.js` | 2               | `{cwd, brief, lenses:[first,second]}`. Exactly two independent alternatives from one frozen brief; no automatic judges or critics. The lead selects against the brief.                                                               |
+| `workflows/concepts.js` | 2               | `{cwd, brief, lenses:[first,second]}`. Exactly two independent alternatives from one frozen brief; add verification when the task needs it. The lead selects against the brief.                                                      |
 | `workflows/coding.js`   | 1               | `{worktree, worktreeKey, paths, change, context, constraints, acceptance, stopConditions}`. One independent implementation in an already-prepared linked worktree, then lead QA, review, integration and any authorized publication. |
+
+`workflows/investigate-verify.js` takes `{cwd, sourceSetId, sourceIndex, items}` where each item has `{id, question, sourceIds}`. Allow two calls per item: investigation then source-grounded verification, with independent items pipelined. All examples accept optional `routing:{model,effort}`; omission inherits the lead.
 
 For research, `sourceIndex` is an array of bounded `{id, excerpt}` source records; include only evidence in scope. Discovery sees the index, and each subsequent check receives only its selected source records. For concepts, choose two distinct, nonempty lens strings before launch. For coding, supply the actual acceptance criteria and stop conditions; the script adds preservation and publication boundaries without replacing them.
 

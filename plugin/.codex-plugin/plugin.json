@@ -1,6 +1,6 @@
 {
   "name": "ultra-code-for-codex",
-  "version": "0.2.21",
+  "version": "0.3.0",
   "author": {
     "name": "Thomas Tiotto",
     "url": "https://github.com/thomast8"
@@ -16,7 +16,7 @@
     "displayName": "Ultra Code for Codex",
     "developerName": "Thomas Tiotto",
     "websiteUrl": "https://github.com/thomast8/ultra-code-for-codex",
-    "shortDescription": "Selective workflows and durable results beside your chat.",
+    "shortDescription": "Quality-first dynamic workflows and verified results beside your chat.",
     "longDescription": "Keep the selected chat model as lead while bounded workers execute independent tasks. Track multiple workflows, evidence, usage and lead decisions in a local panel.",
     "category": "Developer tools",
     "defaultPrompt": ["Open the Ultra Code panel for this chat."]
