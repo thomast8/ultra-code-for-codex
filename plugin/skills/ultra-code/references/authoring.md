@@ -123,11 +123,17 @@ do not repeat the investigation to repair a handoff or formatting mistake.
   capability,                // "read-only" or "workspace-write"
   resources,                 // resource claims below
   outputSchema,              // JSON Schema for the result's value field only
-  timeoutMs                  // optional, 1,000–3,600,000
+  timeoutMs                  // optional, default 300,000; 1,000–3,600,000
 }
 ```
 
 Choose model and effort before dispatch, using current availability and the actual problem. Luna is a useful initial choice for a short source extraction; Sol is appropriate when an implementation requires understanding several interacting callers. Astra needs a specific reason, such as unresolved ambiguity with a consequential architectural decision that a cheaper model cannot reliably settle. The names are not automatic routing rules or performance guarantees. The backend reads all live model-catalog pages, checks the requested effort and verifies the reported selection. An unavailable pair blocks the worker. Reassess and author a new request explicitly; do not conceal a substitution.
+
+The worker deadline is a hard wall-time bound from turn dispatch, not an inactivity
+timeout. Choose an explicit deadline when the assignment needs a different bound;
+ongoing activity does not extend it. Command transport frames are bounded at
+16 MiB; final worker output remains bounded at 256 KiB. A transport failure keeps
+termination uncertain until actual readback, even when its failure category is known.
 
 The assessment records the reasoning at admission. Do not rewrite it after seeing results to imply a better prediction. Count total worker context, outputs, retries, duplicated reading, lead verification and coordination when evaluating value. Usage can be unknown. Run `accountingComplete` refers only to worker attempts; it never includes main-chat overhead. Cached input is part of input, and reasoning output is part of output; do not add those subsets again. No measured end-to-end savings claim follows from choosing a smaller model.
 

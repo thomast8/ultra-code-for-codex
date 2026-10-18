@@ -25,3 +25,14 @@ export class CodexDiagnostics {
     return error;
   }
 }
+
+export function workerTransportFailure(error: Error): string {
+  const categories: Array<[RegExp, string]> = [
+    [/^Codex app-server sent an oversized JSON-RPC message(?:\n|$)/, 'message exceeds 16 MiB'],
+    [/^Codex app-server sent malformed JSON-RPC data(?:\n|$)/, 'malformed JSON-RPC'],
+    [/^Codex app-server notification handler failed(?:\n|$)/, 'notification handler failed'],
+    [/^Codex app-server exited \((?:\d+|SIG[A-Z]+|unknown)\)(?:\n|$)/, 'backend exited'],
+  ];
+  const category = categories.find(([pattern]) => pattern.test(error.message))?.[1];
+  return `Worker transport failed${category ? ` (${category})` : ''}; termination is unconfirmed`;
+}

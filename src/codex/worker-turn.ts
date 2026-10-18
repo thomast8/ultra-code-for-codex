@@ -4,6 +4,7 @@ import type { SandboxPolicy } from './generated/v2/SandboxPolicy.js';
 import type { TurnStartParams } from './generated/v2/TurnStartParams.js';
 import type { TurnStartResponse } from './generated/v2/TurnStartResponse.js';
 import { WorkerTurnEvents } from './worker-events.js';
+import { workerTransportFailure } from './diagnostics.js';
 import { type OutputContract, parseWorkerOutput } from './worker-output.js';
 import { WorkerBlocked, workerRequest, type WorkerTransport } from './worker-protocol.js';
 
@@ -94,10 +95,10 @@ export async function executeWorkerTurn(
   const events = new WorkerTurnEvents(input.threadId, spec.model, options);
   const unsubscribe = transport.onNotification(
     (message) => events.receive(message),
-    () => events.stop('Worker transport failed; termination is unconfirmed'),
+    (error) => events.stop(workerTransportFailure(error)),
   );
   const abort = () => events.stop('Worker cancellation requested');
-  const timer = setTimeout(() => events.stop('Worker timeout exceeded'), spec.timeoutMs ?? 120_000);
+  const timer = setTimeout(() => events.stop('Worker timeout exceeded'), spec.timeoutMs ?? 300_000);
   options.signal.addEventListener('abort', abort, { once: true });
   const params: TurnStartParams = {
     threadId: input.threadId,

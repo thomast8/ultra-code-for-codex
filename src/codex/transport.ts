@@ -40,7 +40,8 @@ export interface CodexLaunchOptions {
 }
 
 export class CodexTransport {
-  private static readonly maximumLineBytes = 1_048_576;
+  // Command results can exceed the model's final-output bound.
+  private static readonly maximumLineBytes = 16_777_216;
   private readonly pending = new Map<string | number, Pending>();
   private readonly subscriptions = new Set<Subscription>();
   private readonly diagnostics = new CodexDiagnostics();
