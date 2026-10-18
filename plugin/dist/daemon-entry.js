@@ -29360,17 +29360,17 @@ var ScriptMachine = class _ScriptMachine {
 
 // src/runtime/session.ts
 var RunSession = class {
-  constructor(run, journal, workers, finished) {
+  constructor(run, journal, workers, releaseIdleGrant) {
     this.run = run;
     this.journal = journal;
     this.workers = workers;
-    this.finished = finished;
+    this.releaseIdleGrant = releaseIdleGrant;
     this.replayLength = run.calls.length;
   }
   run;
   journal;
   workers;
-  finished;
+  releaseIdleGrant;
   cursor = 0;
   settlement = 1;
   replies = /* @__PURE__ */ new Map();
@@ -29452,6 +29452,7 @@ var RunSession = class {
           (message) => this.fail(message)
         );
       queueMicrotask(() => this.deliver());
+      if (kind === "lead") this.releaseIdleGrant();
       return result;
     } catch (error62) {
       this.fail(error62 instanceof Error ? error62.message : String(error62));
@@ -29510,8 +29511,7 @@ var RunSession = class {
       throw error62;
     }
     this.deliver();
-    if (this.stopped || ["completed", "failed", "cancelled"].includes(this.run.snapshot.state))
-      this.finished();
+    this.releaseIdleGrant();
   }
   deliver() {
     for (; ; ) {
@@ -29543,7 +29543,7 @@ var RunSession = class {
       );
       this.journal.save(this.run, "run.completed");
     }
-    this.finished();
+    this.releaseIdleGrant();
   }
   fail(message, reconciliation = false) {
     if (this.stopped || this.failed) return;
@@ -29555,7 +29555,7 @@ var RunSession = class {
     this.run.snapshot.error = message;
     this.workers.cancelQueued(this.run, message, (call, value) => this.resolve(call, value));
     this.journal.save(this.run, "run.failed", message);
-    this.finished();
+    this.releaseIdleGrant();
   }
   close() {
     this.stopped = true;
@@ -29585,6 +29585,8 @@ var Workers = class {
   enqueue(run, call, deliver, eligible, fail) {
     const spec = agentSchema.parse(call.payload);
     requireWriterLease(spec, call.claims);
+    const { totalSlots, reservedSlots } = run.authority.capacity;
+    this.scheduler.setGrant(run.snapshot.id, totalSlots - reservedSlots);
     this.scheduler.enqueue({
       id: call.id,
       runId: run.snapshot.id,
@@ -29939,6 +29941,7 @@ var WorkflowEngine = class {
     else if (run.snapshot.state === "paused") {
       const grant = run.authority.capacity;
       this.scheduler.setGrant(run.snapshot.id, grant.totalSlots - grant.reservedSlots);
+      this.releaseGrant(run);
     }
   }
   settleTerminalQueue(run) {
@@ -29990,7 +29993,7 @@ var WorkflowEngine = class {
   }
   releaseGrant(run) {
     if (!run.calls.some(
-      (call) => call.task?.state === "needs_reconciliation" || call.kind === "agent" && call.state === "dispatched"
+      (call) => call.task?.state === "needs_reconciliation" || call.kind === "agent" && ["queued", "dispatched", "uncertain"].includes(call.state)
     )) {
       this.scheduler.removeGrant(run.snapshot.id);
     }
@@ -30322,7 +30325,7 @@ Codex stderr summary: ${labels.join("; ") || "unrecognized diagnostic"}; raw det
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.2.19",
+  version: "0.2.20",
   private: true,
   type: "module",
   engines: {

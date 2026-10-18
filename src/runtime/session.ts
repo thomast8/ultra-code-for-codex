@@ -26,7 +26,7 @@ export class RunSession {
     readonly run: RunRecord,
     private readonly journal: Journal,
     private readonly workers: Workers,
-    private readonly finished: () => void,
+    private readonly releaseIdleGrant: () => void,
   ) {
     this.replayLength = run.calls.length;
   }
@@ -107,6 +107,7 @@ export class RunSession {
           (message) => this.fail(message),
         );
       queueMicrotask(() => this.deliver());
+      if (kind === 'lead') this.releaseIdleGrant();
       return result;
     } catch (error) {
       this.fail(error instanceof Error ? error.message : String(error));
@@ -171,8 +172,7 @@ export class RunSession {
       throw error;
     }
     this.deliver();
-    if (this.stopped || ['completed', 'failed', 'cancelled'].includes(this.run.snapshot.state))
-      this.finished();
+    this.releaseIdleGrant();
   }
   private deliver(): void {
     for (;;) {
@@ -204,7 +204,7 @@ export class RunSession {
       );
       this.journal.save(this.run, 'run.completed');
     }
-    this.finished();
+    this.releaseIdleGrant();
   }
   private fail(message: string, reconciliation = false): void {
     if (this.stopped || this.failed) return;
@@ -216,7 +216,7 @@ export class RunSession {
     this.run.snapshot.error = message;
     this.workers.cancelQueued(this.run, message, (call, value) => this.resolve(call, value));
     this.journal.save(this.run, 'run.failed', message);
-    this.finished();
+    this.releaseIdleGrant();
   }
   close(): void {
     this.stopped = true;

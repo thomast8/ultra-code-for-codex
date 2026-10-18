@@ -29,6 +29,8 @@ export class Workers {
   ): void {
     const spec = agentSchema.parse(call.payload) as AgentSpec;
     requireWriterLease(spec, call.claims);
+    const { totalSlots, reservedSlots } = run.authority.capacity;
+    this.scheduler.setGrant(run.snapshot.id, totalSlots - reservedSlots);
     this.scheduler.enqueue({
       id: call.id,
       runId: run.snapshot.id,
