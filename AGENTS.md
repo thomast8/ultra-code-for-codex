@@ -1,6 +1,6 @@
 # Ultra Code for Codex
 
-Preserve the selected chat lead. This plugin is personal tooling and has no Codex Pilot, private Desktop IPC, or hosted-server dependency.
+This plugin is personal tooling and has no Codex Pilot, private Desktop IPC, or hosted-server dependency.
 
 ## Quality gates
 
