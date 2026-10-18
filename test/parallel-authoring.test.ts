@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
-import { authority, harness, output, owner, request, spec, until } from './runtime-fixture.js';
+import { authority, harness, output, owner, request, until } from './runtime-fixture.js';
 
 it('executes the documented ready-work wave concurrently and retains its planning evidence', async () => {
   const reference = readFileSync('plugin/skills/ultra-code/references/authoring.md', 'utf8');
@@ -13,9 +13,20 @@ it('executes the documented ready-work wave concurrently and retains its plannin
       request(script, {
         maxAgentCalls: 2,
         args: {
-          dispatchPlan: 'Two disjoint source batches have no dependency; reserve only the lead.',
-          reviewObjective: 'Compare the source evidence',
-          assignments: [spec, { ...spec, title: 'Second source batch' }],
+          cwd: '/tmp',
+          capacityNote: 'Reserve the observed lead slot; two source checks are independent.',
+          questions: [
+            {
+              title: 'First source',
+              question: 'Check the first claim',
+              sourcePath: '/tmp/first.txt',
+            },
+            {
+              title: 'Second source',
+              question: 'Check the second claim',
+              sourcePath: '/tmp/second.txt',
+            },
+          ],
         },
       }),
       authority,
@@ -26,8 +37,19 @@ it('executes the documented ready-work wave concurrently and retains its plannin
       'running',
     ]);
     for (const [index, call] of calls.entries()) {
+      expect(call.spec).toMatchObject({
+        model: authority.context.model,
+        effort: authority.context.effort,
+        capability: 'read-only',
+      });
       call.finish(
-        output(index, { evidence: [{ id: `source-${index}`, description: 'Inspected source' }] }),
+        output(
+          { report: `Source ${index} checked` },
+          {
+            acceptance: 'satisfied',
+            evidence: [{ id: `source-${index}`, description: 'Inspected source' }],
+          },
+        ),
       );
     }
     await until(() => engine.status(owner)[0]!.handoffs.length === 1);
@@ -36,7 +58,11 @@ it('executes the documented ready-work wave concurrently and retains its plannin
     expect(engine.events(owner, 0, [run.id]).events).toContainEqual(
       expect.objectContaining({
         type: 'log',
-        data: 'Two disjoint source batches have no dependency; reserve only the lead.',
+        data: JSON.stringify({
+          assignments: ['First source', 'Second source'],
+          dependencies: 'Independent source checks, then lead comparison',
+          reservation: 'Reserve the observed lead slot; two source checks are independent.',
+        }),
       }),
     );
     engine.handoff(owner, handoff.id, 'claim', authority.context);
@@ -51,3 +77,25 @@ it('executes the documented ready-work wave concurrently and retains its plannin
     await engine.close();
   }
 });
+
+it.each(['log', 'phase'])(
+  'identifies invalid %s arguments before any worker launches',
+  async (kind) => {
+    const h = harness();
+    try {
+      h.engine.start(
+        request(`${kind}({assignments:['Phone', 'Watch']}); return await agent(args.spec);`),
+        authority,
+      );
+      await until(() => h.engine.status(owner)[0]?.state === 'failed');
+      const run = h.engine.status(owner)[0]!;
+      expect(run.error).toContain(`${kind}() expects a nonempty string`);
+      expect(run.error).toContain('received object');
+      expect(run.error).toContain(kind === 'log' ? 'JSON.stringify(plan)' : 'Use phase(');
+      expect(run.acceptanceOutcome).toBe('incomplete');
+      expect(h.calls).toHaveLength(0);
+    } finally {
+      await h.engine.close();
+    }
+  },
+);

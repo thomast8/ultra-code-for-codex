@@ -29303,7 +29303,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.3.0",
+  version: "0.3.1",
   private: true,
   type: "module",
   engines: {
@@ -29544,7 +29544,9 @@ var startSchema = external_exports.strictObject({
   title: text,
   objective: text,
   acceptance: external_exports.array(text).min(1).max(1e3),
-  script: external_exports.string().min(1).max(262144),
+  script: external_exports.string().min(1).max(262144).describe(
+    "Complete plain JavaScript function body executed in QuickJS, not prose, a path, imports or Markdown fences. Use the Ultra authoring reference. Host calls include log(message: string), phase(label: string), agent(spec) and lead(spec). Serialize structured logs with JSON.stringify(plan)."
+  ),
   args: json2,
   maxAgentCalls: external_exports.number().int().min(1).max(1e3),
   authorityRef: identifier,
