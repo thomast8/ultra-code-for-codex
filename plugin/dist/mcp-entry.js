@@ -29303,7 +29303,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.3.1",
+  version: "0.3.2",
   private: true,
   type: "module",
   engines: {
