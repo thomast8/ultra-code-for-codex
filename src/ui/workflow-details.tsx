@@ -19,6 +19,7 @@ const tones: Record<string, string> = {
   pending: 'attention',
   claimed: 'attention',
   completed: 'completed',
+  succeeded: 'completed',
   cancelled: 'queued',
   resolved: 'completed',
   failed: 'failed',

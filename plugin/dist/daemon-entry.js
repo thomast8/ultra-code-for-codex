@@ -28885,6 +28885,23 @@ function parseRecord(serialized) {
   return run;
 }
 
+// src/runtime/review-timing.ts
+function reviewIntervals(events) {
+  const reviews = [];
+  for (const event of events) {
+    if (event.type === "handoff.claimed" || event.type === "worker.readback_claimed") {
+      if (event.reference)
+        reviews.push({ handoffId: event.reference, startedAt: event.timestamp, finishedAt: null });
+    } else {
+      for (const review of reviews) {
+        if (review.finishedAt === null && (event.type.startsWith("run.") || review.handoffId === event.reference))
+          review.finishedAt = event.timestamp;
+      }
+    }
+  }
+  return reviews;
+}
+
 // src/runtime/journal.ts
 var Journal = class {
   db;
@@ -28936,6 +28953,24 @@ var Journal = class {
       "SELECT COALESCE(MAX(cursor),0) AS cursor FROM events WHERE run_id=?"
     );
     return runIds.reduce((latest, id) => Math.max(latest, Number(query.get(id).cursor)), 0);
+  }
+  leadReviews(runId) {
+    const rows = this.db.prepare(
+      `SELECT type, timestamp,
+        COALESCE(json_extract(data,'$.handoffId'), json_extract(data,'$.callId'),
+          json_extract(data,'$.taskId')) AS reference
+        FROM events WHERE run_id=? AND type IN (
+          'handoff.claimed','worker.readback_claimed','lead.result','handoff.result',
+          'worker.readback_resolved','run.reconciliation_required','run.cancel',
+          'run.cancelled','run.failed','run.completed') ORDER BY cursor`
+    ).all(runId);
+    return reviewIntervals(
+      rows.map((row) => ({
+        type: String(row.type),
+        timestamp: Number(row.timestamp),
+        reference: typeof row.reference === "string" ? row.reference : null
+      }))
+    );
   }
   close() {
     this.db.close();
@@ -29761,23 +29796,23 @@ var WorkflowEngine = class {
     if (existing) {
       if (existing.requestBytes !== JSON.stringify(request))
         throw new Error("requestId reused with a different payload");
-      return structuredClone(existing.snapshot);
+      return this.snapshot(existing);
     }
     const run = createRun(request, authority);
     this.journal.save(run, "run.created");
     this.runs.set(run.snapshot.id, run);
     this.launch(run);
-    return structuredClone(run.snapshot);
+    return this.snapshot(run);
   }
   status(owner, runIds) {
     const runs = runIds ? runIds.map((id) => this.owned(owner, id)) : [...this.runs.values()].filter(
       (run) => run.owner.instanceId === owner.instanceId && run.owner.sessionId === owner.sessionId
     );
-    return structuredClone(runs.map((run) => run.snapshot));
+    return runs.map((run) => this.snapshot(run));
   }
   result(owner, runId, taskId) {
     const run = this.owned(owner, runId);
-    if (!taskId) return structuredClone(run.snapshot);
+    if (!taskId) return this.snapshot(run);
     const task = run.calls.find((call) => call.task?.id === taskId)?.task;
     if (!task) throw new Error("Task not found in this run");
     return structuredClone(task.result);
@@ -29791,7 +29826,7 @@ var WorkflowEngine = class {
     if (action === "cancel") this.cancel(run);
     this.journal.save(run, `run.${action}`);
     this.scheduler.wake();
-    return structuredClone(run.snapshot);
+    return this.snapshot(run);
   }
   currentCursor(owner, runIds) {
     return this.journal.currentCursor(this.status(owner, runIds).map((run) => run.id));
@@ -29868,6 +29903,12 @@ var WorkflowEngine = class {
     if (!run) throw new Error("Run not found");
     assertOwner(owner, run);
     return run;
+  }
+  snapshot(run) {
+    return structuredClone({
+      ...run.snapshot,
+      leadReviews: this.journal.leadReviews(run.snapshot.id)
+    });
   }
   launch(run) {
     run.snapshot.state = "running";
@@ -30281,7 +30322,7 @@ Codex stderr summary: ${labels.join("; ") || "unrecognized diagnostic"}; raw det
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.2.18",
+  version: "0.2.19",
   private: true,
   type: "module",
   engines: {

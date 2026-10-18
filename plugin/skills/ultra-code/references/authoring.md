@@ -23,6 +23,46 @@ Use `ultra_wait({contextKey, afterCursor, runIds?, timeoutMs?})` with the latest
 
 `ultra_control({contextKey, runId, action})` accepts `pause`, `resume` or `cancel`. Pause stops new dispatch; an already-running worker can continue. Cancel interrupts active work and preserves edits. Uncertain writes and interrupted claimed handoffs require readback; they are not automatically repeated. Controls are per run. Model-side resume requires a verified current Default-mode context; Plan or unknown mode cannot resume. Explicit panel-button controls retain the original run authority.
 
+## Choose the assignment graph first
+
+For each requested outcome, identify independent inputs and questions before choosing
+the worker ceiling. Keep real dependencies sequential, and start ready independent
+assignments together. For example, partition fourteen transcripts into nonoverlapping
+batches with the same extraction contract while the lead reads authenticated course
+pages. Pass only each batch's sources and shared definitions to its worker; the lead
+compares the returned evidence. Do not replicate the full corpus in every assignment.
+Choose the number of batches from useful work, cost and observed capacity, not a fixed
+agent count. A single coupled patch in one writable worktree can remain one assignment.
+
+Record that decision using `log()` before dispatch. Include dependencies, the reason
+for the partition, and actual capacity reservations. Reserve the lead plus observed
+occupied slots, not a spare slot with no workload. `maxAgentCalls` covers the resulting
+graph, not just the first call. A one-worker plan must name the dependency or cost
+reason that makes parallel work unhelpful.
+
+For already-prepared independent read-only specs in `args.assignments`, a script can
+launch one wave and return a review handoff without a redundant discovery worker:
+
+```js
+log(args.dispatchPlan);
+const checks = phase('Independent source checks');
+const results = await parallel(
+  args.assignments.map((spec) => () => agent({ ...spec, phase: checks })),
+);
+return await lead({
+  kind: 'planning',
+  phase: phase('Compare the evidence'),
+  objective: args.reviewObjective,
+  resources: [],
+  evidence: results.flatMap((result) => result.evidence),
+});
+```
+
+Supply complete valid worker specs and set the call ceiling to their count. This
+example does not grant capacity, validate assignment usefulness or waive inspection
+of failed/incomplete results. Claim the handoff when review begins, and resolve when
+its acceptance checks finish; unrelated lead work should not hold it open.
+
 ## Script API
 
 The script runs inside QuickJS, not Node. It has no filesystem, network, imports, process, timers or automatic tool discovery. `Date` and `Math.random` are unavailable. Local variables, bounded loops and conditionals are ordinary JavaScript. Return a JSON value.
@@ -98,6 +138,11 @@ Write workers require a canonical existing linked Git worktree. The sandbox writ
 A resource is `{key, mode:"read"|"write", path?, identity?}`. Use the same key for the same shared resource. `path`, when supplied, must already exist: the host records its canonical path/device/inode and checks for replacement. Read/read claims coexist; a write claim conflicts on matching keys, canonical paths or identities. These are local scheduler leases, not cross-process or repository-wide locks. Broad directory claims need a shared key; arbitrary parent/child paths do not imply overlapping leases.
 
 The returned `TaskResult` includes `execution`, `acceptance`, `value`, `evidence`, `unresolved`, `usage`, `requestedModel`, `reportedModel` and optional `error`. `outputSchema` constrains `value`; the worker returns a separate envelope with `acceptance`, `value`, `evidence` and `unresolved`, which the backend validates. A completed process is not proof of acceptance. Branch on both fields; retain blockers and evidence instead of replacing a failure with an empty result.
+
+Every object in `outputSchema`, including nested objects, must declare
+`additionalProperties: false`. A worker may report `acceptance: "satisfied"` only
+when its acceptance checks pass and `unresolved` is empty; limitations that leave
+required work open belong in an incomplete or blocked result.
 
 ## Lead handoffs and acceptance
 

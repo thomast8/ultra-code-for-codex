@@ -11,10 +11,27 @@ export function visibleHandoffs(run: RunSnapshot) {
 }
 
 export function leadStatus(run: RunSnapshot): string | null {
-  if (terminal(run.state) || run.state === 'needs_reconciliation' || run.error) return null;
-  const handoff = run.handoffs.find((item) => item.state !== 'resolved');
+  if (run.state === 'needs_reconciliation') return 'Readback required';
+  const handoff = visibleHandoffs(run).find((item) => item.state !== 'resolved');
   if (handoff?.state === 'pending') return 'Waiting for lead';
   return handoff?.state === 'claimed' ? 'Lead is verifying' : null;
+}
+
+export function needsLeadFollowup(run: RunSnapshot): boolean {
+  return (
+    run.state === 'needs_reconciliation' ||
+    run.tasks.some((task) => task.state === 'needs_reconciliation') ||
+    visibleHandoffs(run).some((handoff) => handoff.state !== 'resolved')
+  );
+}
+
+export function runStatus(run: RunSnapshot): string {
+  if (run.state !== 'completed') return run.state;
+  if (needsLeadFollowup(run)) return 'needs_reconciliation';
+  if (run.error) return 'failed';
+  if (run.acceptanceOutcome === 'satisfied') return 'succeeded';
+  if (run.tasks.some((task) => task.state === 'failed')) return 'failed';
+  return run.acceptanceOutcome;
 }
 
 export function needsAttention(run: RunSnapshot): boolean {
@@ -39,11 +56,19 @@ function completedNeedsAttention(run: RunSnapshot): boolean {
 
 export function runGroups(runs: RunSnapshot[]) {
   const ordered = [...runs].sort((a, b) => b.createdAt - a.createdAt || b.id.localeCompare(a.id));
-  const current = ordered.filter((run) => !terminal(run.state) || needsAttention(run));
+  const current = ordered.filter(currentWork);
   const finished = ordered
-    .filter((run) => terminal(run.state) && !needsAttention(run))
+    .filter((run) => !currentWork(run))
     .sort((a, b) => (b.finishedAt ?? b.updatedAt) - (a.finishedAt ?? a.updatedAt));
   return { current, latest: finished.slice(0, 1), history: finished.slice(1) };
+}
+
+function currentWork(run: RunSnapshot): boolean {
+  return (
+    !terminal(run.state) ||
+    needsLeadFollowup(run) ||
+    run.tasks.some((task) => task.state === 'running')
+  );
 }
 
 export function tokenLabel(usage: Pick<TokenUsage, 'totalTokens'> | null, complete = true): string {

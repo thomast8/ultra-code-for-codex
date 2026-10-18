@@ -87,8 +87,8 @@ it('keeps pending and claimed verification with the lead without exposing the pa
   );
   expect(leadStatus({ ...run, handoffs: [{ ...pending, state: 'resolved' }] })).toBeNull();
   expect(leadStatus({ ...run, state: 'completed' })).toBeNull();
-  expect(leadStatus({ ...run, state: 'needs_reconciliation' })).toBeNull();
-  expect(leadStatus({ ...run, error: 'Failure' })).toBeNull();
+  expect(leadStatus({ ...run, state: 'needs_reconciliation' })).toBe('Readback required');
+  expect(leadStatus({ ...run, error: 'Failure' })).toBe('Waiting for lead');
 });
 
 it('honors the lead’s accepted outcome without hiding uncertain execution', () => {
