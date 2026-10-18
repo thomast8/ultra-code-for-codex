@@ -73,7 +73,7 @@ it('renders three concurrent workflows with dynamic phases and separate executio
     '#run-run-1',
   );
   const completed = within(screen.getByRole('region', { name: 'Check references' }));
-  expect(completed.getByText('completed').className).toContain('tone-completed');
+  expect(completed.getByText('blocked').className).toContain('tone-attention');
   expect(completed.getAllByText('Acceptance: blocked')[0]).toBeDefined();
   expect(completed.queryByRole('button', { name: /Cancel/ })).toBeNull();
   expect(screen.getAllByText('running', { selector: '.workflow-badge' })[0]?.className).toContain(

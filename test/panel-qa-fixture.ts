@@ -73,6 +73,7 @@ function explicitZeroRun(now: number): RunSnapshot {
     },
     phases: [repair],
     handoffs: [],
+    leadReviews: [{ handoffId: 'qa-review', startedAt: now - 60_000, finishedAt: now - 1_000 }],
     tasks: [worker],
   });
 }

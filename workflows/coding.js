@@ -1,6 +1,10 @@
 // Pass this complete body to ultra_start.script with maxAgentCalls: 1.
 // args: {worktree,worktreeKey,paths,change,context,constraints,acceptance,stopConditions}.
 // The lead prepares the linked worktree and resolves repository quality gates first.
+// This one coupled write assignment is not a default for separable work.
+log(
+  'One coupled implementation in one writable worktree; lead performs independent QA and integration.',
+);
 const ownership = { cwd: args.worktree, paths: args.paths };
 const lease = [{ key: args.worktreeKey, mode: 'write', path: args.worktree }];
 const implementation = await agent({

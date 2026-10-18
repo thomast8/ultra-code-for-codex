@@ -187,7 +187,7 @@ it('bounds a lead scalar on the card and preserves the complete value in details
   expect(details.open).toBe(true);
 });
 
-it('keeps old failed, unverified and reconciliation work in current view', async () => {
+it('archives resolved unsuccessful attempts but keeps reconciliation work current', async () => {
   const failed = finished('failed-run', 0);
   failed.state = 'failed';
   failed.error = 'Test runner unavailable';
@@ -196,9 +196,13 @@ it('keeps old failed, unverified and reconciliation work in current view', async
   const reconcile = finished('reconcile-run', 2);
   reconcile.tasks = [taskFixture({ state: 'needs_reconciliation' })];
   await loaded([failed, blocked, reconcile, finished('newest', 3)]);
-  expect(screen.getAllByRole('region')).toHaveLength(4);
+  expect(screen.getAllByRole('region')).toHaveLength(2);
+  expect(screen.queryByText('Test runner unavailable')).toBeNull();
+  expect(screen.getAllByText('Lead follow-up')).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'History · 2' }));
   expect(screen.getAllByText('Test runner unavailable')).toHaveLength(2);
-  expect(screen.getAllByText('Lead follow-up')).toHaveLength(3);
+  expect(screen.getAllByText('Finished with issues')).toHaveLength(2);
+  expect(screen.queryByText('Lead follow-up')).toBeNull();
 });
 
 it('shows missing usage honestly, truncates preview overflow and keeps every agent reachable', async () => {

@@ -5,6 +5,7 @@ import { Icon } from './icons.js';
 import { controlsAvailable, RunControls } from './run-controls.js';
 import { RunDetails } from './run-details.js';
 import { resultSummary, unwrapLeadResult } from './result-value.js';
+import { RunTiming } from './run-timing.js';
 import { Acceptance, BudgetNotice, ResultValue, StatusBadge } from './workflow-details.js';
 import { creditLabel, estimateRunCredits } from './credit-estimate.js';
 import type { RunAction } from './workflow-feed.js';
@@ -13,7 +14,9 @@ import {
   attentionMessage,
   leadStatus,
   needsAttention,
+  needsLeadFollowup,
   runElapsed,
+  runStatus,
   terminal,
   tokenLabel,
 } from './workflow-summary.js';
@@ -135,8 +138,9 @@ function Attention({ run }: { run: RunSnapshot }) {
   );
 }
 
-function eyebrow(attention: boolean, finished: boolean): string {
-  if (attention) return 'Lead follow-up';
+function eyebrow(run: RunSnapshot, attention: boolean, finished: boolean): string {
+  if (needsLeadFollowup(run)) return 'Lead follow-up';
+  if (attention && finished) return 'Finished with issues';
   return finished ? 'Latest result' : 'In progress';
 }
 
@@ -154,11 +158,11 @@ function RunHeading({
     <header className="workflow-run-heading">
       <div className="run-title">
         <p className={`run-eyebrow ${attention && !lead ? 'attention-ink' : ''}`}>
-          {lead ?? eyebrow(attention, finished)}
+          {lead ?? eyebrow(run, attention, finished)}
         </p>
         <h2>{run.title}</h2>
       </div>
-      <StatusBadge state={run.state} />
+      <StatusBadge state={runStatus(run)} />
     </header>
   );
 }
@@ -194,6 +198,7 @@ function RunSummary({
           <RunCounters run={run} now={now} />
           {finished && <Acceptance value={run.acceptanceOutcome} />}
         </div>
+        <RunTiming run={run} now={now} />
         <CreditPreview run={run} />
         {showAgents && (
           <button

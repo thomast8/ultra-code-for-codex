@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import type { JsonValue, WorkflowEvent } from '../contracts/workflow.js';
 import type { Owner, RunRecord } from './types.js';
 import { parseRecord } from './persistence.js';
+import { reviewIntervals } from './review-timing.js';
 
 export class Journal {
   private readonly db: DatabaseSync;
@@ -65,6 +66,26 @@ export class Journal {
       'SELECT COALESCE(MAX(cursor),0) AS cursor FROM events WHERE run_id=?',
     );
     return runIds.reduce((latest, id) => Math.max(latest, Number(query.get(id)!.cursor)), 0);
+  }
+  leadReviews(runId: string) {
+    const rows = this.db
+      .prepare(
+        `SELECT type, timestamp,
+        COALESCE(json_extract(data,'$.handoffId'), json_extract(data,'$.callId'),
+          json_extract(data,'$.taskId')) AS reference
+        FROM events WHERE run_id=? AND type IN (
+          'handoff.claimed','worker.readback_claimed','lead.result','handoff.result',
+          'worker.readback_resolved','run.reconciliation_required','run.cancel',
+          'run.cancelled','run.failed','run.completed') ORDER BY cursor`,
+      )
+      .all(runId);
+    return reviewIntervals(
+      rows.map((row) => ({
+        type: String(row.type),
+        timestamp: Number(row.timestamp),
+        reference: typeof row.reference === 'string' ? row.reference : null,
+      })),
+    );
   }
   close(): void {
     this.db.close();

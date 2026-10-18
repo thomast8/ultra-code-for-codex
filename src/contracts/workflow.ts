@@ -148,6 +148,7 @@ export type RunSnapshot = {
   phases: PhaseRef[];
   tasks: TaskSnapshot[];
   handoffs: HandoffSnapshot[];
+  leadReviews?: { handoffId: string; startedAt: number; finishedAt: number | null }[];
   usage: TokenUsage | null;
   accountingComplete: boolean; // Reported worker attempts only; main-chat overhead is excluded.
   result: JsonValue;

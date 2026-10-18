@@ -132,6 +132,15 @@ const run: z.ZodType<RunSnapshot> = z
     phases: z.array(phase),
     tasks: z.array(task),
     handoffs: z.array(handoff),
+    leadReviews: z
+      .array(
+        z.object({
+          handoffId: z.string(),
+          startedAt: z.number(),
+          finishedAt: z.number().nullable(),
+        }),
+      )
+      .optional(),
     usage,
     budget: z.object({ maxObservedTokens: z.number().int().positive() }).optional(),
     accountingComplete: z.boolean(),

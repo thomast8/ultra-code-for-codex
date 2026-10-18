@@ -64,13 +64,13 @@ export class WorkflowEngine {
     if (existing) {
       if (existing.requestBytes !== JSON.stringify(request))
         throw new Error('requestId reused with a different payload');
-      return structuredClone(existing.snapshot);
+      return this.snapshot(existing);
     }
     const run = createRun(request, authority);
     this.journal.save(run, 'run.created');
     this.runs.set(run.snapshot.id, run);
     this.launch(run);
-    return structuredClone(run.snapshot);
+    return this.snapshot(run);
   }
   status(owner: Owner, runIds?: string[]): RunSnapshot[] {
     const runs = runIds
@@ -79,11 +79,11 @@ export class WorkflowEngine {
           (run) =>
             run.owner.instanceId === owner.instanceId && run.owner.sessionId === owner.sessionId,
         );
-    return structuredClone(runs.map((run) => run.snapshot));
+    return runs.map((run) => this.snapshot(run));
   }
   result(owner: Owner, runId: string, taskId?: string): RunSnapshot | TaskResult | null {
     const run = this.owned(owner, runId);
-    if (!taskId) return structuredClone(run.snapshot);
+    if (!taskId) return this.snapshot(run);
     const task = run.calls.find((call) => call.task?.id === taskId)?.task;
     if (!task) throw new Error('Task not found in this run');
     return structuredClone(task.result);
@@ -97,7 +97,7 @@ export class WorkflowEngine {
     if (action === 'cancel') this.cancel(run);
     this.journal.save(run, `run.${action}`);
     this.scheduler.wake();
-    return structuredClone(run.snapshot);
+    return this.snapshot(run);
   }
   currentCursor(owner: Owner, runIds?: string[]): number {
     return this.journal.currentCursor(this.status(owner, runIds).map((run) => run.id));
@@ -183,6 +183,12 @@ export class WorkflowEngine {
     if (!run) throw new Error('Run not found');
     assertOwner(owner, run);
     return run;
+  }
+  private snapshot(run: RunRecord): RunSnapshot {
+    return structuredClone({
+      ...run.snapshot,
+      leadReviews: this.journal.leadReviews(run.snapshot.id),
+    });
   }
   private launch(run: RunRecord): void {
     run.snapshot.state = 'running';

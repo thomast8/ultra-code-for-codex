@@ -13,6 +13,13 @@ existing authority and an honest lead-session capacity grant separately.
   followed by a lead handoff for required checks, real QA, review and publication.
   Maximum one worker call; the example does not waive independent review when required.
 
+The coding example is intentionally one coupled write assignment, not the default
+shape for every request. Before selecting an example, identify independent work and
+dependencies. Prepare useful independent checks together using `parallel()` and give
+each only its source batch. Record the graph and the reason for a one-worker choice
+with `log()`, and reserve only the lead and observed occupied slots. The authoring
+reference includes a direct parallel wave for inputs that need no discovery worker.
+
 They illustrate selective delegation, not a fixed sequence or a claim that these
 models are available in every installation. Resolve the live catalog and adapt
 routing before submission. Do not change an already running script; create a new
