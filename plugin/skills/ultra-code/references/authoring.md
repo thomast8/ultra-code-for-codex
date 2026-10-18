@@ -52,6 +52,24 @@ dispatch and report the failed attempt. Preserve saved results; do not chain
 corrective workflows unless recovery is authorized. A recovery never makes the
 original attempt a first-pass success.
 
+## Inspect the actual source revision
+
+Source references from a report or CSV may describe an older revision. Before a
+worker reads or searches explicit paths, verify them against the current file
+inventory (`rg --files` or `git ls-files`). Use revision and rename history to
+locate current equivalents. An absent historical path is evidence to investigate,
+not proof that its finding is fixed. Keep missing or ambiguous mappings explicit.
+Do not pass unverified paths to a multi-file search: a missing input can make the
+whole command exit with an error even while other inputs produce useful matches.
+
+Keep source reads bounded with targeted matches or line ranges. Avoid combining
+unrelated guidance, implementation and test reads into one oversized command.
+When a command fails, retain its specific operation, exit code and sanitized error
+diagnostic in the worker result; preserve source and secret-value restrictions.
+Do not replace the diagnostic with “output truncated” or increase the output
+limit to dump the entire source. Honor the user's failure/stop conditions and
+keep any authorized repair separate from a first-attempt success.
+
 ## Choose the assignment graph first
 
 For each requested outcome, identify independent inputs and questions before choosing
