@@ -30321,11 +30321,21 @@ Codex stderr summary: ${labels.join("; ") || "unrecognized diagnostic"}; raw det
     return error62;
   }
 };
+function workerTransportFailure(error62) {
+  const categories = [
+    [/^Codex app-server sent an oversized JSON-RPC message(?:\n|$)/, "message exceeds 16 MiB"],
+    [/^Codex app-server sent malformed JSON-RPC data(?:\n|$)/, "malformed JSON-RPC"],
+    [/^Codex app-server notification handler failed(?:\n|$)/, "notification handler failed"],
+    [/^Codex app-server exited \((?:\d+|SIG[A-Z]+|unknown)\)(?:\n|$)/, "backend exited"]
+  ];
+  const category = categories.find(([pattern]) => pattern.test(error62.message))?.[1];
+  return `Worker transport failed${category ? ` (${category})` : ""}; termination is unconfirmed`;
+}
 
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.2.20",
+  version: "0.2.21",
   private: true,
   type: "module",
   engines: {
@@ -30393,7 +30403,8 @@ var CodexTransport = class _CodexTransport {
   }
   child;
   timeoutMs;
-  static maximumLineBytes = 1048576;
+  // Command results can exceed the model's final-output bound.
+  static maximumLineBytes = 16777216;
   pending = /* @__PURE__ */ new Map();
   subscriptions = /* @__PURE__ */ new Set();
   diagnostics = new CodexDiagnostics();
@@ -31292,10 +31303,10 @@ async function executeWorkerTurn(transport, spec, options, input2, grace) {
   const events = new WorkerTurnEvents(input2.threadId, spec.model, options);
   const unsubscribe = transport.onNotification(
     (message) => events.receive(message),
-    () => events.stop("Worker transport failed; termination is unconfirmed")
+    (error62) => events.stop(workerTransportFailure(error62))
   );
   const abort = () => events.stop("Worker cancellation requested");
-  const timer = setTimeout(() => events.stop("Worker timeout exceeded"), spec.timeoutMs ?? 12e4);
+  const timer = setTimeout(() => events.stop("Worker timeout exceeded"), spec.timeoutMs ?? 3e5);
   options.signal.addEventListener("abort", abort, { once: true });
   const params = {
     threadId: input2.threadId,
