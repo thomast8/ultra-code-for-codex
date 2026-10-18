@@ -69,9 +69,8 @@ it.each([
     expect(notice).toContain(policy);
     expect(notice).toContain('ultra_start, never native subagents');
     if (effort === 'ultra' && mode === 'plan') {
-      expect(notice).toContain('read-only via ultra_start');
+      expect(notice).toContain('read-only work via ultra_start');
       expect(notice).toContain('lead plans');
-      expect(notice).toContain('Plan Mode is read-only');
     }
     const key = notice.match(/^uctx_[0-9a-f-]{36}/)?.[0];
     expect(key).toBeDefined();

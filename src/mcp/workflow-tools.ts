@@ -141,7 +141,7 @@ function registerStart(options: WorkflowTools): void {
     {
       title: 'Start an Ultra Code workflow',
       description:
-        'Start an immutable general workflow with bounded workers. Supply the lead session’s advertised capacity, reserving its own and other occupied slots; this is local admission, not a host-wide reservation. Keep small coupled tasks with the lead.',
+        'Start a quality-first dynamic workflow for substantive Ultra work. Workers inherit the captured lead model/effort unless overridden. Supply observed session capacity, reserving the lead and occupied slots; this is local admission, not a host-wide reservation. Keep conversation and trivial mechanical edits direct.',
       inputSchema: { ...startSchema.shape, capacity: capacitySchema },
     },
     (input, extra) =>

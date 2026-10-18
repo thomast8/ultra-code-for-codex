@@ -20079,7 +20079,7 @@ async function runUserPromptHook(value, environment) {
   const { contextKey } = await registerContext(input2, dataDir);
   const context = await resolveContext(contextKey, dataDir);
   const active = context.resolutionStatus === "verified" && context.effort === "ultra";
-  const policy = !active ? "Ultra policy inactive: effort unverified as ultra. Explicit Ultra: use ultra_start, never native subagents; verify capabilities and authority." : context.collaborationMode === "plan" ? "Ultra planning policy active: read-only via ultra_start, never native subagents; lead plans. Plan Mode is read-only. Read the ultra-code skill." : "Ultra policy active: delegate via ultra_start, never native subagents; lead owns intent and delivery. Plan Mode is read-only. Read the ultra-code skill.";
+  const policy = !active ? "Ultra policy inactive: effort unverified as ultra. Explicit Ultra: use ultra_start, never native subagents; verify capabilities and authority." : context.collaborationMode === "plan" ? "Ultra planning policy active: substantive read-only work via ultra_start, never native subagents. Quality first; lead plans. Read ultra-code skill." : "Ultra policy active: substantive work via ultra_start, never native subagents. Quality first; lead delivers. Plan is read-only. Read ultra-code skill.";
   const pending = pendingWorkNotice(dataDir, context);
   return {
     hookSpecificOutput: {

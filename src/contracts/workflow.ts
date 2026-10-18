@@ -39,6 +39,10 @@ export type AgentSpec = {
   outputSchema: { [key: string]: JsonValue };
   timeoutMs?: number;
 };
+export type AgentRequest = Omit<AgentSpec, 'model' | 'effort'> & {
+  model?: string;
+  effort?: ReasoningEffort;
+};
 export type TokenUsage = {
   inputTokens: number;
   cachedInputTokens: number;

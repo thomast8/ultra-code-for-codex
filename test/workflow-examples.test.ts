@@ -49,8 +49,8 @@ it('executes bounded discovery and dynamic source checks before lead acceptance'
     for (const spec of calls) {
       verifyAssignment(spec);
       expect(spec).toMatchObject({
-        model: 'gpt-6-luna',
-        effort: 'medium',
+        model: authority.context.model,
+        effort: authority.context.effort,
         capability: 'read-only',
       });
       expect(spec.assignment.ownership).toEqual({ cwd: root, paths: [] });
@@ -112,7 +112,11 @@ it('executes exactly two isolated concept lenses and returns the lead decision u
     ]);
     for (const spec of calls) {
       verifyAssignment(spec);
-      expect(spec).toMatchObject({ model: 'gpt-6.1-sol', effort: 'high', capability: 'read-only' });
+      expect(spec).toMatchObject({
+        model: authority.context.model,
+        effort: authority.context.effort,
+        capability: 'read-only',
+      });
     }
     expect(run.tasks.every((task) => task.result?.acceptance === 'satisfied')).toBe(true);
     expect(run.acceptanceOutcome).toBe('unverified');
@@ -147,8 +151,8 @@ it('keeps coding ownership, checks and external actions assigned to the intended
     const spec = calls[0]!;
     verifyAssignment(spec);
     expect(spec).toMatchObject({
-      model: 'gpt-6.1-sol',
-      effort: 'high',
+      model: authority.context.model,
+      effort: authority.context.effort,
       capability: 'workspace-write',
     });
     expect(spec.assignment.ownership).toEqual({ cwd: root, paths: [`${root}/example.ts`] });

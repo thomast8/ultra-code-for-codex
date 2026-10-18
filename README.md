@@ -1,8 +1,9 @@
 # Ultra Code for Codex
 
-A local Codex plugin for selective, adaptive workflows beside a chat.
-The selected chat model remains the lead. It delegates bounded work when the
-benefit justifies worker usage and coordination, and retains decisions, real QA,
+A local Codex plugin for quality-first dynamic workflows beside a chat.
+The selected chat model remains the lead. In Ultra, substantive work normally uses
+scripted investigation and verification. Workers inherit the captured lead model
+and effort unless explicitly overridden. The lead retains decisions, real QA,
 integration and verified completion.
 
 The plugin includes the execution runtime, verified with native research,
@@ -15,9 +16,9 @@ There is no Codex Pilot, private Desktop IPC or hosted service dependency.
 On a verified native **Ultra** turn, the hook activates the orchestration policy
 automatically. You do not need to say “Use Ultra Code.” For example, ask
 **“Investigate these three independent questions, then compare the evidence.”**
-The lead decides whether delegation is useful; a small task such as correcting
-one label stays with the lead. Ultra does not require fan-out or grant authority.
-When Ultra delegates, it uses the workflow engine and records a run in the panel.
+The lead chooses an investigation and verification graph appropriate to the task;
+conversation and trivial mechanical edits stay direct. Ultra does not grant
+additional authority or require a fixed number of agents. Workflows record a run in the panel.
 Native subagents are not a fallback. An unavailable engine or worker capability
 is reported as a blocker; opening the panel alone does not start a workflow.
 

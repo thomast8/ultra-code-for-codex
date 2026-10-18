@@ -29303,7 +29303,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.2.21",
+  version: "0.3.0",
   private: true,
   type: "module",
   engines: {
@@ -29516,6 +29516,10 @@ var agentSchema = external_exports.strictObject({
   resources: external_exports.array(resourceSchema).max(100),
   outputSchema: external_exports.record(external_exports.string(), json2),
   timeoutMs: external_exports.number().int().min(1e3).max(36e5).optional()
+});
+var agentRequestSchema = agentSchema.extend({
+  model: identifier.optional(),
+  effort: identifier.optional()
 });
 var handoffSchema = external_exports.strictObject({
   kind: external_exports.enum(["action", "planning"]).optional(),
@@ -38069,7 +38073,7 @@ function registerStart(options) {
     "ultra_start",
     {
       title: "Start an Ultra Code workflow",
-      description: "Start an immutable general workflow with bounded workers. Supply the lead session\u2019s advertised capacity, reserving its own and other occupied slots; this is local admission, not a host-wide reservation. Keep small coupled tasks with the lead.",
+      description: "Start a quality-first dynamic workflow for substantive Ultra work. Workers inherit the captured lead model/effort unless overridden. Supply observed session capacity, reserving the lead and occupied slots; this is local admission, not a host-wide reservation. Keep conversation and trivial mechanical edits direct.",
       inputSchema: { ...startSchema.shape, capacity: capacitySchema }
     },
     (input2, extra) => result(async () => {

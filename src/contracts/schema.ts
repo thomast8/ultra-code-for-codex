@@ -46,6 +46,10 @@ export const agentSchema = z.strictObject({
   outputSchema: z.record(z.string(), json),
   timeoutMs: z.number().int().min(1_000).max(3_600_000).optional(),
 });
+export const agentRequestSchema = agentSchema.extend({
+  model: identifier.optional(),
+  effort: identifier.optional(),
+});
 export const handoffSchema = z
   .strictObject({
     kind: z.enum(['action', 'planning']).optional(),

@@ -1,5 +1,5 @@
 // Pass this complete body to ultra_start.script with maxAgentCalls: 1.
-// args: {worktree,worktreeKey,paths,change,context,constraints,acceptance,stopConditions}.
+// args: optional routing {model,effort}; other args: {worktree,worktreeKey,paths,change,context,constraints,acceptance,stopConditions}.
 // The lead prepares the linked worktree and resolves repository quality gates first.
 // This one coupled write assignment is not a default for separable work.
 log(
@@ -34,14 +34,14 @@ const implementation = await agent({
     verificationBurden:
       'Focused worker checks plus required lead real-system QA and repository review.',
     modelRationale:
-      'Sol is appropriate for interacting code paths; routine extraction would use Luna.',
+      'Inherit the captured lead route for interacting code paths unless deliberately overridden.',
     delegationBenefit:
       'This bounded change is independent enough for the lead to progress other work.',
     coordinationOverhead:
-      'One implementation result and one lead verification; no speculative review team.',
+      'One isolated writer; the lead arranges appropriate independent checks and real QA.',
   },
-  model: 'gpt-6.1-sol',
-  effort: 'high',
+  model: args.routing?.model,
+  effort: args.routing?.effort,
   capability: 'workspace-write',
   resources: lease,
   outputSchema: {
