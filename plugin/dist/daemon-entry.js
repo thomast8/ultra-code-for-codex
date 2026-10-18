@@ -28349,7 +28349,9 @@ var startSchema = external_exports.strictObject({
   title: text,
   objective: text,
   acceptance: external_exports.array(text).min(1).max(1e3),
-  script: external_exports.string().min(1).max(262144),
+  script: external_exports.string().min(1).max(262144).describe(
+    "Complete plain JavaScript function body executed in QuickJS, not prose, a path, imports or Markdown fences. Use the Ultra authoring reference. Host calls include log(message: string), phase(label: string), agent(spec) and lead(spec). Serialize structured logs with JSON.stringify(plan)."
+  ),
   args: json2,
   maxAgentCalls: external_exports.number().int().min(1).max(1e3),
   authorityRef: identifier,
@@ -29447,7 +29449,9 @@ var RunSession = class {
   sync(kind, value) {
     if (!["phase", "log"].includes(kind)) throw new Error("Unknown synchronous host call");
     if (typeof value !== "string" || !value.trim() || value.length > 32768)
-      throw new Error("Expected bounded nonempty text");
+      throw new Error(
+        `${kind}() expects a nonempty string of at most 32768 characters; received ${typeof value}. ` + (kind === "log" ? "Use log(JSON.stringify(plan)) for structured data." : 'Use phase("Phase label").')
+      );
     const { call, replay } = this.intent(kind, value);
     if (replay) return call.result;
     call.result = kind === "phase" ? phaseSchema.parse({ id: `phase-${this.run.snapshot.phases.length + 1}`, label: value }) : null;
@@ -30355,7 +30359,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.3.0",
+  version: "0.3.1",
   private: true,
   type: "module",
   engines: {

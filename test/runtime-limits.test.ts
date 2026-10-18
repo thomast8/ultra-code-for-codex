@@ -57,7 +57,7 @@ it('fails invalid phases, non-JSON arguments and unavailable host capabilities',
   engine.start(request('await import("node:fs");', { requestId: 'imports' }), authority);
   await until(() => engine.status(owner).every((run) => run.state === 'failed'));
   expect(engine.status(owner)[0]?.error).toContain('phase(label)');
-  expect(engine.status(owner)[1]?.error).toContain('nonempty text');
+  expect(engine.status(owner)[1]?.error).toContain('phase() expects a nonempty string');
   await engine.close();
 });
 

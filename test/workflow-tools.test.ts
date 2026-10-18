@@ -168,6 +168,11 @@ async function assertControlSchemas(client: Client): Promise<void> {
   const listed = (await client.listTools()).tools;
   const model = listed.find((tool) => tool.name === 'ultra_control')!;
   const panel = listed.find((tool) => tool.name === 'ultra_panel_control')!;
+  const start = listed.find((tool) => tool.name === 'ultra_start')!;
+  expect(start.inputSchema.properties?.script).toMatchObject({
+    type: 'string',
+    description: expect.stringContaining('log(message: string)'),
+  });
   expect(model._meta).toMatchObject({ ui: { visibility: ['model'] } });
   expect(panel._meta).toMatchObject({ ui: { visibility: ['app'] } });
   expect(model.inputSchema.required).toContain('contextKey');

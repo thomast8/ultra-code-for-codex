@@ -81,7 +81,12 @@ export class RunSession {
   private sync(kind: 'phase' | 'log', value: JsonValue): JsonValue {
     if (!['phase', 'log'].includes(kind)) throw new Error('Unknown synchronous host call');
     if (typeof value !== 'string' || !value.trim() || value.length > 32_768)
-      throw new Error('Expected bounded nonempty text');
+      throw new Error(
+        `${kind}() expects a nonempty string of at most 32768 characters; received ${typeof value}. ` +
+          (kind === 'log'
+            ? 'Use log(JSON.stringify(plan)) for structured data.'
+            : 'Use phase("Phase label").'),
+      );
     const { call, replay } = this.intent(kind, value);
     if (replay) return call.result;
     call.result =

@@ -2,6 +2,110 @@
 
 The selected chat remains the lead. The runtime executes an immutable JavaScript body, records its calls and results, and schedules bounded workers. It has no research, concepts or coding presets. The repository examples are ordinary scripts with illustrative phase labels.
 
+## Executable contract
+
+The script runs inside QuickJS, not Node. It has no filesystem, network, imports, process, timers or automatic tool discovery. `Date` and `Math.random` are unavailable. Local variables, bounded loops and conditionals are ordinary JavaScript. Return a JSON value.
+
+Use these typed host calls. The submitted script is plain JavaScript; type
+annotations, imports, Markdown fences, paths and prose are not script bodies.
+
+- `phase(label: string): PhaseRef` returns a frozen `{id, label}`; pass that exact reference onward.
+- `log(message: string): void` accepts 1–32,768 characters. Serialize objects with `JSON.stringify(plan)`.
+- `agent(spec: AgentRequest): Promise<TaskResult>` accepts the worker contract below; model and effort may be omitted.
+- `lead(spec: LeadHandoffSpec): Promise<LeadResult>` waits for the selected lead's evidence-backed resolution.
+- `parallel<T>(factories: Array<() => T | Promise<T>>): Promise<T[]>` starts factories and returns results in input order.
+- `pipeline<T, R>(items: T[], fn: (item: T, index: number) => R | Promise<R>): Promise<R[]>` runs independent items concurrently.
+
+`log('Checking the source evidence')` and `log(JSON.stringify(plan))` are valid.
+`log(plan)` is invalid when `plan` is an object. `parallel()` takes factories, not
+already-started promises; `pipeline()` runs item functions concurrently, so put
+sequential awaits inside each function for dependent stages.
+
+## Choose the assignment graph first
+
+For each requested outcome, identify independent inputs and questions before choosing
+the worker ceiling. Keep real dependencies sequential, and start ready independent
+assignments together. For example, partition fourteen transcripts into nonoverlapping
+batches with the same extraction contract while the lead reads authenticated course
+pages. Pass only each batch's sources and shared definitions to its worker; the lead
+compares the returned evidence. Do not replicate the full corpus in every assignment.
+Choose the number of batches from useful coverage, dependencies and observed capacity, not a fixed
+agent count. A single coupled patch in one writable worktree can remain one assignment.
+
+Record that decision using `log()` before dispatch. Include dependencies, the reason
+for the partition, and actual capacity reservations. Reserve the lead plus observed
+occupied slots, not a spare slot with no workload. `maxAgentCalls` covers the resulting
+graph, not just the first call. A one-worker plan must name the dependency
+reason that makes parallel work unhelpful.
+
+The following complete script illustrates a ready read-only wave and a lead review.
+Choose the questions, sources and graph for the actual task; this is not a fixed
+team or required sequence. Supply JSON args with `cwd` (canonical absolute root),
+`capacityNote` (string describing the observed reservation), and `questions`
+(array of `{title, question, sourcePath}` records with actual source paths).
+Set `maxAgentCalls` to the number of questions for this example.
+
+```js
+log(
+  JSON.stringify({
+    assignments: args.questions.map((question) => question.title),
+    dependencies: 'Independent source checks, then lead comparison',
+    reservation: args.capacityNote,
+  }),
+);
+const checks = phase('Independent source checks');
+const results = await parallel(
+  args.questions.map(
+    (question) => () =>
+      agent({
+        phase: checks,
+        title: question.title,
+        assignment: {
+          outcome: question.question,
+          inputs: { sourcePath: question.sourcePath },
+          ownership: { cwd: args.cwd, paths: [] },
+          constraints: ['Read only the supplied source; do not change files or fetch evidence.'],
+          acceptance: [
+            'Cite exact source locations and distinguish findings from missing evidence.',
+          ],
+          stopConditions: ['The supplied source is missing or cannot support the requested check.'],
+        },
+        assessment: {
+          difficulty: 'Bounded source investigation',
+          uncertainty: 'The source may not establish an answer',
+          consequence: 'Unsupported claims would mislead the final comparison',
+          verificationBurden: 'Lead checks original sources and counterevidence',
+          modelRationale: 'Inherit the captured lead model and effort',
+          delegationBenefit: 'Independent source questions can run together',
+          coordinationOverhead: 'One bounded report per question and one lead review',
+        },
+        capability: 'read-only',
+        resources: [],
+        outputSchema: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['report'],
+          properties: { report: { type: 'string' } },
+        },
+      }),
+  ),
+);
+return await lead({
+  kind: 'planning',
+  phase: phase('Compare and verify the evidence'),
+  objective:
+    'Inspect every saved TaskResult, including failures. Check original sources, counterevidence and coverage against the user outcome; resolve only the acceptance established.',
+  resources: [],
+  evidence: results.flatMap((result) => result.evidence),
+});
+```
+
+The script passes a **string** to `log()` by serializing its structured plan.
+`agent()` returns the complete TaskResult envelope, not just `value`; inspect both
+execution and acceptance before consuming a dependent result. Claim the handoff
+when review begins and resolve it against actual evidence. A failed or incomplete
+worker does not become successful because the script reached the handoff.
+
 ## Start and wait
 
 Call `ultra_start` with these fields:
@@ -23,59 +127,6 @@ Use `ultra_wait({contextKey, afterCursor, runIds?, timeoutMs?})` with the latest
 
 `ultra_control({contextKey, runId, action})` accepts `pause`, `resume` or `cancel`. Pause stops new dispatch; an already-running worker can continue. Cancel interrupts active work and preserves edits. Uncertain writes and interrupted claimed handoffs require readback; they are not automatically repeated. Controls are per run. Model-side resume requires a verified current Default-mode context; Plan or unknown mode cannot resume. Explicit panel-button controls retain the original run authority.
 
-## Choose the assignment graph first
-
-For each requested outcome, identify independent inputs and questions before choosing
-the worker ceiling. Keep real dependencies sequential, and start ready independent
-assignments together. For example, partition fourteen transcripts into nonoverlapping
-batches with the same extraction contract while the lead reads authenticated course
-pages. Pass only each batch's sources and shared definitions to its worker; the lead
-compares the returned evidence. Do not replicate the full corpus in every assignment.
-Choose the number of batches from useful coverage, dependencies and observed capacity, not a fixed
-agent count. A single coupled patch in one writable worktree can remain one assignment.
-
-Record that decision using `log()` before dispatch. Include dependencies, the reason
-for the partition, and actual capacity reservations. Reserve the lead plus observed
-occupied slots, not a spare slot with no workload. `maxAgentCalls` covers the resulting
-graph, not just the first call. A one-worker plan must name the dependency
-reason that makes parallel work unhelpful.
-
-For already-prepared independent read-only specs in `args.assignments`, a script can
-launch one wave and return a review handoff without a redundant discovery worker:
-
-```js
-log(args.dispatchPlan);
-const checks = phase('Independent source checks');
-const results = await parallel(
-  args.assignments.map((spec) => () => agent({ ...spec, phase: checks })),
-);
-return await lead({
-  kind: 'planning',
-  phase: phase('Compare the evidence'),
-  objective: args.reviewObjective,
-  resources: [],
-  evidence: results.flatMap((result) => result.evidence),
-});
-```
-
-Supply complete valid worker specs and set the call ceiling to their count. This
-example does not grant capacity, validate assignment usefulness or waive inspection
-of failed/incomplete results. Claim the handoff when review begins, and resolve when
-its acceptance checks finish; unrelated lead work should not hold it open.
-
-## Script API
-
-The script runs inside QuickJS, not Node. It has no filesystem, network, imports, process, timers or automatic tool discovery. `Date` and `Math.random` are unavailable. Local variables, bounded loops and conditionals are ordinary JavaScript. Return a JSON value.
-
-| Function              | Implemented behavior                                                                                                                                                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `phase(label)`        | Synchronous; creates and returns a frozen `{id,label}`. Every worker and handoff must use a phase returned by this function. Labels and phase order are authored by the script. |
-| `agent(spec)`         | Promise of a `TaskResult`. The host validates the spec, journals it, waits for capacity/resources and dispatches a restricted worker.                                           |
-| `lead(spec)`          | Promise resolved by the selected lead's claimed handoff. It does not spawn a coordinator or change the lead model.                                                              |
-| `parallel(factories)` | Runs zero-argument factories and returns `Promise.all` results in input order. Host admission bounds actual simultaneous workers.                                               |
-| `pipeline(items, fn)` | Maps every item to `fn(item,index)` concurrently. Put sequential `await` steps inside each item function to create per-item dependencies. It is not a global serial pipeline.   |
-| `log(message)`        | Synchronous journal entry of bounded nonempty text; it does not request model inference.                                                                                        |
-
 Replay requires the same host calls and payloads in the same order. Completed calls reuse journaled results. Do not mutate a launched script, add nondeterministic inputs, or bypass exposed functions. A changed strategy is a new run with a fresh `requestId`, optional `parentRunId` and saved evidence references. Incomplete or uncertain calls need explicit reconciliation.
 
 ## Worker contracts and quality assessment
@@ -88,7 +139,8 @@ value. Use `result.evidence` directly in a handoff; obtain task IDs from
 or put the serialized worker result into the handoff objective.
 
 ```js
-const result = await agent(args.spec);
+const sourceCheck = phase('Check the supplied source');
+const result = await agent({ ...args.spec, phase: sourceCheck });
 return await lead({
   kind: 'planning',
   phase: phase('Lead verifies the source findings'),
@@ -102,7 +154,8 @@ If a later script step fails after a worker returns, preserve the failed run and
 read its saved result. Continue with a linked run and valid evidence references;
 do not repeat the investigation to repair a handoff or formatting mistake.
 
-`agent(spec)` requires:
+`agent(spec)` has the following field map. This is not a script body; use the
+complete executable example above and supply task-specific inputs:
 
 ```js
 {
