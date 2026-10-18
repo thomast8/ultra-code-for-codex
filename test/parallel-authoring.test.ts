@@ -1,6 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { expect, it } from 'vitest';
-import { authority, harness, output, owner, request, until } from './runtime-fixture.js';
+import { authority, harness, output, owner, request, spec, until } from './runtime-fixture.js';
 
 it('executes the documented ready-work wave concurrently and retains its planning evidence', async () => {
   const reference = readFileSync('plugin/skills/ultra-code/references/authoring.md', 'utf8');
@@ -99,3 +100,25 @@ it.each(['log', 'phase'])(
     }
   },
 );
+
+it('executes the documented writer with a canonical root write lease', async () => {
+  const reference = readFileSync('plugin/skills/ultra-code/references/authoring.md', 'utf8');
+  const script = reference
+    .split('For a writing assignment, use this exact lease shape')[1]!
+    .match(/```js\n([\s\S]*?)```/)![1]!;
+  const h = harness();
+  const cwd = realpathSync(tmpdir());
+  try {
+    h.engine.start(request(script, { args: { spec, cwd, ownedPaths: [] } }), authority);
+    await until(() => h.calls.length === 1);
+    expect(h.calls[0]!.spec).toMatchObject({
+      capability: 'workspace-write',
+      assignment: { ownership: { cwd, paths: [] } },
+      resources: [{ key: `worktree:${cwd}`, mode: 'write', path: cwd }],
+    });
+    h.calls[0]!.finish(output(null, { acceptance: 'satisfied' }));
+    await until(() => h.engine.status(owner)[0]!.state === 'completed');
+  } finally {
+    await h.engine.close();
+  }
+});

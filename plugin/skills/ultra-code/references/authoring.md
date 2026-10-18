@@ -21,6 +21,37 @@ annotations, imports, Markdown fences, paths and prose are not script bodies.
 already-started promises; `pipeline()` runs item functions concurrently, so put
 sequential awaits inside each function for dependent stages.
 
+## Keep evidence bounded
+
+`log()` is a progress journal, not report storage. Log short routing decisions,
+counts, execution/acceptance states and evidence IDs. Never log an entire worker
+result or an array of reports. Each log is limited to 32,768 UTF-16 code units (`string.length`); `JSON.stringify()` changes representation, not the size limit.
+
+The JSON serialization of all six `assignment` fields together must fit within
+65,536 UTF-8 bytes. This includes ownership, constraints, acceptance and stop
+conditions, not just `inputs`. Leave room for that metadata. Measure serialized UTF-8 size outside QuickJS before
+submission; JavaScript string length is not a byte count. Forward only the
+specific claims a dependent worker needs, with row IDs, source paths, revisions
+and short relevant extracts. Set appropriate output-schema `maxLength` and
+`maxItems` bounds before dispatch; request concise findings with source citations.
+Do not copy complete TaskResults or concatenate partition reports into a critic's
+assignment. Preserve coverage in the saved results; narrow the next check rather
+than silently truncating required findings.
+
+Evidence IDs and `parentRunId` retain lineage; they do not automatically load
+reports into a worker. Workers cannot call `ultra_result` or other MCP tools.
+The lead reads saved results, then supplies bounded claims and accessible original
+source references. If an authorized local evidence file is needed, the lead must
+write it outside the immutable script, verify the actual path is readable by the
+worker, and pass its path and revision. QuickJS cannot write files. Plan Mode must
+keep project files read-only and use only an already-authorized artifact location.
+
+Before starting, check every authored host-call shape against this reference and
+bound the planned logs and dependent assignments. On an execution error, stop new
+dispatch and report the failed attempt. Preserve saved results; do not chain
+corrective workflows unless recovery is authorized. A recovery never makes the
+original attempt a first-pass success.
+
 ## Choose the assignment graph first
 
 For each requested outcome, identify independent inputs and questions before choosing
@@ -85,7 +116,7 @@ const results = await parallel(
           type: 'object',
           additionalProperties: false,
           required: ['report'],
-          properties: { report: { type: 'string' } },
+          properties: { report: { type: 'string', maxLength: 8000 } },
         },
       }),
   ),
@@ -201,6 +232,29 @@ Workers receive the six assignment fields and local instruction sources. They do
 Write workers require a canonical existing linked Git worktree. The sandbox write boundary is that entire root; `ownership.paths` further describes the assignment but is not a per-file OS sandbox. Each write worker must declare `{key, mode:"write", path: ownership.cwd}`. The canonical root claim is required before admission and queued replay, even when no other writer is running. Preserve unrelated edits and run the repository's supported setup before expecting its checks to work. Plan Mode rejects write workers and write claims.
 
 A resource is `{key, mode:"read"|"write", path?, identity?}`. Use the same key for the same shared resource. `path`, when supplied, must already exist: the host records its canonical path/device/inode and checks for replacement. Read/read claims coexist; a write claim conflicts on matching keys, canonical paths or identities. These are local scheduler leases, not cross-process or repository-wide locks. Broad directory claims need a shared key; arbitrary parent/child paths do not imply overlapping leases.
+
+For a writing assignment, use this exact lease shape together with the six
+assignment fields above. `args.cwd` is the existing canonical worktree root and
+`args.ownedPaths` contains its existing owned paths. Review workers remain read-only
+with no write lease. Resource fields are `key`, `mode` and optional `path`/`identity`;
+`kind` and `access` are not supported.
+
+```js
+const writing = {
+  ...args.spec,
+  phase: phase('Implement the authorized change'),
+  assignment: {
+    ...args.spec.assignment,
+    ownership: { cwd: args.cwd, paths: args.ownedPaths },
+  },
+  capability: 'workspace-write',
+  resources: [
+    ...args.spec.resources,
+    { key: `worktree:${args.cwd}`, mode: 'write', path: args.cwd },
+  ],
+};
+return await agent(writing);
+```
 
 The returned `TaskResult` includes `execution`, `acceptance`, `value`, `evidence`, `unresolved`, `usage`, `requestedModel`, `reportedModel` and optional `error`. `outputSchema` constrains `value`; the worker returns a separate envelope with `acceptance`, `value`, `evidence` and `unresolved`, which the backend validates. A completed process is not proof of acceptance. Branch on both fields; retain blockers and evidence instead of replacing a failure with an empty result.
 
