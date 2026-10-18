@@ -191,3 +191,18 @@ it.each(['dotted.name', 'quoted"name', '', 'line\nbreak'])(
     expect(h.discovery.close).toHaveBeenCalledOnce();
   },
 );
+
+it('explains read-only shell restrictions without changing writer instructions or output rules', () => {
+  const reader = workerPrompt(workerSpec());
+  const writer = workerPrompt(workerSpec({ capability: 'workspace-write' }));
+  expect(reader).toContain('Read-only execution cannot create temporary files');
+  expect(reader).toContain('Do not use shell heredocs');
+  expect(reader).toContain('python3 -c');
+  expect(writer).not.toContain('Read-only execution cannot create temporary files');
+  for (const prompt of [reader, writer]) {
+    expect(prompt).toContain('an empty unresolved array');
+    expect(prompt).toContain(
+      'missing evidence or checks required for acceptance belong in unresolved',
+    );
+  }
+});

@@ -31090,7 +31090,8 @@ function workerPrompt(spec) {
     Buffer.byteLength(assignment) <= 65536,
     "Worker assignment exceeds the 64 KiB bound"
   );
-  return `Complete only this bounded assignment. Follow the stated ownership and stop conditions. Do not delegate or request escalation. Return the required JSON envelope. Report acceptance as satisfied only with evidence that every acceptance condition holds; otherwise report incomplete or blocked and list unresolved work. The value field must satisfy the supplied value schema.
+  const commands = spec.capability === "read-only" ? "Read-only execution cannot create temporary files. Do not use shell heredocs, here-strings, output redirection or temporary scripts; use commands such as python3 -c with quoted inline source that require no file writes. " : "";
+  return `Complete only this bounded assignment. Follow the stated ownership and stop conditions. ${commands}Do not delegate or request escalation. Return the required JSON envelope. Report acceptance as satisfied only with evidence that every acceptance condition holds and an empty unresolved array; otherwise report incomplete or blocked and list unfinished assignment work. Put completed review findings in value; missing evidence or checks required for acceptance belong in unresolved. The unresolved array is for unfinished assignment work, not findings from a completed review. The value field must satisfy the supplied value schema.
 ${assignment}`;
 }
 
