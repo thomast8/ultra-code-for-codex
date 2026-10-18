@@ -219,6 +219,7 @@ export class WorkflowEngine {
     else if (run.snapshot.state === 'paused') {
       const grant = run.authority.capacity;
       this.scheduler.setGrant(run.snapshot.id, grant.totalSlots - grant.reservedSlots);
+      this.releaseGrant(run);
     }
   }
   private settleTerminalQueue(run: RunRecord): void {
@@ -276,7 +277,7 @@ export class WorkflowEngine {
       !run.calls.some(
         (call) =>
           call.task?.state === 'needs_reconciliation' ||
-          (call.kind === 'agent' && call.state === 'dispatched'),
+          (call.kind === 'agent' && ['queued', 'dispatched', 'uncertain'].includes(call.state)),
       )
     ) {
       this.scheduler.removeGrant(run.snapshot.id);
