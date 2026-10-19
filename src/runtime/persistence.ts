@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { filesystemAuthoritySchema } from '../activation/permissions.js';
 import {
   agentSchema,
   capacitySchema,
@@ -20,6 +21,7 @@ const contextSchema = z.strictObject({
   sessionId: z.string().min(1),
   turnId: z.string().min(1),
   cwd: z.string(),
+  filesystem: filesystemAuthoritySchema.optional(),
   model: z.string(),
   effort: z.string(),
   reportedEffort: z.string().optional(),

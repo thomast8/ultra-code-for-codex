@@ -8,6 +8,7 @@ import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import ultraMenu from '../../plugin/assets/ultra-menu.png';
 import { openBindings, panelKey, panelKeyForNonce } from './panel-bindings.js';
 import type { LeadContext } from '../activation/types.js';
+import { filesystemAuthoritySchema } from '../activation/permissions.js';
 import {
   assertRoutedContext,
   requestMetadataKind,
@@ -239,6 +240,7 @@ function registerContextTool(
         sessionId: z.string(),
         turnId: z.string(),
         cwd: z.string(),
+        filesystem: filesystemAuthoritySchema.optional(),
         model: z.string(),
         effort: z.string(),
         collaborationMode: z.string(),

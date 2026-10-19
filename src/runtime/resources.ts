@@ -1,5 +1,20 @@
 import { realpathSync, statSync } from 'node:fs';
 import type { AgentSpec, ResourceClaim } from '../contracts/workflow.js';
+import type { LeadContext } from '../activation/types.js';
+
+export function requireWorkerAuthority(spec: AgentSpec, context: LeadContext): void {
+  if (!context.filesystem?.readAll)
+    throw new Error('Exact-turn filesystem authority is unavailable; start from a verified turn');
+  if (spec.capability !== 'workspace-write') return;
+  const authorized = context.filesystem.writableRoots.some((root) => {
+    try {
+      return realpathSync(root) === spec.assignment.ownership.cwd;
+    } catch {
+      return false;
+    }
+  });
+  if (!authorized) throw new Error('Worker write root is not authorized by the verified lead turn');
+}
 
 export function requireWriterLease(spec: AgentSpec, claims: ResourceClaim[]): void {
   if (

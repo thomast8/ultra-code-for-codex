@@ -24253,49 +24253,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative, options, skipNormalization) {
+    function resolveComponent(base, relative2, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative = parse3(serialize(relative, options), options);
+        relative2 = parse3(serialize(relative2, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative.scheme) {
-        target.scheme = relative.scheme;
-        target.userinfo = relative.userinfo;
-        target.host = relative.host;
-        target.port = relative.port;
-        target.path = removeDotSegments(relative.path || "");
-        target.query = relative.query;
+      if (!options.tolerant && relative2.scheme) {
+        target.scheme = relative2.scheme;
+        target.userinfo = relative2.userinfo;
+        target.host = relative2.host;
+        target.port = relative2.port;
+        target.path = removeDotSegments(relative2.path || "");
+        target.query = relative2.query;
       } else {
-        if (relative.userinfo !== void 0 || relative.host !== void 0 || relative.port !== void 0) {
-          target.userinfo = relative.userinfo;
-          target.host = relative.host;
-          target.port = relative.port;
-          target.path = removeDotSegments(relative.path || "");
-          target.query = relative.query;
+        if (relative2.userinfo !== void 0 || relative2.host !== void 0 || relative2.port !== void 0) {
+          target.userinfo = relative2.userinfo;
+          target.host = relative2.host;
+          target.port = relative2.port;
+          target.path = removeDotSegments(relative2.path || "");
+          target.query = relative2.query;
         } else {
-          if (!relative.path) {
+          if (!relative2.path) {
             target.path = base.path;
-            if (relative.query !== void 0) {
-              target.query = relative.query;
+            if (relative2.query !== void 0) {
+              target.query = relative2.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative.path[0] === "/") {
-              target.path = removeDotSegments(relative.path);
+            if (relative2.path[0] === "/") {
+              target.path = removeDotSegments(relative2.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative.path;
+                target.path = "/" + relative2.path;
               } else if (!base.path) {
-                target.path = relative.path;
+                target.path = relative2.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative2.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative.query;
+            target.query = relative2.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -24303,7 +24303,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative.fragment;
+      target.fragment = relative2.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -27579,7 +27579,7 @@ var require_dist = __commonJS({
 });
 
 // src/mcp/bootstrap.ts
-import { isAbsolute as isAbsolute3, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute4, resolve as resolve3 } from "node:path";
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 import process2 from "node:process";
@@ -29223,7 +29223,31 @@ var StdioServerTransport = class {
 // src/activation/registry.ts
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, open as open2, readFile, rename, unlink } from "node:fs/promises";
-import { join } from "node:path";
+import { join as join2 } from "node:path";
+
+// src/activation/permissions.ts
+import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
+
+// node_modules/zod/index.js
+init_external();
+init_external();
+
+// src/activation/permissions.ts
+var filesystemAuthoritySchema = external_exports.object({
+  readAll: external_exports.literal(true),
+  writableRoots: external_exports.array(external_exports.string().min(1).refine(isAbsolute))
+});
+var pathSchema = external_exports.discriminatedUnion("type", [
+  external_exports.object({ type: external_exports.literal("path"), path: external_exports.string().refine(isAbsolute) }),
+  external_exports.object({
+    type: external_exports.literal("special"),
+    value: external_exports.object({ kind: external_exports.enum(["root", "tmpdir", "slash_tmp"]) })
+  })
+]);
+var policySchema = external_exports.object({
+  kind: external_exports.literal("restricted"),
+  entries: external_exports.array(external_exports.object({ path: pathSchema, access: external_exports.enum(["read", "write", "deny"]) }))
+});
 
 // src/activation/session-source.ts
 var MAX_METADATA_LINE = 64 * 1024;
@@ -29244,7 +29268,7 @@ function isLeadContext(value) {
     value.effort,
     value.resolutionReason
   ];
-  return fields.every((field) => typeof field === "string" && field.length > 0) && ["default", "plan", "unknown"].includes(String(value.collaborationMode)) && ["verified", "unknown"].includes(String(value.resolutionStatus));
+  return fields.every((field) => typeof field === "string" && field.length > 0) && filesystemAuthoritySchema.optional().safeParse(value.filesystem).success && ["default", "plan", "unknown"].includes(String(value.collaborationMode)) && ["verified", "unknown"].includes(String(value.resolutionStatus));
 }
 function isStoredContext(value) {
   if (!isObject2(value) || !isLeadContext(value.context)) return false;
@@ -29252,7 +29276,7 @@ function isStoredContext(value) {
 }
 function contextFile(dataDir, contextKey) {
   if (!/^uctx_[0-9a-f-]{36}$/.test(contextKey)) throw new Error("Invalid context key");
-  return join(dataDir, "activation", `${contextKey}.json`);
+  return join2(dataDir, "activation", `${contextKey}.json`);
 }
 async function readStored(path2) {
   try {
@@ -29277,7 +29301,7 @@ async function resolveContext(contextKey, dataDir, options = {}) {
 }
 function currentFile(dataDir, sessionId) {
   const identity = createHash("sha256").update(sessionId).digest("hex");
-  return join(dataDir, "activation", `current-${identity}`);
+  return join2(dataDir, "activation", `current-${identity}`);
 }
 async function currentSessionKey(dataDir, sessionId) {
   try {
@@ -29303,7 +29327,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.12",
+  version: "0.4.13",
   private: true,
   type: "module",
   engines: {
@@ -29370,7 +29394,7 @@ import {
   realpathSync,
   writeFileSync
 } from "node:fs";
-import { join as join2, resolve } from "node:path";
+import { join as join3, resolve } from "node:path";
 function privateDirectory(path2) {
   mkdirSync(path2, { recursive: true, mode: 448 });
   const stat = lstatSync(path2);
@@ -29404,25 +29428,21 @@ function privateToken(path2) {
 function localEndpoint(dataDir) {
   if (resolve(dataDir) !== dataDir) throw new Error("Absolute plugin data directory required");
   const canonical = realpathSync(dataDir);
-  const runtime = join2(canonical, "runtime");
+  const runtime = join3(canonical, "runtime");
   privateDirectory(runtime);
   const digest = createHash2("sha256").update(canonical).digest("hex").slice(0, 20);
   const socketDir = `/private/tmp/ultra-code-${process.getuid?.() ?? "local"}-${digest}`;
   privateDirectory(socketDir);
   return {
-    socketPath: join2(socketDir, "daemon.sock"),
-    token: privateToken(join2(runtime, "daemon.key")),
+    socketPath: join3(socketDir, "daemon.sock"),
+    token: privateToken(join3(runtime, "daemon.key")),
     dataDir: canonical
   };
 }
 
 // src/local/startup.ts
 import { readFile as readFile2 } from "node:fs/promises";
-import { join as join3 } from "node:path";
-
-// node_modules/zod/index.js
-init_external();
-init_external();
+import { join as join4 } from "node:path";
 
 // src/local/node-runtime.ts
 var NODE_RUNTIME_REQUIRED = "Node 26.10.0 or 26.12.0 is required";
@@ -29443,7 +29463,7 @@ var receiptSchema = external_exports.strictObject({
 async function readReason(dataDir, attemptId) {
   let raw;
   try {
-    raw = await readFile2(join3(dataDir, "runtime", `startup-${attemptId}.json`), "utf8");
+    raw = await readFile2(join4(dataDir, "runtime", `startup-${attemptId}.json`), "utf8");
   } catch (error62) {
     if (error62.code === "ENOENT") return;
     throw new Error("Ultra Code startup diagnostic could not be read", { cause: error62 });
@@ -29471,11 +29491,11 @@ async function waitForStartup(dataDir, attemptId) {
 }
 
 // src/contracts/schema.ts
-import { isAbsolute } from "node:path";
+import { isAbsolute as isAbsolute2 } from "node:path";
 var text = external_exports.string().trim().min(1).max(32768);
 var identifier = external_exports.string().min(1).max(512);
 var json2 = external_exports.json();
-var path = text.refine(isAbsolute, "An absolute path is required");
+var path = text.refine(isAbsolute2, "An absolute path is required");
 var workerAccessSchema = external_exports.enum(["read-only", "workspace-write"]);
 var phaseSchema = external_exports.strictObject({ id: identifier, label: text });
 var artifactSchema = external_exports.strictObject({
@@ -29537,7 +29557,9 @@ var handoffSchema = external_exports.strictObject({
   "Planning handoffs require read-only resource claims"
 );
 var leadResultSchema = external_exports.strictObject({
-  acceptance: external_exports.enum(["satisfied", "incomplete", "blocked"]),
+  acceptance: external_exports.enum(["satisfied", "incomplete", "blocked"]).describe(
+    "Completion of the requested task. A completed review can be satisfied while finding release blockers; do not treat unfavorable findings or explicitly forbidden checks as unfinished review work."
+  ),
   value: json2,
   evidence: external_exports.array(artifactSchema).max(1e3),
   revision: identifier.optional()
@@ -29563,7 +29585,9 @@ var startSchema = external_exports.strictObject({
 var agentV2OptionsSchema = external_exports.strictObject({
   label: text.optional().describe("Short worker title."),
   phase: text.optional().describe("Phase label, not a phase object."),
-  cwd: path.optional().describe("Absolute authorized working directory; defaults to the chat directory."),
+  cwd: path.optional().describe(
+    "Absolute working directory; defaults to the chat directory. Writers require an explicit root authorized by verified exact-turn filesystem metadata."
+  ),
   access: workerAccessSchema.optional().describe(
     "Defaults to read-only. Authorized edits require workspace-write; Plan mode rejects writes."
   ),
@@ -29572,6 +29596,7 @@ var agentV2OptionsSchema = external_exports.strictObject({
   effort: identifier.optional().describe("Omit to inherit the verified lead reasoning effort.")
 });
 var agentV2CallDescription = `agent(prompt, options?) requires a nonempty string prompt. agent(prompt) is read-only and cannot edit files. For an authorized coding task call agent(prompt, {access: "workspace-write"}). Both return final text or null on terminal failure. Options: ${Object.keys(agentV2OptionsSchema.shape).join(", ")}. access must be ${workerAccessSchema.options.map((value) => JSON.stringify(value)).join(" or ")}. phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.`;
+var workflowPlanningPolicy = "Inspect enough context to choose useful work before dispatch. For a broad task, identify independently answerable questions and dispatch them together with parallel(factories); use their distinct evidence in lead review. Do not delegate an entire multi-concern task to one general worker by default. A narrow review or coupled edit can use one worker; state the task-specific reason. Keep dependent decisions and final synthesis with the lead. Do not add workers merely to fill slots.";
 var startV2Schema = startSchema.omit({ maxAgentCalls: true, authorityRef: true, args: true }).extend({
   contractVersion: external_exports.literal(2).default(2),
   reviewAfterWorkers: external_exports.boolean().optional(),
@@ -37937,12 +37962,12 @@ var ultra_menu_default = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEA
 // src/mcp/panel-bindings.ts
 import { createHash as createHash3 } from "node:crypto";
 import { closeSync, mkdirSync as mkdirSync2, openSync } from "node:fs";
-import { join as join4 } from "node:path";
+import { join as join5 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 function openBindings(dataDir) {
-  const directory = join4(dataDir, "panel");
+  const directory = join5(dataDir, "panel");
   mkdirSync2(directory, { recursive: true, mode: 448 });
-  const path2 = join4(directory, "bindings.sqlite");
+  const path2 = join5(directory, "bindings.sqlite");
   closeSync(openSync(path2, "a", 384));
   const database = new DatabaseSync(path2, { timeout: 5e3 });
   database.exec(`CREATE TABLE IF NOT EXISTS bindings (
@@ -37961,7 +37986,7 @@ function panelKeyForNonce(bindings, nonce) {
 }
 
 // src/mcp/panel-owner.ts
-import { isAbsolute as isAbsolute2, resolve as resolve2 } from "node:path";
+import { isAbsolute as isAbsolute3, resolve as resolve2 } from "node:path";
 import { realpath } from "node:fs/promises";
 var threadIdentity = external_exports.object({ thread_id: external_exports.uuid(), threadId: external_exports.uuid() }).refine((metadata) => metadata.thread_id === metadata.threadId);
 var routedContextIdentity = external_exports.object({ thread_id: external_exports.uuid().optional(), threadId: external_exports.uuid().optional() }).refine((metadata) => metadata.thread_id !== void 0 || metadata.threadId !== void 0);
@@ -38019,7 +38044,7 @@ function currentPanelSessionId(metadata) {
   return thread_id ?? threadId;
 }
 function profileFrom(dataDir) {
-  if (!isAbsolute2(dataDir) || resolve2(dataDir) !== dataDir) return;
+  if (!isAbsolute3(dataDir) || resolve2(dataDir) !== dataDir) return;
   return /^(.+)\/plugins\/data\/[^/]+$/.exec(dataDir)?.[1];
 }
 
@@ -38162,7 +38187,7 @@ function registerStart(options) {
     "ultra_start",
     {
       title: "Start an Ultra Code workflow",
-      description: `Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.`,
+      description: `${workflowPlanningPolicy} Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.`,
       inputSchema: startV2Schema.omit({ evidenceRefs: true, reviewAfterWorkers: true }).shape
     },
     (input2, extra) => result(async () => {
@@ -38217,6 +38242,8 @@ var hostCapacity = {
   evidence: "Ultra profile limit"
 };
 async function workerReady(options, context) {
+  if (!context.filesystem)
+    throw new Error("Exact-turn filesystem authority is unavailable; start from a verified turn");
   const health = await options.call("health", {});
   if (health.version !== package_default.version)
     throw new Error("Ultra client and daemon versions differ; refresh the plugin connection");
@@ -38348,6 +38375,8 @@ async function withContextCapabilities(value, context, runtime) {
     return unavailable(value, `Current-turn context is unverified: ${context.resolutionReason}`);
   }
   if (!runtime) return value;
+  if (!context.filesystem)
+    return unavailable(value, "Exact-turn filesystem authority is unavailable");
   const available2 = await withRuntimeCapability(value, runtime);
   if (available2.structuredContent?.capabilityAvailability !== "available") return available2;
   try {
@@ -38560,6 +38589,7 @@ function registerContextTool(server, resolveContext2, dataDir, runtime) {
         sessionId: external_exports.string(),
         turnId: external_exports.string(),
         cwd: external_exports.string(),
+        filesystem: filesystemAuthoritySchema.optional(),
         model: external_exports.string(),
         effort: external_exports.string(),
         collaborationMode: external_exports.string(),
@@ -38677,7 +38707,7 @@ function pluginDataDirectory(environment) {
     throw new Error("Plugin data directories conflict.");
   }
   const dataDir = primary ?? compatible;
-  if (!dataDir || !isAbsolute3(dataDir) || dataDir.includes("${") || resolve3(dataDir) !== dataDir) {
+  if (!dataDir || !isAbsolute4(dataDir) || dataDir.includes("${") || resolve3(dataDir) !== dataDir) {
     throw new Error("An absolute, resolved plugin data directory is required.");
   }
   return dataDir;

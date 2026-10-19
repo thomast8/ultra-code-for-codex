@@ -47,6 +47,8 @@ export async function withContextCapabilities(
     return unavailable(value, `Current-turn context is unverified: ${context.resolutionReason}`);
   }
   if (!runtime) return value;
+  if (!context.filesystem)
+    return unavailable(value, 'Exact-turn filesystem authority is unavailable');
   const available = await withRuntimeCapability(value, runtime);
   if (available.structuredContent?.capabilityAvailability !== 'available') return available;
   try {

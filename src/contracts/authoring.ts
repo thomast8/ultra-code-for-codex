@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { agentV2CallDescription, agentV2OptionsSchema } from './schema.js';
+import { agentV2CallDescription, agentV2OptionsSchema, workflowPlanningPolicy } from './schema.js';
 
 export function authoringReference(): string {
   const options = Object.entries(agentV2OptionsSchema.shape)
@@ -12,6 +12,8 @@ export function authoringReference(): string {
 
 The selected chat remains the lead. Submit a JavaScript function body to \`ultra_start\` with the task title, objective, acceptance criteria, and JSON \`args\`. The runtime verifies worker readiness and shares three worker slots across this profile. It saves all calls and results.
 
+${workflowPlanningPolicy}
+
 ${agentV2CallDescription}
 
 All options are optional. These types and values are generated from the runtime validator:
@@ -23,6 +25,10 @@ ${options}
 A supplied schema returns a validated JSON value. Terminal failure remains in the journal even if the script discards null. The lead checks the saved task result before claiming acceptance.
 
 New runs automatically pause for lead review when a script ends with unreviewed worker results. The lead claims the pending handoff, checks the results and diff, completes required checks that worker permissions prevented, and resolves it with evidence. Explicit lead(...) calls still support decisions between phases; a final resolved review is not duplicated. Previously saved runs keep their original completion behavior.
+
+Acceptance measures the requested task: a completed review may be satisfied while identifying release blockers. Explicitly forbidden builds or tests are not missing review work.
+
+Worker dispatch requires supported exact-turn effective filesystem metadata. Writers must use an explicitly authorized canonical worktree root; selecting a directory or proving its Git identity does not grant write access. Custom restrictions that the worker sandbox cannot preserve fail closed. Existing results remain readable when old records lack permission metadata, but they do not authorize new dispatch.
 
 The installed plugin's contract is authoritative for calling its tools, including when the task reviews or edits an older plugin checkout. Treat that checkout's historical API docs as task source, not the active tool contract.
 

@@ -6,7 +6,7 @@ import type {
   TaskResult,
   WorkerEvent,
 } from '../contracts/workflow.js';
-import { requireWriterLease } from './resources.js';
+import { requireWorkerAuthority, requireWriterLease } from './resources.js';
 import { ensureWorkerHandoff } from './reconciliation.js';
 import { failedResult, maximumUsage, refreshSnapshot, emptyUsage } from './records.js';
 import type { Journal } from './journal.js';
@@ -29,6 +29,7 @@ export class Workers {
   ): void {
     const spec = agentSchema.parse(call.payload) as AgentSpec;
     requireWriterLease(spec, call.claims);
+    requireWorkerAuthority(spec, run.authority.context);
     const { totalSlots, reservedSlots } = run.authority.capacity;
     this.scheduler.setGrant(run.snapshot.id, totalSlots - reservedSlots);
     this.scheduler.enqueue({

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { readExactTurn } from './session-source.js';
+import { filesystemAuthoritySchema } from './permissions.js';
 import type { HookInput, LeadContext, ResolveOptions, StoredContext } from './types.js';
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -21,6 +22,7 @@ function isLeadContext(value: unknown): value is LeadContext {
   ];
   return (
     fields.every((field) => typeof field === 'string' && field.length > 0) &&
+    filesystemAuthoritySchema.optional().safeParse(value.filesystem).success &&
     ['default', 'plan', 'unknown'].includes(String(value.collaborationMode)) &&
     ['verified', 'unknown'].includes(String(value.resolutionStatus))
   );

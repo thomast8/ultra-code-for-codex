@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { format } from 'prettier';
 import { authoringReference } from '../src/contracts/authoring.js';
-import { agentV2OptionsSchema, startV2Schema } from '../src/contracts/schema.js';
+import {
+  agentV2OptionsSchema,
+  startV2Schema,
+  workflowPlanningPolicy,
+} from '../src/contracts/schema.js';
 import { authority, harness, output, owner, until } from './runtime-fixture.js';
 
 it.each([0, 1])('ships and executes complete authoring example %i', async (index) => {
@@ -69,6 +73,7 @@ it.each([0, 1])('ships and executes complete authoring example %i', async (index
 
 it('documents exact access values from the validator at both discovery surfaces', () => {
   const reference = authoringReference();
+  expect(reference).toContain(workflowPlanningPolicy);
   const description = startV2Schema.shape.script.description!;
   expect(description).toContain('agent(prompt) is read-only and cannot edit files');
   expect(description).toContain('agent(prompt, {access: "workspace-write"})');

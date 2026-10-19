@@ -7,6 +7,8 @@ import { expect, it } from 'vitest';
 import { verifyAssignmentRoot, verifyLinkedWorktree } from '../src/codex/local-environment.js';
 import { createWorkerExecutor } from '../src/codex/worker.js';
 import { workerSpec } from './codex-worker-fixture.js';
+import { requireWorkerAuthority } from '../src/runtime/resources.js';
+import { authority } from './runtime-fixture.js';
 const execute = promisify(execFile);
 
 async function fixture() {
@@ -69,6 +71,22 @@ it('rejects a fake worktree marker rather than trusting .git file presence', asy
   const root = await realpath(await mkdtemp(join(tmpdir(), 'ultra-worker-fake-')));
   await writeFile(join(root, '.git'), 'gitdir: /nonexistent\n');
   await expect(verifyLinkedWorktree(root)).rejects.toThrow('identity could not be verified');
+});
+
+it('does not confuse a valid linked worktree with authority to write it', async () => {
+  const main = await fixture();
+  const linked = `${main}-ungranted`;
+  await execute('git', ['-C', main, 'worktree', 'add', '--detach', linked]);
+  await verifyLinkedWorktree(linked);
+  const spec = workerSpec({ capability: 'workspace-write' });
+  spec.assignment.ownership.cwd = linked;
+  const context = {
+    ...authority.context,
+    filesystem: { readAll: true as const, writableRoots: [main] },
+  };
+  expect(() => requireWorkerAuthority(spec, context)).toThrow('not authorized');
+  context.filesystem.writableRoots = [linked];
+  expect(() => requireWorkerAuthority(spec, context)).not.toThrow();
 });
 
 it('rejects a subdirectory whose marker redirects to a different root', async () => {

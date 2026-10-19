@@ -3882,49 +3882,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative2, options, skipNormalization) {
+    function resolveComponent(base, relative3, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse3(serialize(base, options), options);
-        relative2 = parse3(serialize(relative2, options), options);
+        relative3 = parse3(serialize(relative3, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative2.scheme) {
-        target.scheme = relative2.scheme;
-        target.userinfo = relative2.userinfo;
-        target.host = relative2.host;
-        target.port = relative2.port;
-        target.path = removeDotSegments(relative2.path || "");
-        target.query = relative2.query;
+      if (!options.tolerant && relative3.scheme) {
+        target.scheme = relative3.scheme;
+        target.userinfo = relative3.userinfo;
+        target.host = relative3.host;
+        target.port = relative3.port;
+        target.path = removeDotSegments(relative3.path || "");
+        target.query = relative3.query;
       } else {
-        if (relative2.userinfo !== void 0 || relative2.host !== void 0 || relative2.port !== void 0) {
-          target.userinfo = relative2.userinfo;
-          target.host = relative2.host;
-          target.port = relative2.port;
-          target.path = removeDotSegments(relative2.path || "");
-          target.query = relative2.query;
+        if (relative3.userinfo !== void 0 || relative3.host !== void 0 || relative3.port !== void 0) {
+          target.userinfo = relative3.userinfo;
+          target.host = relative3.host;
+          target.port = relative3.port;
+          target.path = removeDotSegments(relative3.path || "");
+          target.query = relative3.query;
         } else {
-          if (!relative2.path) {
+          if (!relative3.path) {
             target.path = base.path;
-            if (relative2.query !== void 0) {
-              target.query = relative2.query;
+            if (relative3.query !== void 0) {
+              target.query = relative3.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative2.path[0] === "/") {
-              target.path = removeDotSegments(relative2.path);
+            if (relative3.path[0] === "/") {
+              target.path = removeDotSegments(relative3.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative2.path;
+                target.path = "/" + relative3.path;
               } else if (!base.path) {
-                target.path = relative2.path;
+                target.path = relative3.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative2.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative3.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative2.query;
+            target.query = relative3.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -3932,7 +3932,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative2.fragment;
+      target.fragment = relative3.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -28345,7 +28345,9 @@ var handoffSchema = external_exports.strictObject({
   "Planning handoffs require read-only resource claims"
 );
 var leadResultSchema = external_exports.strictObject({
-  acceptance: external_exports.enum(["satisfied", "incomplete", "blocked"]),
+  acceptance: external_exports.enum(["satisfied", "incomplete", "blocked"]).describe(
+    "Completion of the requested task. A completed review can be satisfied while finding release blockers; do not treat unfavorable findings or explicitly forbidden checks as unfinished review work."
+  ),
   value: json2,
   evidence: external_exports.array(artifactSchema).max(1e3),
   revision: identifier.optional()
@@ -28371,7 +28373,9 @@ var startSchema = external_exports.strictObject({
 var agentV2OptionsSchema = external_exports.strictObject({
   label: text.optional().describe("Short worker title."),
   phase: text.optional().describe("Phase label, not a phase object."),
-  cwd: path.optional().describe("Absolute authorized working directory; defaults to the chat directory."),
+  cwd: path.optional().describe(
+    "Absolute working directory; defaults to the chat directory. Writers require an explicit root authorized by verified exact-turn filesystem metadata."
+  ),
   access: workerAccessSchema.optional().describe(
     "Defaults to read-only. Authorized edits require workspace-write; Plan mode rejects writes."
   ),
@@ -28827,8 +28831,26 @@ function persistResolution(input2, resolution) {
 
 // src/runtime/journal.ts
 import { chmodSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { join as join2 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+
+// src/activation/permissions.ts
+import { basename, dirname, isAbsolute as isAbsolute2, join, relative, sep } from "node:path";
+var filesystemAuthoritySchema = external_exports.object({
+  readAll: external_exports.literal(true),
+  writableRoots: external_exports.array(external_exports.string().min(1).refine(isAbsolute2))
+});
+var pathSchema = external_exports.discriminatedUnion("type", [
+  external_exports.object({ type: external_exports.literal("path"), path: external_exports.string().refine(isAbsolute2) }),
+  external_exports.object({
+    type: external_exports.literal("special"),
+    value: external_exports.object({ kind: external_exports.enum(["root", "tmpdir", "slash_tmp"]) })
+  })
+]);
+var policySchema = external_exports.object({
+  kind: external_exports.literal("restricted"),
+  entries: external_exports.array(external_exports.object({ path: pathSchema, access: external_exports.enum(["read", "write", "deny"]) }))
+});
 
 // src/runtime/persistence.ts
 var ownerSchema = external_exports.strictObject({ instanceId: external_exports.string().min(1), sessionId: external_exports.string().min(1) });
@@ -28837,6 +28859,7 @@ var contextSchema = external_exports.strictObject({
   sessionId: external_exports.string().min(1),
   turnId: external_exports.string().min(1),
   cwd: external_exports.string(),
+  filesystem: filesystemAuthoritySchema.optional(),
   model: external_exports.string(),
   effort: external_exports.string(),
   reportedEffort: external_exports.string().optional(),
@@ -28996,8 +29019,8 @@ var Journal = class {
   constructor(dataDir2) {
     mkdirSync(dataDir2, { recursive: true, mode: 448 });
     chmodSync(dataDir2, 448);
-    this.db = new DatabaseSync(join(dataDir2, "workflow.sqlite"));
-    chmodSync(join(dataDir2, "workflow.sqlite"), 384);
+    this.db = new DatabaseSync(join2(dataDir2, "workflow.sqlite"));
+    chmodSync(join2(dataDir2, "workflow.sqlite"), 384);
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
       CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, record TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS events (cursor INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29067,6 +29090,19 @@ var Journal = class {
 
 // src/runtime/resources.ts
 import { realpathSync, statSync } from "node:fs";
+function requireWorkerAuthority(spec, context) {
+  if (!context.filesystem?.readAll)
+    throw new Error("Exact-turn filesystem authority is unavailable; start from a verified turn");
+  if (spec.capability !== "workspace-write") return;
+  const authorized = context.filesystem.writableRoots.some((root) => {
+    try {
+      return realpathSync(root) === spec.assignment.ownership.cwd;
+    } catch {
+      return false;
+    }
+  });
+  if (!authorized) throw new Error("Worker write root is not authorized by the verified lead turn");
+}
 function requireWriterLease(spec, claims) {
   if (spec.capability === "workspace-write" && !claims.some((claim3) => claim3.mode === "write" && claim3.path === spec.assignment.ownership.cwd))
     throw new Error("Writer requires a write lease for its canonical worktree root");
@@ -29245,7 +29281,7 @@ function resolveAgentRequest(value, context) {
 
 // src/runtime/agent-v2.ts
 import { realpathSync as realpathSync2, statSync as statSync2 } from "node:fs";
-import { isAbsolute as isAbsolute2 } from "node:path";
+import { isAbsolute as isAbsolute3 } from "node:path";
 
 // src/codex/worker-output.ts
 var import_ajv = __toESM(require_ajv(), 1);
@@ -29519,7 +29555,7 @@ ${assignment}`;
 
 // src/runtime/agent-v2.ts
 function workspace(path2) {
-  if (!isAbsolute2(path2)) throw new Error("Worker cwd must be absolute");
+  if (!isAbsolute3(path2)) throw new Error("Worker cwd must be absolute");
   const canonical = realpathSync2(path2);
   if (!statSync2(canonical).isDirectory()) throw new Error("Worker cwd must be a directory");
   return canonical;
@@ -30134,6 +30170,7 @@ var Workers = class {
   enqueue(run, call, deliver, eligible, fail) {
     const spec = agentSchema.parse(call.payload);
     requireWriterLease(spec, call.claims);
+    requireWorkerAuthority(spec, run.authority.context);
     const { totalSlots, reservedSlots } = run.authority.capacity;
     this.scheduler.setGrant(run.snapshot.id, totalSlots - reservedSlots);
     this.scheduler.enqueue({
@@ -30310,7 +30347,7 @@ var Workers = class {
 import { realpath } from "node:fs/promises";
 
 // src/codex/permissions.ts
-import { isAbsolute as isAbsolute3 } from "node:path";
+import { isAbsolute as isAbsolute4 } from "node:path";
 var PROHIBITED_WORKER_FEATURES = [
   "apps",
   "plugins",
@@ -30436,7 +30473,7 @@ function verifyHooks(response, cwd) {
 }
 function verifyIdentity(thread, expected) {
   record2(thread, "worker thread");
-  if (!isAbsolute3(expected.cwd) || !expected.model || !expected.effort) {
+  if (!isAbsolute4(expected.cwd) || !expected.model || !expected.effort) {
     return block("expected worker identity is incomplete");
   }
   if (typeof thread.thread?.id !== "string" || thread.thread.id.length === 0) {
@@ -30555,7 +30592,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.12",
+  version: "0.4.13",
   private: true,
   type: "module",
   engines: {
@@ -31403,13 +31440,13 @@ var WorkflowEngine = class {
 // src/codex/local-environment.ts
 import { execFile } from "node:child_process";
 import { realpath as realpath2, stat } from "node:fs/promises";
-import { isAbsolute as isAbsolute4, join as join2, relative, sep } from "node:path";
+import { isAbsolute as isAbsolute5, join as join3, relative as relative2, sep as sep2 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 var runFile = promisify(execFile);
 async function verifyAssignmentRoot(spec, signal) {
   const cwd = spec.assignment.ownership.cwd;
-  requireWorker(isAbsolute4(cwd), "Worker cwd must be an absolute canonical directory");
+  requireWorker(isAbsolute5(cwd), "Worker cwd must be an absolute canonical directory");
   const canonical = await realpath2(cwd).catch(() => void 0);
   const directory = await stat(cwd).catch(() => void 0);
   requireWorker(
@@ -31418,15 +31455,15 @@ async function verifyAssignmentRoot(spec, signal) {
   );
   for (const path2 of spec.assignment.ownership.paths) {
     requireWorker(
-      isAbsolute4(path2) && within(cwd, path2),
+      isAbsolute5(path2) && within(cwd, path2),
       "Assigned paths must remain inside the worker root"
     );
   }
   if (spec.capability === "workspace-write") await verifyLinkedWorktree(cwd, signal);
 }
 function within(root, path2) {
-  const part = relative(root, path2);
-  return part !== ".." && !part.startsWith(`..${sep}`) && !isAbsolute4(part);
+  const part = relative2(root, path2);
+  return part !== ".." && !part.startsWith(`..${sep2}`) && !isAbsolute5(part);
 }
 async function git(cwd, args, signal) {
   try {
@@ -31442,7 +31479,7 @@ async function git(cwd, args, signal) {
 }
 async function verifyLinkedWorktree(cwd, signal) {
   requireWorker(
-    (await stat(join2(cwd, ".git")).catch(() => void 0))?.isFile() === true,
+    (await stat(join3(cwd, ".git")).catch(() => void 0))?.isFile() === true,
     "Writer root must be a linked Git worktree"
   );
   const [top, directory, common, listing] = await Promise.all([
@@ -31457,7 +31494,7 @@ async function verifyLinkedWorktree(cwd, signal) {
     realpath2(common)
   ]);
   requireWorker(
-    within(join2(commonDirectory, "worktrees"), gitDirectory) && gitDirectory !== commonDirectory,
+    within(join3(commonDirectory, "worktrees"), gitDirectory) && gitDirectory !== commonDirectory,
     "Writer Git directory is not an isolated linked worktree"
   );
   requireWorker(
@@ -31490,7 +31527,7 @@ async function verifyLocalEnvironment(transport, started, cwd, ephemeral = true)
     })
   ]);
   requireWorker(status.status === "ready", "Worker local environment is not ready");
-  requireWorker(isAbsolute4(info.shell.path), "Worker local shell is unavailable");
+  requireWorker(isAbsolute5(info.shell.path), "Worker local shell is unavailable");
   requireWorker(
     info.cwd === null || info.cwd === pathToFileURL(cwd).href,
     "Worker environment native cwd differs"
@@ -31800,7 +31837,7 @@ async function executeWorkerTurn(transport, spec, options, input2, grace) {
 
 // src/codex/worker-capabilities.ts
 import { realpath as realpath3, stat as stat2 } from "node:fs/promises";
-import { isAbsolute as isAbsolute5 } from "node:path";
+import { isAbsolute as isAbsolute6 } from "node:path";
 function emptyCapabilities() {
   return {
     status: "blocked",
@@ -31818,7 +31855,7 @@ function createCapabilitiesReader(launch = launchWorkerTransport) {
     let transport;
     try {
       requireWorker(
-        isAbsolute5(cwd) && await realpath3(cwd) === cwd && (await stat2(cwd)).isDirectory(),
+        isAbsolute6(cwd) && await realpath3(cwd) === cwd && (await stat2(cwd)).isDirectory(),
         "Capability inspection requires a canonical directory"
       );
       transport = await openRestrictedBackend(
@@ -32031,7 +32068,7 @@ import {
   realpathSync as realpathSync3,
   writeFileSync
 } from "node:fs";
-import { join as join3, resolve } from "node:path";
+import { join as join4, resolve } from "node:path";
 function privateDirectory(path2) {
   mkdirSync2(path2, { recursive: true, mode: 448 });
   const stat3 = lstatSync(path2);
@@ -32065,14 +32102,14 @@ function privateToken(path2) {
 function localEndpoint(dataDir2) {
   if (resolve(dataDir2) !== dataDir2) throw new Error("Absolute plugin data directory required");
   const canonical = realpathSync3(dataDir2);
-  const runtime = join3(canonical, "runtime");
+  const runtime = join4(canonical, "runtime");
   privateDirectory(runtime);
   const digest = createHash("sha256").update(canonical).digest("hex").slice(0, 20);
   const socketDir = `/private/tmp/ultra-code-${process.getuid?.() ?? "local"}-${digest}`;
   privateDirectory(socketDir);
   return {
-    socketPath: join3(socketDir, "daemon.sock"),
-    token: privateToken(join3(runtime, "daemon.key")),
+    socketPath: join4(socketDir, "daemon.sock"),
+    token: privateToken(join4(runtime, "daemon.key")),
     dataDir: canonical
   };
 }
@@ -32177,6 +32214,7 @@ var ownerSchema2 = external_exports.object({ instanceId: external_exports.string
 var contextSchema2 = ownerSchema2.extend({
   turnId: external_exports.string().min(1),
   cwd: external_exports.string().min(1),
+  filesystem: filesystemAuthoritySchema.optional(),
   model: external_exports.string().min(1),
   effort: external_exports.string().min(1),
   collaborationMode: external_exports.enum(["default", "plan", "unknown"]),
@@ -32289,10 +32327,10 @@ function routeDaemon(engine, method, params, capabilities) {
 
 // src/local/lock.ts
 import { closeSync, openSync } from "node:fs";
-import { join as join4 } from "node:path";
+import { join as join5 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 function acquireDaemonLock(dataDir2) {
-  const path2 = join4(dataDir2, "runtime", "daemon-lock.sqlite");
+  const path2 = join5(dataDir2, "runtime", "daemon-lock.sqlite");
   closeSync(openSync(path2, "a", 384));
   const database = new DatabaseSync2(path2, { timeout: 0 });
   try {
@@ -32474,11 +32512,11 @@ async function serveDaemon(dataDir2, createEngine, capabilities) {
 }
 
 // src/daemon-entry.ts
-import { join as join6 } from "node:path";
+import { join as join7 } from "node:path";
 
 // src/local/startup.ts
 import { writeFileSync as writeFileSync2 } from "node:fs";
-import { join as join5 } from "node:path";
+import { join as join6 } from "node:path";
 
 // src/local/node-runtime.ts
 var NODE_RUNTIME_REQUIRED = "Node 26.10.0 or 26.12.0 is required";
@@ -32506,7 +32544,7 @@ function writeStartupReceipt(dataDir2, attemptId, reason) {
   if (!external_exports.uuid().safeParse(attemptId).success) return;
   try {
     writeFileSync2(
-      join5(dataDir2, "runtime", `startup-${attemptId}.json`),
+      join6(dataDir2, "runtime", `startup-${attemptId}.json`),
       JSON.stringify({ attemptId, reason }),
       { flag: "wx", mode: 384 }
     );
@@ -32522,7 +32560,7 @@ try {
   const daemon = await serveDaemon(
     dataDir,
     () => new WorkflowEngine({
-      dataDir: join6(dataDir, "runtime"),
+      dataDir: join7(dataDir, "runtime"),
       executeWorker
     }),
     readWorkerCapabilities

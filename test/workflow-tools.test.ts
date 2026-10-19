@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { expect, it } from 'vitest';
 import { z } from 'zod';
+import { workflowPlanningPolicy } from '../src/contracts/schema.js';
 import { createPanelServer } from '../src/mcp/panel-server.js';
 import { request, until } from './runtime-fixture.js';
 import { runningFixture } from './local-runtime-fixture.js';
@@ -271,6 +272,7 @@ async function assertControlSchemas(client: Client): Promise<void> {
   expect(start.description).toContain('locally sandbox-denied command');
   expect(start.description).toContain('creation only, not worker dispatch');
   expect(start.description).toContain('"workspace-write"');
+  expect(start.description).toContain(workflowPlanningPolicy);
   expect(model._meta).toMatchObject({ ui: { visibility: ['model'] } });
   expect(panel._meta).toMatchObject({ ui: { visibility: ['app'] } });
   expect(model.inputSchema.required).toContain('contextKey');

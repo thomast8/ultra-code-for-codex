@@ -5,7 +5,12 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { DatabaseSync } from 'node:sqlite';
 import packageMetadata from '../../package.json' with { type: 'json' };
 import type { LeadContext } from '../activation/types.js';
-import { agentV2CallDescription, leadResultSchema, startV2Schema } from '../contracts/schema.js';
+import {
+  agentV2CallDescription,
+  leadResultSchema,
+  startV2Schema,
+  workflowPlanningPolicy,
+} from '../contracts/schema.js';
 import type { DaemonCall } from '../local/client.js';
 import type { ContextResolver } from './panel-server.js';
 import { assertRoutedContext } from './panel-owner.js';
@@ -177,7 +182,7 @@ function registerStart(options: WorkflowTools): void {
     'ultra_start',
     {
       title: 'Start an Ultra Code workflow',
-      description: `Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.`,
+      description: `${workflowPlanningPolicy} Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.`,
       inputSchema: startV2Schema.omit({ evidenceRefs: true, reviewAfterWorkers: true }).shape,
     },
     (input, extra) =>
@@ -239,6 +244,8 @@ const hostCapacity = {
 };
 
 async function workerReady(options: WorkflowTools, context: LeadContext): Promise<void> {
+  if (!context.filesystem)
+    throw new Error('Exact-turn filesystem authority is unavailable; start from a verified turn');
   const health = (await options.call('health', {})) as { version?: string };
   if (health.version !== packageMetadata.version)
     throw new Error('Ultra client and daemon versions differ; refresh the plugin connection');

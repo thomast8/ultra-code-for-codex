@@ -20,6 +20,16 @@ function writerRequest(resources: ResourceClaim[], cwd: string) {
   });
 }
 
+function authorized(root: string) {
+  return {
+    ...authority,
+    context: {
+      ...authority.context,
+      filesystem: { readAll: true as const, writableRoots: [root] },
+    },
+  };
+}
+
 it.each(['empty', 'read', 'unrelated', 'key-only'])(
   'blocks a writer with a %s lease before dispatch',
   async (kind) => {
@@ -48,10 +58,10 @@ it('serializes different-key writers holding the same canonical root', async () 
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'ultra-lease-root-')));
   const { engine, calls } = harness();
   const first = writerRequest([{ key: 'first', mode: 'write', path: root }], root);
-  engine.start(first, authority);
+  engine.start(first, authorized(root));
   engine.start(
     { ...writerRequest([{ key: 'second', mode: 'write', path: root }], root), requestId: 'second' },
-    authority,
+    authorized(root),
   );
   await until(() => calls.length === 1);
   expect(engine.status(owner)[1]?.tasks[0]?.waitingReason).toContain('Resource');
@@ -66,7 +76,7 @@ it('blocks a legacy queued writer without a lease during replay', async () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'ultra-lease-legacy-')));
   const { engine, calls, dataDir } = harness();
   const initial = writerRequest([{ key: 'root', mode: 'write', path: root }], root);
-  engine.start(initial, authority);
+  engine.start(initial, authorized(root));
   await until(() => calls.length === 1);
   await engine.close();
   const db = new DatabaseSync(join(dataDir, 'workflow.sqlite'));

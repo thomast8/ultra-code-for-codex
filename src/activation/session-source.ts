@@ -2,6 +2,7 @@ import { open, realpath } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import type { HookInput, LeadContext } from './types.js';
+import { filesystemAuthority } from './permissions.js';
 
 export const PARSER_ADAPTER_VERSION = 'codex-turn-context-v1';
 export const SUPPORTED_CLI_VERSIONS = [
@@ -58,6 +59,7 @@ function turnMetadata(payload: JsonObject): JsonObject {
     model: text(payload.model),
     effort: text(payload.effort),
     collaboration_mode: mode,
+    filesystem: filesystemAuthority(payload.file_system_sandbox_policy),
   };
 }
 
@@ -202,6 +204,9 @@ function makeContext(meta: JsonObject, turn: JsonObject, input: HookInput): Lead
     sessionId,
     turnId,
     cwd,
+    ...(turn.filesystem
+      ? { filesystem: turn.filesystem as NonNullable<LeadContext['filesystem']> }
+      : {}),
     model,
     effort,
     collaborationMode,

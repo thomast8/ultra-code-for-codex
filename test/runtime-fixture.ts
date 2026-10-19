@@ -18,6 +18,7 @@ export const authority: RunAuthority = {
     sessionId: 'lead',
     turnId: 'turn',
     cwd: '/tmp',
+    filesystem: { readAll: true, writableRoots: ['/tmp'] },
     model: 'lead-model',
     effort: 'high',
     collaborationMode: 'default',

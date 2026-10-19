@@ -2,23 +2,29 @@
 
 The selected chat remains the lead. Submit a JavaScript function body to `ultra_start` with the task title, objective, acceptance criteria, and JSON `args`. The runtime verifies worker readiness and shares three worker slots across this profile. It saves all calls and results.
 
+Inspect enough context to choose useful work before dispatch. For a broad task, identify independently answerable questions and dispatch them together with parallel(factories); use their distinct evidence in lead review. Do not delegate an entire multi-concern task to one general worker by default. A narrow review or coupled edit can use one worker; state the task-specific reason. Keep dependent decisions and final synthesis with the lead. Do not add workers merely to fill slots.
+
 agent(prompt, options?) requires a nonempty string prompt. agent(prompt) is read-only and cannot edit files. For an authorized coding task call agent(prompt, {access: "workspace-write"}). Both return final text or null on terminal failure. Options: label, phase, cwd, access, schema, model, effort. access must be "read-only" or "workspace-write". phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.
 
 All options are optional. These types and values are generated from the runtime validator:
 
-| Option   | Type or values                       | Meaning                                                                                    |
-| -------- | ------------------------------------ | ------------------------------------------------------------------------------------------ |
-| `label`  | string                               | Short worker title.                                                                        |
-| `phase`  | string                               | Phase label, not a phase object.                                                           |
-| `cwd`    | string                               | Absolute authorized working directory; defaults to the chat directory.                     |
-| `access` | `"read-only"` or `"workspace-write"` | Defaults to read-only. Authorized edits require workspace-write; Plan mode rejects writes. |
-| `schema` | object                               | Optional JSON Schema for the result; omit for plain text.                                  |
-| `model`  | string                               | Omit to inherit the verified lead model.                                                   |
-| `effort` | string                               | Omit to inherit the verified lead reasoning effort.                                        |
+| Option   | Type or values                       | Meaning                                                                                                                                             |
+| -------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `label`  | string                               | Short worker title.                                                                                                                                 |
+| `phase`  | string                               | Phase label, not a phase object.                                                                                                                    |
+| `cwd`    | string                               | Absolute working directory; defaults to the chat directory. Writers require an explicit root authorized by verified exact-turn filesystem metadata. |
+| `access` | `"read-only"` or `"workspace-write"` | Defaults to read-only. Authorized edits require workspace-write; Plan mode rejects writes.                                                          |
+| `schema` | object                               | Optional JSON Schema for the result; omit for plain text.                                                                                           |
+| `model`  | string                               | Omit to inherit the verified lead model.                                                                                                            |
+| `effort` | string                               | Omit to inherit the verified lead reasoning effort.                                                                                                 |
 
 A supplied schema returns a validated JSON value. Terminal failure remains in the journal even if the script discards null. The lead checks the saved task result before claiming acceptance.
 
 New runs automatically pause for lead review when a script ends with unreviewed worker results. The lead claims the pending handoff, checks the results and diff, completes required checks that worker permissions prevented, and resolves it with evidence. Explicit lead(...) calls still support decisions between phases; a final resolved review is not duplicated. Previously saved runs keep their original completion behavior.
+
+Acceptance measures the requested task: a completed review may be satisfied while identifying release blockers. Explicitly forbidden builds or tests are not missing review work.
+
+Worker dispatch requires supported exact-turn effective filesystem metadata. Writers must use an explicitly authorized canonical worktree root; selecting a directory or proving its Git identity does not grant write access. Custom restrictions that the worker sandbox cannot preserve fail closed. Existing results remain readable when old records lack permission metadata, but they do not authorize new dispatch.
 
 The installed plugin's contract is authoritative for calling its tools, including when the task reviews or edits an older plugin checkout. Treat that checkout's historical API docs as task source, not the active tool contract.
 

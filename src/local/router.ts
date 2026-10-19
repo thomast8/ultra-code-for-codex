@@ -1,5 +1,6 @@
 import packageMetadata from '../../package.json' with { type: 'json' };
 import { z } from 'zod';
+import { filesystemAuthoritySchema } from '../activation/permissions.js';
 import type { StartRequest, LeadResult } from '../contracts/workflow.js';
 import type { LeadContext } from '../activation/types.js';
 import {
@@ -16,6 +17,7 @@ const ownerSchema = z.object({ instanceId: z.string().min(1), sessionId: z.strin
 const contextSchema = ownerSchema.extend({
   turnId: z.string().min(1),
   cwd: z.string().min(1),
+  filesystem: filesystemAuthoritySchema.optional(),
   model: z.string().min(1),
   effort: z.string().min(1),
   collaborationMode: z.enum(['default', 'plan', 'unknown']),
