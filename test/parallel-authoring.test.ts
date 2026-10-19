@@ -7,6 +7,11 @@ it('derives a canonical root lease and serializes v2 writers sharing that root',
   const cwd = realpathSync(tmpdir());
   const host = {
     ...authority,
+    context: {
+      ...authority.context,
+      cwd,
+      filesystem: { readAll: true as const, writableRoots: [cwd] },
+    },
     capacity: {
       source: 'host-profile' as const,
       totalSlots: 3 as const,
