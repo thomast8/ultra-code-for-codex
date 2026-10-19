@@ -18,7 +18,7 @@ Other calls: \`phase(label)\`, \`log(value)\`, \`parallel(factories)\`, \`pipeli
 
 To give a worker a saved result, put the \`savedReference\` returned by \`ultra_result(runId, taskId)\` in \`ultra_start.savedTaskRefs\`. This field accepts prior Ultra task results only. Put CSV paths, source files, and web URLs in the worker prompt so the worker reads them directly. Ultra verifies that this chat owns a saved result, loads its actual value, and adds it to the worker prompt. Saved evidence is limited to 48,000 UTF-8 bytes in total; use a smaller result if that bound is exceeded.
 
-Correct ordinary source-path and command errors in the same assignment. After two corrections to the same operation, report the blocker. Stop on authority or permission failure. Keep independent inspection commands in separate tool calls so their exit statuses remain visible. State uncertainty and missing coverage plainly; a worker's return is not goal acceptance.
+Correct ordinary source-path and command errors in the same assignment. A shell command error inside a running worker is local to that worker, not a terminal workflow failure. After two corrections to the same operation, report the blocker. Stop on authority or permission failure. In a read-only worker, avoid heredocs, here-strings, output redirection, and temporary scripts; use bounded inline commands such as \`python3 -c\`. Keep independent inspection commands in separate tool calls so their exit statuses remain visible. State uncertainty and missing coverage plainly; a worker's return is not goal acceptance.
 
 ## Complete example
 

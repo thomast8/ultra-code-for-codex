@@ -1,5 +1,22 @@
 import { expect, it } from 'vitest';
+import { workerPrompt } from '../src/codex/worker-output.js';
 import { workerHarness, workerSpec, workerThread } from './codex-worker-fixture.js';
+
+it('gives v2 readers the shared read-only shell rule and local recovery boundary', () => {
+  const reader = workerPrompt(workerSpec({ format: 'plain', prompt: 'Assess CSV' }));
+  const writer = workerPrompt(
+    workerSpec({
+      format: 'plain',
+      prompt: 'Edit source',
+      capability: 'workspace-write',
+    }),
+  );
+  expect(reader).toContain('Do not use shell heredocs');
+  expect(reader).toContain('python3 -c');
+  expect(reader).toContain('not a terminal workflow failure');
+  expect(writer).not.toContain('Read-only execution cannot create temporary files');
+  expect(writer).toContain('not a terminal workflow failure');
+});
 
 function durable(status: 'idle' | 'active' = 'idle') {
   return workerThread({
