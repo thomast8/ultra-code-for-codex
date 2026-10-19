@@ -15,6 +15,18 @@ import type { CallKind, CallRecord, RunRecord } from './types.js';
 import type { Workers } from './workers.js';
 
 type Reply = (value: JsonValue) => void;
+
+function syncText(kind: 'phase' | 'log', value: JsonValue): string {
+  const text = kind === 'log' && typeof value !== 'string' ? JSON.stringify(value) : value;
+  if (typeof text !== 'string' || !text.trim() || text.length > 32_768)
+    throw new Error(
+      kind === 'log'
+        ? `log() expects nonempty text of at most 32768 characters after JSON serialization; received ${typeof value}.`
+        : `phase() expects a nonempty string of at most 32768 characters; received ${typeof value}. Use phase("Phase label").`,
+    );
+  return text;
+}
+
 export class RunSession {
   private cursor = 0;
   private settlement = 1;
@@ -80,22 +92,16 @@ export class RunSession {
   }
   private sync(kind: 'phase' | 'log', value: JsonValue): JsonValue {
     if (!['phase', 'log'].includes(kind)) throw new Error('Unknown synchronous host call');
-    if (typeof value !== 'string' || !value.trim() || value.length > 32_768)
-      throw new Error(
-        `${kind}() expects a nonempty string of at most 32768 characters; received ${typeof value}. ` +
-          (kind === 'log'
-            ? 'Use log(JSON.stringify(plan)) for structured data.'
-            : 'Use phase("Phase label").'),
-      );
-    const { call, replay } = this.intent(kind, value);
+    const text = syncText(kind, value);
+    const { call, replay } = this.intent(kind, text);
     if (replay) return call.result;
     call.result =
       kind === 'phase'
-        ? phaseSchema.parse({ id: `phase-${this.run.snapshot.phases.length + 1}`, label: value })
+        ? phaseSchema.parse({ id: `phase-${this.run.snapshot.phases.length + 1}`, label: text })
         : null;
     if (kind === 'phase') this.run.snapshot.phases.push(phaseSchema.parse(call.result));
     call.state = 'resolved';
-    this.journal.save(this.run, kind, kind === 'log' ? value : call.result);
+    this.journal.save(this.run, kind, kind === 'log' ? text : call.result);
     return call.result;
   }
   private call(kind: CallKind, value: JsonValue): Promise<JsonValue> {

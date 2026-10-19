@@ -84,15 +84,15 @@ it.each(['log', 'phase'])(
   async (kind) => {
     const h = harness();
     try {
-      h.engine.start(
-        request(`${kind}({assignments:['Phone', 'Watch']}); return await agent(args.spec);`),
-        authority,
-      );
+      const call = kind === 'log' ? `log({plan:'${'x'.repeat(32_769)}'});` : 'phase({label:"x"});';
+      h.engine.start(request(`${call} return await agent(args.spec);`), authority);
       await until(() => h.engine.status(owner)[0]?.state === 'failed');
       const run = h.engine.status(owner)[0]!;
-      expect(run.error).toContain(`${kind}() expects a nonempty string`);
-      expect(run.error).toContain('received object');
-      expect(run.error).toContain(kind === 'log' ? 'JSON.stringify(plan)' : 'Use phase(');
+      expect(run.error).toContain(
+        kind === 'log'
+          ? 'log() expects nonempty text of at most 32768 characters after JSON serialization'
+          : 'phase() expects a nonempty string',
+      );
       expect(run.acceptanceOutcome).toBe('incomplete');
       expect(h.calls).toHaveLength(0);
     } finally {

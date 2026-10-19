@@ -10,14 +10,14 @@ Use these typed host calls. The submitted script is plain JavaScript; type
 annotations, imports, Markdown fences, paths and prose are not script bodies.
 
 - `phase(label: string): PhaseRef` returns a frozen `{id, label}`; pass that exact reference onward.
-- `log(message: string): void` accepts 1–32,768 characters. Serialize objects with `JSON.stringify(plan)`.
+- `log(value: JSON value): void` accepts a nonempty string or any other JSON value. Strings are saved unchanged; other values are saved as JSON text. The final saved text is limited to 32,768 UTF-16 code units.
 - `agent(spec: AgentRequest): Promise<TaskResult>` accepts the worker contract below; model and effort may be omitted.
 - `lead(spec: LeadHandoffSpec): Promise<LeadResult>` waits for the selected lead's evidence-backed resolution.
 - `parallel<T>(factories: Array<() => T | Promise<T>>): Promise<T[]>` starts factories and returns results in input order.
 - `pipeline<T, R>(items: T[], fn: (item: T, index: number) => R | Promise<R>): Promise<R[]>` runs independent items concurrently.
 
-`log('Checking the source evidence')` and `log(JSON.stringify(plan))` are valid.
-`log(plan)` is invalid when `plan` is an object. `parallel()` takes factories, not
+`log('Checking the source evidence')`, `log(plan)`, and `log(JSON.stringify(plan))` are valid.
+`parallel()` takes factories, not
 already-started promises; `pipeline()` runs item functions concurrently, so put
 sequential awaits inside each function for dependent stages.
 
@@ -25,7 +25,7 @@ sequential awaits inside each function for dependent stages.
 
 `log()` is a progress journal, not report storage. Log short routing decisions,
 counts, execution/acceptance states and evidence IDs. Never log an entire worker
-result or an array of reports. Each log is limited to 32,768 UTF-16 code units (`string.length`); `JSON.stringify()` changes representation, not the size limit.
+result or an array of reports. Each log's final saved text is limited to 32,768 UTF-16 code units (`string.length`): strings retain their original text, and other JSON values are measured after JSON serialization.
 
 The JSON serialization of all six `assignment` fields together must fit within
 65,536 UTF-8 bytes. This includes ownership, constraints, acceptance and stop
@@ -51,6 +51,24 @@ bound the planned logs and dependent assignments. On an execution error, stop ne
 dispatch and report the failed attempt. Preserve saved results; do not chain
 corrective workflows unless recovery is authorized. A recovery never makes the
 original attempt a first-pass success.
+
+## Inspect the actual source revision
+
+Source references from a report or CSV may describe an older revision. Before a
+worker reads or searches explicit paths, verify them against the current file
+inventory (`rg --files` or `git ls-files`). Use revision and rename history to
+locate current equivalents. An absent historical path is evidence to investigate,
+not proof that its finding is fixed. Keep missing or ambiguous mappings explicit.
+Do not pass unverified paths to a multi-file search: a missing input can make the
+whole command exit with an error even while other inputs produce useful matches.
+
+Keep source reads bounded with targeted matches or line ranges. Avoid combining
+unrelated guidance, implementation and test reads into one oversized command.
+When a command fails, retain its specific operation, exit code and sanitized error
+diagnostic in the worker result; preserve source and secret-value restrictions.
+Do not replace the diagnostic with “output truncated” or increase the output
+limit to dump the entire source. Honor the user's failure/stop conditions and
+keep any authorized repair separate from a first-attempt success.
 
 ## Choose the assignment graph first
 
