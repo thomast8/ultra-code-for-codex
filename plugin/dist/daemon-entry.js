@@ -28861,6 +28861,7 @@ var taskRecord = external_exports.strictObject({
   requestedModel: external_exports.string(),
   reportedModel: external_exports.string().nullable(),
   effort: external_exports.string(),
+  reportedEffort: external_exports.string().optional(),
   assessment: agentSchema.shape.assessment.optional(),
   createdAt: external_exports.number(),
   startedAt: external_exports.number().nullable(),
@@ -30525,7 +30526,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.3",
+  version: "0.4.4",
   private: true,
   type: "module",
   engines: {

@@ -51,6 +51,7 @@ const taskRecord = z.strictObject({
   requestedModel: z.string(),
   reportedModel: z.string().nullable(),
   effort: z.string(),
+  reportedEffort: z.string().optional(),
   assessment: agentSchema.shape.assessment.optional(),
   createdAt: z.number(),
   startedAt: z.number().nullable(),

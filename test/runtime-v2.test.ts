@@ -104,11 +104,22 @@ it('reloads a completed v2 record without replaying its worker', async () => {
   const { engine, calls, dataDir, execute } = harness();
   engine.start(request('return await agent("Inspect");'), host);
   await until(() => calls.length === 1);
+  await calls[0]!.options.onEvent({
+    type: 'thread',
+    threadId: 'persisted-worker',
+    instructionSources: [],
+    reportedModel: 'lead-model',
+    reportedEffort: 'high',
+  });
   calls[0]!.finish(output('Saved'));
   await until(() => engine.status(owner)[0]?.state === 'completed');
   await engine.close();
   const restored = new WorkflowEngine({ dataDir, executeWorker: execute });
-  expect(restored.status(owner)[0]).toMatchObject({ state: 'completed', result: 'Saved' });
+  expect(restored.status(owner)[0]).toMatchObject({
+    state: 'completed',
+    result: 'Saved',
+    tasks: [{ reportedEffort: 'high' }],
+  });
   expect(calls).toHaveLength(1);
   await restored.close();
 });
