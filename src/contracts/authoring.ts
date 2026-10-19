@@ -22,6 +22,8 @@ ${options}
 
 A supplied schema returns a validated JSON value. Terminal failure remains in the journal even if the script discards null. The lead checks the saved task result before claiming acceptance.
 
+New runs automatically pause for lead review when a script ends with unreviewed worker results. The lead claims the pending handoff, checks the results and diff, completes required checks that worker permissions prevented, and resolves it with evidence. Explicit lead(...) calls still support decisions between phases; a final resolved review is not duplicated. Previously saved runs keep their original completion behavior.
+
 The installed plugin's contract is authoritative for calling its tools, including when the task reviews or edits an older plugin checkout. Treat that checkout's historical API docs as task source, not the active tool contract.
 
 Other calls: \`phase(label)\`, \`log(value)\`, \`parallel(factories)\`, \`pipeline(items, ...stages)\`, and \`lead(objective, evidence?)\`. Pipeline stops an item's later stages when a stage returns \`null\`. A phase label in an agent's options is safe inside a concurrent wave. \`log\` stores only a bounded preview. \`lead\` pauses for an explicit decision by the selected chat. The script has no filesystem, network, imports, timers, or direct tool access; workers do the source work.
@@ -55,13 +57,11 @@ return await lead('Check both reports against the requested outcome and source e
 Pass \`args: {task: "The requested behavior change and its checks"}\` in an already-authorized isolated worktree. The worker must receive the full task; it cannot read the workflow title, objective, acceptance list, or the lead's chat history. The selected chat inspects changes and verification evidence at the handoff.
 
 \`\`\`js
-const report = await agent(args.task, {
+return await agent(args.task, {
   label: 'Implement and verify',
   phase: 'Implementation',
   access: 'workspace-write',
 });
-if (report === null) return { acceptance: 'incomplete' };
-return await lead('Review the saved worker result, diff and checks against the requested outcome');
 \`\`\`
 
 Results remain linked to their individual tasks. Use specific source references and bounded excerpts for dependent calls; do not copy an entire report into another worker prompt. Any prompt over 64 KiB or schema over 64 KiB is rejected before worker launch with its measured size.

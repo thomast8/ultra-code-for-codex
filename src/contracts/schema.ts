@@ -122,6 +122,7 @@ export const startV2Schema = startSchema
   .omit({ maxAgentCalls: true, authorityRef: true, args: true })
   .extend({
     contractVersion: z.literal(2).default(2),
+    reviewAfterWorkers: z.boolean().optional(),
     script: z
       .string()
       .min(1)

@@ -53,6 +53,32 @@ async function connected(admission?: 'blocked' | 'stale') {
   };
 }
 
+async function resolveReview(f: Awaited<ReturnType<typeof connected>>) {
+  const client = f.client;
+  await until(() => f.daemon.engine.status(f.owner)[0]?.handoffs.length === 1);
+  const id = f.daemon.engine.status(f.owner)[0]!.handoffs[0]!.id;
+  const claimed = await client.callTool({
+    name: 'ultra_handoff',
+    arguments: { contextKey: 'verified', id, action: 'claim' },
+  });
+  expect(claimed.isError).not.toBe(true);
+  const resolved = await client.callTool({
+    name: 'ultra_handoff',
+    arguments: {
+      contextKey: 'verified',
+      id,
+      action: 'resolve',
+      resolution: {
+        acceptance: 'satisfied',
+        value: 'Verified',
+        evidence: [{ id: 'review', description: 'Checked saved result' }],
+      },
+    },
+  });
+  expect(resolved.isError).not.toBe(true);
+  await until(() => f.daemon.engine.status(f.owner)[0]?.state === 'completed');
+}
+
 it('opens bound with runtime capability and executes through the MCP/daemon boundary', async () => {
   const f = await connected();
   try {
@@ -73,7 +99,7 @@ it('opens bound with runtime capability and executes through the MCP/daemon boun
     });
     expect(started.isError).not.toBe(true);
     const runId = z.object({ id: z.string() }).parse(started.structuredContent).id;
-    await until(() => f.daemon.engine.status(f.owner)[0]?.state === 'completed');
+    await resolveReview(f);
     expect(
       (await f.client.callTool({ name: 'ultra_status', arguments: { nonce } })).structuredContent,
     ).toMatchObject({ runs: [{ id: runId, tasks: [{ result: { value: 'résultat' } }] }] });
@@ -240,6 +266,7 @@ async function assertControlSchemas(client: Client): Promise<void> {
     description: expect.stringContaining('CSV paths'),
   });
   expect(start.inputSchema.properties).not.toHaveProperty('evidenceRefs');
+  expect(start.inputSchema.properties).not.toHaveProperty('reviewAfterWorkers');
   expect(start.description).toContain('not a workflow execution or dispatch failure');
   expect(start.description).toContain('locally sandbox-denied command');
   expect(start.description).toContain('creation only, not worker dispatch');

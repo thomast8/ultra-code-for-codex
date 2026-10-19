@@ -32,6 +32,7 @@ it.each([0, 1])('ships and executes complete authoring example %i', async (index
   const run = engine.start(
     {
       contractVersion: 2,
+      reviewAfterWorkers: true,
       requestId: 'documented-example',
       contextKey: 'context',
       title: 'Check sources',

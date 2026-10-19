@@ -220,7 +220,30 @@ export class RunSession {
       } else reply(call.result);
     }
   }
+  private needsLeadReview(): boolean {
+    if (this.run.version !== 2 || !this.run.request.reviewAfterWorkers) return false;
+    if (!['running', 'paused'].includes(this.run.snapshot.state)) return false;
+    const consumed = this.run.calls.slice(0, this.cursor);
+    if (consumed.some((call) => call.state !== 'resolved')) return false;
+    const settled = (kind: CallKind) =>
+      Math.max(
+        0,
+        ...consumed.filter((call) => call.kind === kind).map((call) => call.settlement ?? 0),
+      );
+    return settled('agent') > settled('lead');
+  }
   private done(value: JsonValue): void {
+    if (this.needsLeadReview()) {
+      this.run.snapshot.proposedResult = value;
+      void this.call('lead', {
+        objective:
+          'Review saved worker results and the workspace diff against the requested outcome. Complete required repository checks in the lead when worker permissions prevented them. Resolve with acceptance evidence, or report incomplete/blocked; never replace failed workers silently.',
+      }).then(
+        (resolution) => this.done(resolution),
+        (error: unknown) => this.fail(String(error)),
+      );
+      return;
+    }
     if (this.cursor !== this.run.calls.length) {
       this.fail('Replay ended before the journal', true);
       return;

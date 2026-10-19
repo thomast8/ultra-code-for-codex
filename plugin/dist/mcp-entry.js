@@ -29303,7 +29303,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.11",
+  version: "0.4.12",
   private: true,
   type: "module",
   engines: {
@@ -29574,6 +29574,7 @@ var agentV2OptionsSchema = external_exports.strictObject({
 var agentV2CallDescription = `agent(prompt, options?) requires a nonempty string prompt. agent(prompt) is read-only and cannot edit files. For an authorized coding task call agent(prompt, {access: "workspace-write"}). Both return final text or null on terminal failure. Options: ${Object.keys(agentV2OptionsSchema.shape).join(", ")}. access must be ${workerAccessSchema.options.map((value) => JSON.stringify(value)).join(" or ")}. phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.`;
 var startV2Schema = startSchema.omit({ maxAgentCalls: true, authorityRef: true, args: true }).extend({
   contractVersion: external_exports.literal(2).default(2),
+  reviewAfterWorkers: external_exports.boolean().optional(),
   script: external_exports.string().min(1).max(262144).describe(
     `JavaScript function body. ${agentV2CallDescription} Other calls: phase(label), log(value), parallel(factories), pipeline(items, ...stages), lead(objective, evidence?).`
   ),
@@ -38162,12 +38163,17 @@ function registerStart(options) {
     {
       title: "Start an Ultra Code workflow",
       description: `Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.`,
-      inputSchema: startV2Schema.omit({ evidenceRefs: true }).shape
+      inputSchema: startV2Schema.omit({ evidenceRefs: true, reviewAfterWorkers: true }).shape
     },
     (input2, extra) => result(async () => {
       const context = await lead(options, input2.contextKey, extra._meta);
       await workerReady(options, context);
-      const request = { ...input2, contractVersion: 2, args: input2.args ?? null };
+      const request = {
+        ...input2,
+        contractVersion: 2,
+        args: input2.args ?? null,
+        reviewAfterWorkers: true
+      };
       return options.call("start", { request, authority: { context, capacity: hostCapacity } });
     })
   );
@@ -38188,6 +38194,7 @@ function registerStart(options) {
       await workerReady(options, context);
       const request = {
         contractVersion: 2,
+        reviewAfterWorkers: true,
         requestId: createHash4("sha256").update(JSON.stringify([context.sessionId, input2.runId, input2.taskId, input2.prompt])).digest("hex"),
         contextKey: input2.contextKey,
         title: "Continue worker",

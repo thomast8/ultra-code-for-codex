@@ -108,6 +108,7 @@ const snapshotSchema = z.strictObject({
   handoffs: z.array(handoffRecord),
   usage: tokenUsageSchema.nullable(),
   accountingComplete: z.boolean(),
+  proposedResult: z.json().optional(),
   result: z.json(),
   error: z.string().nullable(),
 });

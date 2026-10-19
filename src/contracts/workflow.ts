@@ -81,6 +81,7 @@ export type LeadResult = {
 };
 export type StartRequest = {
   contractVersion?: 2;
+  reviewAfterWorkers?: boolean;
   continuationOf?: { runId: string; taskId: string };
   requestId: string;
   contextKey: string;
@@ -170,6 +171,7 @@ export type RunSnapshot = {
   leadReviews?: { handoffId: string; startedAt: number; finishedAt: number | null }[];
   usage: TokenUsage | null;
   accountingComplete: boolean; // Reported worker attempts only; main-chat overhead is excluded.
+  proposedResult?: JsonValue;
   result: JsonValue;
   error: string | null;
 };

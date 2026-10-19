@@ -178,13 +178,18 @@ function registerStart(options: WorkflowTools): void {
     {
       title: 'Start an Ultra Code workflow',
       description: `Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.`,
-      inputSchema: startV2Schema.omit({ evidenceRefs: true }).shape,
+      inputSchema: startV2Schema.omit({ evidenceRefs: true, reviewAfterWorkers: true }).shape,
     },
     (input, extra) =>
       result(async () => {
         const context = await lead(options, input.contextKey, extra._meta);
         await workerReady(options, context);
-        const request = { ...input, contractVersion: 2 as const, args: input.args ?? null };
+        const request = {
+          ...input,
+          contractVersion: 2 as const,
+          args: input.args ?? null,
+          reviewAfterWorkers: true,
+        };
         return options.call('start', { request, authority: { context, capacity: hostCapacity } });
       }),
   );
@@ -207,6 +212,7 @@ function registerStart(options: WorkflowTools): void {
         await workerReady(options, context);
         const request = {
           contractVersion: 2 as const,
+          reviewAfterWorkers: true,
           requestId: createHash('sha256')
             .update(JSON.stringify([context.sessionId, input.runId, input.taskId, input.prompt]))
             .digest('hex'),

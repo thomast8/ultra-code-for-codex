@@ -28382,6 +28382,7 @@ var agentV2OptionsSchema = external_exports.strictObject({
 var agentV2CallDescription = `agent(prompt, options?) requires a nonempty string prompt. agent(prompt) is read-only and cannot edit files. For an authorized coding task call agent(prompt, {access: "workspace-write"}). Both return final text or null on terminal failure. Options: ${Object.keys(agentV2OptionsSchema.shape).join(", ")}. access must be ${workerAccessSchema.options.map((value) => JSON.stringify(value)).join(" or ")}. phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.`;
 var startV2Schema = startSchema.omit({ maxAgentCalls: true, authorityRef: true, args: true }).extend({
   contractVersion: external_exports.literal(2).default(2),
+  reviewAfterWorkers: external_exports.boolean().optional(),
   script: external_exports.string().min(1).max(262144).describe(
     `JavaScript function body. ${agentV2CallDescription} Other calls: phase(label), log(value), parallel(factories), pipeline(items, ...stages), lead(objective, evidence?).`
   ),
@@ -28922,6 +28923,7 @@ var snapshotSchema = external_exports.strictObject({
   handoffs: external_exports.array(handoffRecord),
   usage: tokenUsageSchema.nullable(),
   accountingComplete: external_exports.boolean(),
+  proposedResult: external_exports.json().optional(),
   result: external_exports.json(),
   error: external_exports.string().nullable()
 });
@@ -30048,7 +30050,28 @@ var RunSession = class {
       } else reply(call.result);
     }
   }
+  needsLeadReview() {
+    if (this.run.version !== 2 || !this.run.request.reviewAfterWorkers) return false;
+    if (!["running", "paused"].includes(this.run.snapshot.state)) return false;
+    const consumed = this.run.calls.slice(0, this.cursor);
+    if (consumed.some((call) => call.state !== "resolved")) return false;
+    const settled = (kind) => Math.max(
+      0,
+      ...consumed.filter((call) => call.kind === kind).map((call) => call.settlement ?? 0)
+    );
+    return settled("agent") > settled("lead");
+  }
   done(value) {
+    if (this.needsLeadReview()) {
+      this.run.snapshot.proposedResult = value;
+      void this.call("lead", {
+        objective: "Review saved worker results and the workspace diff against the requested outcome. Complete required repository checks in the lead when worker permissions prevented them. Resolve with acceptance evidence, or report incomplete/blocked; never replace failed workers silently."
+      }).then(
+        (resolution) => this.done(resolution),
+        (error62) => this.fail(String(error62))
+      );
+      return;
+    }
     if (this.cursor !== this.run.calls.length) {
       this.fail("Replay ended before the journal", true);
       return;
@@ -30532,7 +30555,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.11",
+  version: "0.4.12",
   private: true,
   type: "module",
   engines: {
