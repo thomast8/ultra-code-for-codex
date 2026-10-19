@@ -196,7 +196,7 @@ it('hydrates owned saved-result references into worker evidence with a size boun
     uri: `ultra://run/${source.id}/task/${source.id}:1`,
   };
   engine.start(
-    { ...request('return await agent("Check it");', 'dependent'), evidenceRefs: [ref] },
+    { ...request('return await agent("Check it");', 'dependent'), savedTaskRefs: [ref] },
     host,
   );
   await until(() => calls.length === 2);
@@ -206,11 +206,23 @@ it('hydrates owned saved-result references into worker evidence with a size boun
     engine.start(
       {
         ...request('return 1;', 'foreign'),
-        evidenceRefs: [ref],
+        savedTaskRefs: [ref],
       },
       { ...host, context: { ...host.context, sessionId: 'foreign' } },
     ),
   ).toThrow('selected lead');
+  expect(() =>
+    engine.start(
+      {
+        ...request('return 1;', 'bad-source-ref'),
+        savedTaskRefs: [
+          { id: 'pinned-source', description: 'CSV', uri: 'file:///tmp/security.csv' },
+        ],
+      },
+      host,
+    ),
+  ).toThrow('Use a saved Ultra task URI');
+  expect(engine.status(owner)).toHaveLength(2);
   calls[1]!.finish(output('Checked'));
   await until(() => engine.status(owner)[1]?.state === 'completed');
   await engine.close();

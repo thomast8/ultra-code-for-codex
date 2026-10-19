@@ -15,8 +15,8 @@ export function prepareRun(
     run.snapshot.continuationOf = { ...request.continuationOf, kind: continuation.kind };
     if (continuation.kind === 'repair') run.snapshot.attemptKind = 'repair';
   }
-  if (run.version === 2 && request.evidenceRefs?.length)
-    run.sourceEvidence = savedEvidence(request.evidenceRefs, getRun);
+  const refs = request.savedTaskRefs ?? request.evidenceRefs;
+  if (run.version === 2 && refs?.length) run.sourceEvidence = savedEvidence(refs, getRun);
 }
 
 function attemptKind(parent: RunRecord): 'repair' | 'follow-up' {
@@ -66,12 +66,15 @@ function continuationCall(
 }
 
 function savedEvidence(
-  refs: NonNullable<StartRequest['evidenceRefs']>,
+  refs: NonNullable<StartRequest['savedTaskRefs']>,
   getRun: (id: string) => RunRecord,
 ): string[] {
   const selected = refs.map((ref) => {
     const match = /^ultra:\/\/run\/([^/]+)\/task\/([^/]+)$/.exec(ref.uri ?? '');
-    if (!match) throw new Error(`Evidence ${ref.id} needs an Ultra task URI`);
+    if (!match)
+      throw new Error(
+        `Evidence ${ref.id} needs a saved Ultra task URI from ultra_result; put local source paths in an agent prompt`,
+      );
     const run = getRun(match[1]!);
     const task = run.calls.find((call) => call.task?.id === match[2]!)?.task;
     if (task?.result?.execution !== 'completed')

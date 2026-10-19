@@ -101,11 +101,29 @@ export const startV2Schema = startSchema
       .min(1)
       .max(262_144)
       .describe(
-        'JavaScript function body. Use agent(prompt, options?) with optional label, phase, cwd, access, schema, model and effort; phase(label), log(value), parallel(factories), pipeline(items, fn) and lead(spec).',
+        'JavaScript function body. Use agent(prompt, options?) with optional label, phase, cwd, access, schema, model and effort; phase(label), log(value), parallel(factories), pipeline(items, ...stages) and lead(objective, evidence?).',
       ),
     args: json.optional(),
     maxAgentCalls: z.number().int().min(1).max(1_000).optional(),
     continuationOf: z.strictObject({ runId: identifier, taskId: identifier }).optional(),
+    savedTaskRefs: z
+      .array(
+        z.strictObject({
+          id: identifier,
+          description: text,
+          uri: z
+            .string()
+            .regex(
+              /^ultra:\/\/run\/[^/]+\/task\/[^/]+$/,
+              'Use a saved Ultra task URI returned by ultra_result; put local files in an agent prompt',
+            ),
+        }),
+      )
+      .max(1_000)
+      .optional()
+      .describe(
+        'Only saved results from prior Ultra tasks in this chat. Copy savedReference from ultra_result. Put CSV paths, source files, and web URLs in the agent prompt instead.',
+      ),
   });
 export const agentV2OptionsSchema = z.strictObject({
   label: text.optional(),

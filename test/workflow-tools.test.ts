@@ -232,6 +232,14 @@ async function assertControlSchemas(client: Client): Promise<void> {
     type: 'string',
     description: expect.stringContaining('agent(prompt, options?)'),
   });
+  expect(start.inputSchema.properties?.script).toMatchObject({
+    description: expect.stringContaining('lead(objective, evidence?)'),
+  });
+  expect(start.inputSchema.properties).toHaveProperty('savedTaskRefs');
+  expect(start.inputSchema.properties?.savedTaskRefs).toMatchObject({
+    description: expect.stringContaining('CSV paths'),
+  });
+  expect(start.inputSchema.properties).not.toHaveProperty('evidenceRefs');
   expect(model._meta).toMatchObject({ ui: { visibility: ['model'] } });
   expect(panel._meta).toMatchObject({ ui: { visibility: ['app'] } });
   expect(model.inputSchema.required).toContain('contextKey');

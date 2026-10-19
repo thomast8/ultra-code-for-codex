@@ -29303,7 +29303,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.1",
+  version: "0.4.2",
   private: true,
   type: "module",
   engines: {
@@ -29560,11 +29560,23 @@ var startSchema = external_exports.strictObject({
 var startV2Schema = startSchema.omit({ maxAgentCalls: true, authorityRef: true, args: true }).extend({
   contractVersion: external_exports.literal(2).default(2),
   script: external_exports.string().min(1).max(262144).describe(
-    "JavaScript function body. Use agent(prompt, options?) with optional label, phase, cwd, access, schema, model and effort; phase(label), log(value), parallel(factories), pipeline(items, fn) and lead(spec)."
+    "JavaScript function body. Use agent(prompt, options?) with optional label, phase, cwd, access, schema, model and effort; phase(label), log(value), parallel(factories), pipeline(items, ...stages) and lead(objective, evidence?)."
   ),
   args: json2.optional(),
   maxAgentCalls: external_exports.number().int().min(1).max(1e3).optional(),
-  continuationOf: external_exports.strictObject({ runId: identifier, taskId: identifier }).optional()
+  continuationOf: external_exports.strictObject({ runId: identifier, taskId: identifier }).optional(),
+  savedTaskRefs: external_exports.array(
+    external_exports.strictObject({
+      id: identifier,
+      description: text,
+      uri: external_exports.string().regex(
+        /^ultra:\/\/run\/[^/]+\/task\/[^/]+$/,
+        "Use a saved Ultra task URI returned by ultra_result; put local files in an agent prompt"
+      )
+    })
+  ).max(1e3).optional().describe(
+    "Only saved results from prior Ultra tasks in this chat. Copy savedReference from ultra_result. Put CSV paths, source files, and web URLs in the agent prompt instead."
+  )
 });
 var agentV2OptionsSchema = external_exports.strictObject({
   label: text.optional(),
@@ -38143,8 +38155,8 @@ function registerStart(options) {
     "ultra_start",
     {
       title: "Start an Ultra Code workflow",
-      description: "Start a workflow. Use agent(prompt, options?) for independent work; workers inherit the verified lead model and effort. Ultra controls shared capacity and verifies worker readiness before admission.",
-      inputSchema: startV2Schema.shape
+      description: "Start a workflow. Use agent(prompt, options?) for independent work; workers inherit the verified lead model and effort. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. Ultra controls shared capacity and verifies worker readiness before admission.",
+      inputSchema: startV2Schema.omit({ evidenceRefs: true }).shape
     },
     (input2, extra) => result(async () => {
       const context = await lead(options, input2.contextKey, extra._meta);

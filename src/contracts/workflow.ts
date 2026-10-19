@@ -93,6 +93,7 @@ export type StartRequest = {
   authorityRef?: string;
   parentRunId?: string;
   evidenceRefs?: ArtifactRef[];
+  savedTaskRefs?: ArtifactRef[];
   budget?: { maxObservedTokens: number };
 };
 export type CapacityGrant = {

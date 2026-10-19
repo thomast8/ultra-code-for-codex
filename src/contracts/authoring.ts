@@ -16,7 +16,7 @@ Other calls: \`phase(label)\`, \`log(value)\`, \`parallel(factories)\`, \`pipeli
 
 \`ultra_status\` is compact; use \`ultra_result\` for full saved results, \`ultra_inspect\` for a bounded page of the owned worker's local history, and \`ultra_continue\` to continue a returned worker in its thread. Continuing failed work is recorded as a repair. An orchestration repair or replacement never turns an earlier failed first attempt into a pass.
 
-To give a worker a saved result, put the \`savedReference\` returned by \`ultra_result(runId, taskId)\` in \`ultra_start.evidenceRefs\`. Ultra verifies that this chat owns the source task, loads its actual result, and adds it to the worker prompt. Saved evidence is limited to 48,000 UTF-8 bytes in total; use a smaller result if that bound is exceeded.
+To give a worker a saved result, put the \`savedReference\` returned by \`ultra_result(runId, taskId)\` in \`ultra_start.savedTaskRefs\`. This field accepts prior Ultra task results only. Put CSV paths, source files, and web URLs in the worker prompt so the worker reads them directly. Ultra verifies that this chat owns a saved result, loads its actual value, and adds it to the worker prompt. Saved evidence is limited to 48,000 UTF-8 bytes in total; use a smaller result if that bound is exceeded.
 
 Correct ordinary source-path and command errors in the same assignment. After two corrections to the same operation, report the blocker. Stop on authority or permission failure. Keep independent inspection commands in separate tool calls so their exit statuses remain visible. State uncertainty and missing coverage plainly; a worker's return is not goal acceptance.
 

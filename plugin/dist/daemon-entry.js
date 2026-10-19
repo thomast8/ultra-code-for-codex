@@ -28368,11 +28368,23 @@ var startSchema = external_exports.strictObject({
 var startV2Schema = startSchema.omit({ maxAgentCalls: true, authorityRef: true, args: true }).extend({
   contractVersion: external_exports.literal(2).default(2),
   script: external_exports.string().min(1).max(262144).describe(
-    "JavaScript function body. Use agent(prompt, options?) with optional label, phase, cwd, access, schema, model and effort; phase(label), log(value), parallel(factories), pipeline(items, fn) and lead(spec)."
+    "JavaScript function body. Use agent(prompt, options?) with optional label, phase, cwd, access, schema, model and effort; phase(label), log(value), parallel(factories), pipeline(items, ...stages) and lead(objective, evidence?)."
   ),
   args: json2.optional(),
   maxAgentCalls: external_exports.number().int().min(1).max(1e3).optional(),
-  continuationOf: external_exports.strictObject({ runId: identifier, taskId: identifier }).optional()
+  continuationOf: external_exports.strictObject({ runId: identifier, taskId: identifier }).optional(),
+  savedTaskRefs: external_exports.array(
+    external_exports.strictObject({
+      id: identifier,
+      description: text,
+      uri: external_exports.string().regex(
+        /^ultra:\/\/run\/[^/]+\/task\/[^/]+$/,
+        "Use a saved Ultra task URI returned by ultra_result; put local files in an agent prompt"
+      )
+    })
+  ).max(1e3).optional().describe(
+    "Only saved results from prior Ultra tasks in this chat. Copy savedReference from ultra_result. Put CSV paths, source files, and web URLs in the agent prompt instead."
+  )
 });
 var agentV2OptionsSchema = external_exports.strictObject({
   label: text.optional(),
@@ -30513,7 +30525,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.1",
+  version: "0.4.2",
   private: true,
   type: "module",
   engines: {
@@ -30999,8 +31011,8 @@ function prepareRun(run, getRun, existing) {
     run.snapshot.continuationOf = { ...request.continuationOf, kind: continuation.kind };
     if (continuation.kind === "repair") run.snapshot.attemptKind = "repair";
   }
-  if (run.version === 2 && request.evidenceRefs?.length)
-    run.sourceEvidence = savedEvidence(request.evidenceRefs, getRun);
+  const refs = request.savedTaskRefs ?? request.evidenceRefs;
+  if (run.version === 2 && refs?.length) run.sourceEvidence = savedEvidence(refs, getRun);
 }
 function attemptKind(parent) {
   const failed = parent.snapshot.state === "failed" || ["incomplete", "blocked"].includes(parent.snapshot.acceptanceOutcome) || parent.snapshot.tasks.some(
@@ -31037,7 +31049,10 @@ function continuationCall(ref, getRun, existing) {
 function savedEvidence(refs, getRun) {
   const selected = refs.map((ref) => {
     const match = /^ultra:\/\/run\/([^/]+)\/task\/([^/]+)$/.exec(ref.uri ?? "");
-    if (!match) throw new Error(`Evidence ${ref.id} needs an Ultra task URI`);
+    if (!match)
+      throw new Error(
+        `Evidence ${ref.id} needs a saved Ultra task URI from ultra_result; put local source paths in an agent prompt`
+      );
     const run = getRun(match[1]);
     const task = run.calls.find((call) => call.task?.id === match[2])?.task;
     if (task?.result?.execution !== "completed")
