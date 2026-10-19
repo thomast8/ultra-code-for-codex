@@ -2,7 +2,7 @@
 
 The selected chat remains the lead. Submit a JavaScript function body to `ultra_start` with the task title, objective, acceptance criteria, and JSON `args`. The runtime verifies worker readiness and shares three worker slots across this profile. It saves all calls and results.
 
-agent(prompt, options?) requires a nonempty string prompt and returns final text or null on terminal failure. Options: label, phase, cwd, access, schema, model, effort. access must be "read-only" or "workspace-write"; default is "read-only". Use "workspace-write" only for authorized edits. phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.
+agent(prompt, options?) requires a nonempty string prompt. agent(prompt) is read-only and cannot edit files. For an authorized coding task call agent(prompt, {access: "workspace-write"}). Both return final text or null on terminal failure. Options: label, phase, cwd, access, schema, model, effort. access must be "read-only" or "workspace-write". phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.
 
 All options are optional. These types and values are generated from the runtime validator:
 

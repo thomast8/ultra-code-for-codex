@@ -69,6 +69,8 @@ it.each([0, 1])('ships and executes complete authoring example %i', async (index
 it('documents exact access values from the validator at both discovery surfaces', () => {
   const reference = authoringReference();
   const description = startV2Schema.shape.script.description!;
+  expect(description).toContain('agent(prompt) is read-only and cannot edit files');
+  expect(description).toContain('agent(prompt, {access: "workspace-write"})');
   for (const access of agentV2OptionsSchema.shape.access.unwrap().options) {
     expect(reference).toContain(JSON.stringify(access));
     expect(description).toContain(JSON.stringify(access));

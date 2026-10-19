@@ -29303,7 +29303,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.10",
+  version: "0.4.11",
   private: true,
   type: "module",
   engines: {
@@ -29571,7 +29571,7 @@ var agentV2OptionsSchema = external_exports.strictObject({
   model: identifier.optional().describe("Omit to inherit the verified lead model."),
   effort: identifier.optional().describe("Omit to inherit the verified lead reasoning effort.")
 });
-var agentV2CallDescription = `agent(prompt, options?) requires a nonempty string prompt and returns final text or null on terminal failure. Options: ${Object.keys(agentV2OptionsSchema.shape).join(", ")}. access must be ${workerAccessSchema.options.map((value) => JSON.stringify(value)).join(" or ")}; default is "read-only". Use "workspace-write" only for authorized edits. phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.`;
+var agentV2CallDescription = `agent(prompt, options?) requires a nonempty string prompt. agent(prompt) is read-only and cannot edit files. For an authorized coding task call agent(prompt, {access: "workspace-write"}). Both return final text or null on terminal failure. Options: ${Object.keys(agentV2OptionsSchema.shape).join(", ")}. access must be ${workerAccessSchema.options.map((value) => JSON.stringify(value)).join(" or ")}. phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.`;
 var startV2Schema = startSchema.omit({ maxAgentCalls: true, authorityRef: true, args: true }).extend({
   contractVersion: external_exports.literal(2).default(2),
   script: external_exports.string().min(1).max(262144).describe(

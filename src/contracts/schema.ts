@@ -116,7 +116,7 @@ export const agentV2OptionsSchema = z.strictObject({
   model: identifier.optional().describe('Omit to inherit the verified lead model.'),
   effort: identifier.optional().describe('Omit to inherit the verified lead reasoning effort.'),
 });
-export const agentV2CallDescription = `agent(prompt, options?) requires a nonempty string prompt and returns final text or null on terminal failure. Options: ${Object.keys(agentV2OptionsSchema.shape).join(', ')}. access must be ${workerAccessSchema.options.map((value) => JSON.stringify(value)).join(' or ')}; default is "read-only". Use "workspace-write" only for authorized edits. phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.`;
+export const agentV2CallDescription = `agent(prompt, options?) requires a nonempty string prompt. agent(prompt) is read-only and cannot edit files. For an authorized coding task call agent(prompt, {access: "workspace-write"}). Both return final text or null on terminal failure. Options: ${Object.keys(agentV2OptionsSchema.shape).join(', ')}. access must be ${workerAccessSchema.options.map((value) => JSON.stringify(value)).join(' or ')}. phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.`;
 
 export const startV2Schema = startSchema
   .omit({ maxAgentCalls: true, authorityRef: true, args: true })
