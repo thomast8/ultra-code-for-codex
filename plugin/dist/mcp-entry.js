@@ -29303,7 +29303,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.8",
+  version: "0.4.9",
   private: true,
   type: "module",
   engines: {
@@ -29476,6 +29476,7 @@ var text = external_exports.string().trim().min(1).max(32768);
 var identifier = external_exports.string().min(1).max(512);
 var json2 = external_exports.json();
 var path = text.refine(isAbsolute, "An absolute path is required");
+var workerAccessSchema = external_exports.enum(["read-only", "workspace-write"]);
 var phaseSchema = external_exports.strictObject({ id: identifier, label: text });
 var artifactSchema = external_exports.strictObject({
   id: identifier,
@@ -29515,7 +29516,7 @@ var agentSchema = external_exports.strictObject({
   assessment: assessmentSchema,
   model: identifier,
   effort: identifier,
-  capability: external_exports.enum(["read-only", "workspace-write"]),
+  capability: workerAccessSchema,
   resources: external_exports.array(resourceSchema).max(100),
   outputSchema: external_exports.record(external_exports.string(), json2),
   timeoutMs: external_exports.number().int().min(1e3).max(36e5).optional()
@@ -29557,10 +29558,22 @@ var startSchema = external_exports.strictObject({
   evidenceRefs: external_exports.array(artifactSchema).max(1e3).optional(),
   budget: external_exports.strictObject({ maxObservedTokens: external_exports.number().int().positive() }).optional()
 });
+var agentV2OptionsSchema = external_exports.strictObject({
+  label: text.optional().describe("Short worker title."),
+  phase: text.optional().describe("Phase label, not a phase object."),
+  cwd: path.optional().describe("Absolute authorized working directory; defaults to the chat directory."),
+  access: workerAccessSchema.optional().describe(
+    "Defaults to read-only. Authorized edits require workspace-write; Plan mode rejects writes."
+  ),
+  schema: external_exports.record(external_exports.string(), json2).optional().describe("Optional JSON Schema for the result; omit for plain text."),
+  model: identifier.optional().describe("Omit to inherit the verified lead model."),
+  effort: identifier.optional().describe("Omit to inherit the verified lead reasoning effort.")
+});
+var agentV2CallDescription = `agent(prompt, options?) requires a nonempty string prompt and returns final text or null on terminal failure. Options: ${Object.keys(agentV2OptionsSchema.shape).join(", ")}. access must be ${workerAccessSchema.options.map((value) => JSON.stringify(value)).join(" or ")}; default is "read-only". Use "workspace-write" only for authorized edits. phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.`;
 var startV2Schema = startSchema.omit({ maxAgentCalls: true, authorityRef: true, args: true }).extend({
   contractVersion: external_exports.literal(2).default(2),
   script: external_exports.string().min(1).max(262144).describe(
-    "JavaScript function body. Use agent(prompt, options?) with optional label, phase, cwd, access, schema, model and effort; phase(label), log(value), parallel(factories), pipeline(items, ...stages) and lead(objective, evidence?)."
+    `JavaScript function body. ${agentV2CallDescription} Other calls: phase(label), log(value), parallel(factories), pipeline(items, ...stages), lead(objective, evidence?).`
   ),
   args: json2.optional(),
   maxAgentCalls: external_exports.number().int().min(1).max(1e3).optional(),
@@ -29577,15 +29590,6 @@ var startV2Schema = startSchema.omit({ maxAgentCalls: true, authorityRef: true, 
   ).max(1e3).optional().describe(
     "Only saved results from prior Ultra tasks in this chat. Copy savedReference from ultra_result. Put CSV paths, source files, and web URLs in the agent prompt instead."
   )
-});
-var agentV2OptionsSchema = external_exports.strictObject({
-  label: text.optional(),
-  phase: text.optional(),
-  cwd: path.optional(),
-  access: external_exports.enum(["read-only", "workspace-write"]).optional(),
-  schema: external_exports.record(external_exports.string(), json2).optional(),
-  model: identifier.optional(),
-  effort: identifier.optional()
 });
 var agentV2Schema = external_exports.strictObject({
   prompt: text,
@@ -38155,7 +38159,7 @@ function registerStart(options) {
     "ultra_start",
     {
       title: "Start an Ultra Code workflow",
-      description: "Start a workflow. Use agent(prompt, options?) for independent work; workers inherit the verified lead model and effort. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.",
+      description: `Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.`,
       inputSchema: startV2Schema.omit({ evidenceRefs: true }).shape
     },
     (input2, extra) => result(async () => {

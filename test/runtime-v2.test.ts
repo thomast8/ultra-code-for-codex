@@ -100,6 +100,20 @@ it('prevalidates syntax, blocks plan writes and accepts bounded structured logs'
   await engine.close();
 });
 
+it('retains invalid access as a failed run without launching a worker', async () => {
+  const { engine, calls } = harness();
+  const run = engine.start(request('return await agent("Edit source", {access:"write"});'), host);
+  await until(() => engine.status(owner)[0]?.state === 'failed');
+  expect(calls).toHaveLength(0);
+  expect(engine.result(owner, run.id)).toMatchObject({
+    state: 'failed',
+    acceptanceOutcome: 'incomplete',
+    tasks: [],
+    error: expect.stringContaining('workspace-write'),
+  });
+  await engine.close();
+});
+
 it('reloads a completed v2 record without replaying its worker', async () => {
   const { engine, calls, dataDir, execute } = harness();
   engine.start(request('return await agent("Inspect");'), host);

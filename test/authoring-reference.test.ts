@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { format } from 'prettier';
 import { authoringReference } from '../src/contracts/authoring.js';
+import { agentV2OptionsSchema, startV2Schema } from '../src/contracts/schema.js';
 import { authority, harness, output, owner, until } from './runtime-fixture.js';
 
-it('ships the generated contract reference and executes its complete example', async () => {
+it.each([0, 1])('ships and executes complete authoring example %i', async (index) => {
   const text = readFileSync('plugin/skills/ultra-code/references/authoring.md', 'utf8');
   expect(text).toBe(
     await format(authoringReference(), {
@@ -14,7 +15,9 @@ it('ships the generated contract reference and executes its complete example', a
       trailingComma: 'all',
     }),
   );
-  const script = text.match(/```js\n([\s\S]*?)\n```/)?.[1];
+  const scripts = [...text.matchAll(/```js\n([\s\S]*?)\n```/g)].map((match) => match[1]);
+  expect(scripts).toHaveLength(2);
+  const script = scripts[index];
   expect(script).toBeTruthy();
   const host = {
     ...authority,
@@ -35,14 +38,21 @@ it('ships the generated contract reference and executes its complete example', a
       objective: 'Compare independent sources',
       acceptance: ['Lead checks evidence'],
       script: script!,
-      args: { questions: ['Check source A', 'Check source B'] },
+      args: {
+        questions: ['Check source A', 'Check source B'],
+        task: 'Implement the requested behavior and verify it',
+      },
     },
     host,
   );
-  await until(() => calls.length === 2);
-  expect(calls.map((call) => call.spec.format)).toEqual(['plain', 'plain']);
-  calls[0]!.finish(output('A checked'));
-  calls[1]!.finish(output('B checked'));
+  await until(() => calls.length === (index === 0 ? 2 : 1));
+  for (const call of calls) {
+    expect(call.spec).toMatchObject({
+      format: 'plain',
+      capability: index === 0 ? 'read-only' : 'workspace-write',
+    });
+    call.finish(output('Task checked'));
+  }
   await until(() => engine.status(owner)[0]?.handoffs.length === 1);
   const id = engine.status(owner)[0]!.handoffs[0]!.id;
   engine.handoff(owner, id, 'claim', authority.context);
@@ -54,4 +64,15 @@ it('ships the generated contract reference and executes its complete example', a
   await until(() => engine.status(owner)[0]?.state === 'completed');
   expect(engine.result(owner, run.id)).toMatchObject({ acceptanceOutcome: 'satisfied' });
   await engine.close();
+});
+
+it('documents exact access values from the validator at both discovery surfaces', () => {
+  const reference = authoringReference();
+  const description = startV2Schema.shape.script.description!;
+  for (const access of agentV2OptionsSchema.shape.access.unwrap().options) {
+    expect(reference).toContain(JSON.stringify(access));
+    expect(description).toContain(JSON.stringify(access));
+    expect(agentV2OptionsSchema.parse({ access })).toEqual({ access });
+  }
+  expect(agentV2OptionsSchema.safeParse({ access: 'write' }).success).toBe(false);
 });

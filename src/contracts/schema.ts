@@ -5,6 +5,7 @@ const text = z.string().trim().min(1).max(32_768);
 const identifier = z.string().min(1).max(512);
 const json = z.json();
 const path = text.refine(isAbsolute, 'An absolute path is required');
+const workerAccessSchema = z.enum(['read-only', 'workspace-write']);
 export const phaseSchema = z.strictObject({ id: identifier, label: text });
 export const artifactSchema = z.strictObject({
   id: identifier,
@@ -44,7 +45,7 @@ export const agentSchema = z.strictObject({
   assessment: assessmentSchema,
   model: identifier,
   effort: identifier,
-  capability: z.enum(['read-only', 'workspace-write']),
+  capability: workerAccessSchema,
   resources: z.array(resourceSchema).max(100),
   outputSchema: z.record(z.string(), json),
   timeoutMs: z.number().int().min(1_000).max(3_600_000).optional(),
@@ -92,6 +93,26 @@ export const startSchema = z.strictObject({
   evidenceRefs: z.array(artifactSchema).max(1_000).optional(),
   budget: z.strictObject({ maxObservedTokens: z.number().int().positive() }).optional(),
 });
+export const agentV2OptionsSchema = z.strictObject({
+  label: text.optional().describe('Short worker title.'),
+  phase: text.optional().describe('Phase label, not a phase object.'),
+  cwd: path
+    .optional()
+    .describe('Absolute authorized working directory; defaults to the chat directory.'),
+  access: workerAccessSchema
+    .optional()
+    .describe(
+      'Defaults to read-only. Authorized edits require workspace-write; Plan mode rejects writes.',
+    ),
+  schema: z
+    .record(z.string(), json)
+    .optional()
+    .describe('Optional JSON Schema for the result; omit for plain text.'),
+  model: identifier.optional().describe('Omit to inherit the verified lead model.'),
+  effort: identifier.optional().describe('Omit to inherit the verified lead reasoning effort.'),
+});
+export const agentV2CallDescription = `agent(prompt, options?) requires a nonempty string prompt and returns final text or null on terminal failure. Options: ${Object.keys(agentV2OptionsSchema.shape).join(', ')}. access must be ${workerAccessSchema.options.map((value) => JSON.stringify(value)).join(' or ')}; default is "read-only". Use "workspace-write" only for authorized edits. phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.`;
+
 export const startV2Schema = startSchema
   .omit({ maxAgentCalls: true, authorityRef: true, args: true })
   .extend({
@@ -101,7 +122,7 @@ export const startV2Schema = startSchema
       .min(1)
       .max(262_144)
       .describe(
-        'JavaScript function body. Use agent(prompt, options?) with optional label, phase, cwd, access, schema, model and effort; phase(label), log(value), parallel(factories), pipeline(items, ...stages) and lead(objective, evidence?).',
+        `JavaScript function body. ${agentV2CallDescription} Other calls: phase(label), log(value), parallel(factories), pipeline(items, ...stages), lead(objective, evidence?).`,
       ),
     args: json.optional(),
     maxAgentCalls: z.number().int().min(1).max(1_000).optional(),
@@ -125,15 +146,6 @@ export const startV2Schema = startSchema
         'Only saved results from prior Ultra tasks in this chat. Copy savedReference from ultra_result. Put CSV paths, source files, and web URLs in the agent prompt instead.',
       ),
   });
-export const agentV2OptionsSchema = z.strictObject({
-  label: text.optional(),
-  phase: text.optional(),
-  cwd: path.optional(),
-  access: z.enum(['read-only', 'workspace-write']).optional(),
-  schema: z.record(z.string(), json).optional(),
-  model: identifier.optional(),
-  effort: identifier.optional(),
-});
 export const agentV2Schema = z.strictObject({
   prompt: text,
   options: agentV2OptionsSchema.optional(),
