@@ -8,6 +8,9 @@ import { workerTransportFailure } from './diagnostics.js';
 import { type OutputContract, parseWorkerOutput } from './worker-output.js';
 import { WorkerBlocked, workerRequest, type WorkerTransport } from './worker-protocol.js';
 
+const DEFAULT_WORKER_IDLE_TIMEOUT_MS = 300_000;
+const MAX_WORKER_DURATION_MS = 3_600_000;
+
 function deadline<T>(promise: Promise<T>, milliseconds: number): Promise<T | null> {
   let timer: NodeJS.Timeout;
   return Promise.race([
@@ -95,13 +98,29 @@ export async function executeWorkerTurn(
   },
   grace: number,
 ): Promise<TaskResult> {
-  const events = new WorkerTurnEvents(input.threadId, spec.model, options);
+  let idleTimer: NodeJS.Timeout | undefined;
+  let stopForIdleTimeout: () => void = () => undefined;
+  const resetIdleTimer = () => {
+    if (spec.timeoutMs !== undefined) return;
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(stopForIdleTimeout, DEFAULT_WORKER_IDLE_TIMEOUT_MS);
+  };
+  const events = new WorkerTurnEvents(input.threadId, spec.model, options, resetIdleTimer);
+  stopForIdleTimeout = () => events.stop('Worker idle timeout exceeded', 'failed');
   const unsubscribe = transport.onNotification(
     (message) => events.receive(message),
     (error) => events.stop(workerTransportFailure(error)),
   );
   const abort = () => events.stop('Worker cancellation requested');
-  const timer = setTimeout(() => events.stop('Worker timeout exceeded'), spec.timeoutMs ?? 300_000);
+  const durationTimer = setTimeout(
+    () =>
+      events.stop(
+        spec.timeoutMs === undefined ? 'Worker duration limit exceeded' : 'Worker timeout exceeded',
+        'failed',
+      ),
+    spec.timeoutMs ?? MAX_WORKER_DURATION_MS,
+  );
+  resetIdleTimer();
   options.signal.addEventListener('abort', abort, { once: true });
   const params: TurnStartParams = {
     threadId: input.threadId,
@@ -126,7 +145,8 @@ export async function executeWorkerTurn(
     await events.drain();
     return finishedResult(spec, events, input.contract);
   } finally {
-    clearTimeout(timer);
+    clearTimeout(idleTimer);
+    clearTimeout(durationTimer);
     options.signal.removeEventListener('abort', abort);
     unsubscribe();
     events.dispose();

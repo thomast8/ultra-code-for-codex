@@ -19,11 +19,13 @@ export class WorkerTurnEvents {
   private queue = Promise.resolve();
   private activityCount = 0;
   private active = true;
+  private stopExecution: TaskResult['execution'] | null = null;
 
   constructor(
     readonly threadId: string,
     model: string,
     private readonly options: WorkerOptions,
+    private readonly onProgress: () => void,
   ) {
     this.reportedModel = model;
     this.wakeup = new Promise((resolve) => {
@@ -41,8 +43,11 @@ export class WorkerTurnEvents {
     return this.queue;
   }
 
-  stop(reason: string): void {
-    if (this.stopReason === null) this.stopReason = reason;
+  stop(reason: string, execution: TaskResult['execution'] | null = null): void {
+    if (this.stopReason === null) {
+      this.stopReason = reason;
+      this.stopExecution = execution;
+    }
     this.wake();
   }
 
@@ -54,6 +59,7 @@ export class WorkerTurnEvents {
   }
 
   private async observeTurn(turn: Turn): Promise<void> {
+    this.onProgress();
     requireWorker(
       typeof turn.id === 'string' && turn.id.length > 0,
       'Worker turn identity is unavailable',
@@ -94,6 +100,7 @@ export class WorkerTurnEvents {
   }
 
   private async handleOwned(notification: ServerNotification): Promise<void> {
+    this.onProgress();
     switch (notification.method) {
       case 'turn/started':
       case 'turn/completed':
@@ -185,11 +192,12 @@ export class WorkerTurnEvents {
   failureResult(requestedModel: string): TaskResult {
     return {
       execution:
-        this.completed === null
+        this.stopExecution ??
+        (this.completed === null
           ? 'uncertain'
           : this.completed.status === 'interrupted'
             ? 'interrupted'
-            : 'failed',
+            : 'failed'),
       acceptance: 'unverified',
       value: null,
       evidence: [],

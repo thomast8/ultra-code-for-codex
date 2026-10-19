@@ -30526,7 +30526,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.5",
+  version: "0.4.6",
   private: true,
   type: "module",
   engines: {
@@ -31475,9 +31475,10 @@ async function verifyLocalEnvironment(transport, started, cwd, ephemeral = true)
 
 // src/codex/worker-events.ts
 var WorkerTurnEvents = class {
-  constructor(threadId, model, options) {
+  constructor(threadId, model, options, onProgress) {
     this.threadId = threadId;
     this.options = options;
+    this.onProgress = onProgress;
     this.reportedModel = model;
     this.wakeup = new Promise((resolve3) => {
       this.wake = resolve3;
@@ -31488,6 +31489,7 @@ var WorkerTurnEvents = class {
   }
   threadId;
   options;
+  onProgress;
   turnId = null;
   completed = null;
   output = null;
@@ -31501,12 +31503,16 @@ var WorkerTurnEvents = class {
   queue = Promise.resolve();
   activityCount = 0;
   active = true;
+  stopExecution = null;
   receive(notification) {
     this.queue = this.queue.then(() => this.handle(notification)).catch(() => this.stop("Worker event recording or validation failed"));
     return this.queue;
   }
-  stop(reason) {
-    if (this.stopReason === null) this.stopReason = reason;
+  stop(reason, execution = null) {
+    if (this.stopReason === null) {
+      this.stopReason = reason;
+      this.stopExecution = execution;
+    }
     this.wake();
   }
   recordTurnResponse(turn) {
@@ -31514,6 +31520,7 @@ var WorkerTurnEvents = class {
     return this.queue;
   }
   async observeTurn(turn) {
+    this.onProgress();
     requireWorker(
       typeof turn.id === "string" && turn.id.length > 0,
       "Worker turn identity is unavailable"
@@ -31550,6 +31557,7 @@ var WorkerTurnEvents = class {
     await this.handleOwned(notification);
   }
   async handleOwned(notification) {
+    this.onProgress();
     switch (notification.method) {
       case "turn/started":
       case "turn/completed":
@@ -31631,7 +31639,7 @@ var WorkerTurnEvents = class {
   }
   failureResult(requestedModel) {
     return {
-      execution: this.completed === null ? "uncertain" : this.completed.status === "interrupted" ? "interrupted" : "failed",
+      execution: this.stopExecution ?? (this.completed === null ? "uncertain" : this.completed.status === "interrupted" ? "interrupted" : "failed"),
       acceptance: "unverified",
       value: null,
       evidence: [],
@@ -31645,6 +31653,8 @@ var WorkerTurnEvents = class {
 };
 
 // src/codex/worker-turn.ts
+var DEFAULT_WORKER_IDLE_TIMEOUT_MS = 3e5;
+var MAX_WORKER_DURATION_MS = 36e5;
 function deadline(promise2, milliseconds) {
   let timer;
   return Promise.race([
@@ -31705,13 +31715,28 @@ function finishedResult(spec, events, contract) {
   }
 }
 async function executeWorkerTurn(transport, spec, options, input2, grace) {
-  const events = new WorkerTurnEvents(input2.threadId, spec.model, options);
+  let idleTimer;
+  let stopForIdleTimeout = () => void 0;
+  const resetIdleTimer = () => {
+    if (spec.timeoutMs !== void 0) return;
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(stopForIdleTimeout, DEFAULT_WORKER_IDLE_TIMEOUT_MS);
+  };
+  const events = new WorkerTurnEvents(input2.threadId, spec.model, options, resetIdleTimer);
+  stopForIdleTimeout = () => events.stop("Worker idle timeout exceeded", "failed");
   const unsubscribe = transport.onNotification(
     (message) => events.receive(message),
     (error62) => events.stop(workerTransportFailure(error62))
   );
   const abort = () => events.stop("Worker cancellation requested");
-  const timer = setTimeout(() => events.stop("Worker timeout exceeded"), spec.timeoutMs ?? 3e5);
+  const durationTimer = setTimeout(
+    () => events.stop(
+      spec.timeoutMs === void 0 ? "Worker duration limit exceeded" : "Worker timeout exceeded",
+      "failed"
+    ),
+    spec.timeoutMs ?? MAX_WORKER_DURATION_MS
+  );
+  resetIdleTimer();
   options.signal.addEventListener("abort", abort, { once: true });
   const params = {
     threadId: input2.threadId,
@@ -31734,7 +31759,8 @@ async function executeWorkerTurn(transport, spec, options, input2, grace) {
     await events.drain();
     return finishedResult(spec, events, input2.contract);
   } finally {
-    clearTimeout(timer);
+    clearTimeout(idleTimer);
+    clearTimeout(durationTimer);
     options.signal.removeEventListener("abort", abort);
     unsubscribe();
     events.dispose();
