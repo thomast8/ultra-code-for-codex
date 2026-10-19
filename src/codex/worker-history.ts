@@ -23,9 +23,11 @@ export async function readWorkerHistory(
       threadId,
       cursor: cursor ?? null,
       limit: 10,
+      sortDirection: 'desc',
     });
     return {
       threadId,
+      order: 'newest-first',
       nextCursor: page.nextCursor,
       items: page.data.map((entry) => {
         const serialized = JSON.stringify(entry);

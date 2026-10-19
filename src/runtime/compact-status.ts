@@ -10,6 +10,8 @@ export function compactStatus(runs: RunSnapshot[]) {
       title: run.title.slice(0, 160),
       state: run.state,
       acceptance: run.acceptanceOutcome,
+      usage: run.usage,
+      budget: run.budget ?? null,
       workerCounts: counts,
       activeWorkers: run.tasks
         .filter((task) =>
@@ -23,6 +25,9 @@ export function compactStatus(runs: RunSnapshot[]) {
           verifiedModel: task.reportedModel ?? 'Unknown',
           requestedEffort: task.effort,
           verifiedEffort: task.reportedEffort ?? 'Unknown',
+          startedAt: task.startedAt,
+          lastActivityAt: task.lastActivityAt,
+          lastActivity: task.lastActivity?.slice(0, 240) ?? null,
         })),
       pendingHandoffs: run.handoffs
         .filter((item) => item.state !== 'resolved')

@@ -91,7 +91,12 @@ export const startSchema = z.strictObject({
   authorityRef: identifier,
   parentRunId: identifier.optional(),
   evidenceRefs: z.array(artifactSchema).max(1_000).optional(),
-  budget: z.strictObject({ maxObservedTokens: z.number().int().positive() }).optional(),
+  budget: z
+    .strictObject({ maxObservedTokens: z.number().int().positive() })
+    .optional()
+    .describe(
+      'Optional cumulative worker input plus output token ceiling, including repeated cached input on each call. Stops new dispatch after the ceiling; does not interrupt running workers. Omit unless a cumulative ceiling is wanted.',
+    ),
 });
 export const agentV2OptionsSchema = z.strictObject({
   label: text.optional().describe('Short worker title.'),

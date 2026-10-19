@@ -8,6 +8,9 @@ it('keeps model-facing status bounded without exposing saved worker or run resul
     result: `${secret}${'x'.repeat(200_000)}`,
     tasks: [
       taskFixture({
+        startedAt: 123,
+        lastActivityAt: 456,
+        lastActivity: 'Command completed; exit=0',
         reportedEffort: 'high',
         result: {
           execution: 'completed',
@@ -29,5 +32,8 @@ it('keeps model-facing status bounded without exposing saved worker or run resul
   expect(compact[0]?.activeWorkers[0]).toMatchObject({
     requestedEffort: 'medium',
     verifiedEffort: 'high',
+    startedAt: 123,
+    lastActivityAt: 456,
+    lastActivity: 'Command completed; exit=0',
   });
 });

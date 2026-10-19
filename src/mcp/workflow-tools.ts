@@ -153,7 +153,8 @@ function registerInspectTool(options: WorkflowTools): void {
     'ultra_inspect',
     {
       title: 'Inspect one saved worker history',
-      description: 'Read one bounded page of local tool history for a worker owned by this chat.',
+      description:
+        'Read the newest local tool history for a worker owned by this chat. Pass nextCursor to read older events; omit cursor to refresh current activity.',
       inputSchema: {
         contextKey: z.string(),
         runId: z.string(),

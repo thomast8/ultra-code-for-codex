@@ -29303,7 +29303,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.9",
+  version: "0.4.10",
   private: true,
   type: "module",
   engines: {
@@ -29556,7 +29556,9 @@ var startSchema = external_exports.strictObject({
   authorityRef: identifier,
   parentRunId: identifier.optional(),
   evidenceRefs: external_exports.array(artifactSchema).max(1e3).optional(),
-  budget: external_exports.strictObject({ maxObservedTokens: external_exports.number().int().positive() }).optional()
+  budget: external_exports.strictObject({ maxObservedTokens: external_exports.number().int().positive() }).optional().describe(
+    "Optional cumulative worker input plus output token ceiling, including repeated cached input on each call. Stops new dispatch after the ceiling; does not interrupt running workers. Omit unless a cumulative ceiling is wanted."
+  )
 });
 var agentV2OptionsSchema = external_exports.strictObject({
   label: text.optional().describe("Short worker title."),
@@ -38138,7 +38140,7 @@ function registerInspectTool(options) {
     "ultra_inspect",
     {
       title: "Inspect one saved worker history",
-      description: "Read one bounded page of local tool history for a worker owned by this chat.",
+      description: "Read the newest local tool history for a worker owned by this chat. Pass nextCursor to read older events; omit cursor to refresh current activity.",
       inputSchema: {
         contextKey: external_exports.string(),
         runId: external_exports.string(),

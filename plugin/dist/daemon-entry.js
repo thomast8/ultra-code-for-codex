@@ -28364,7 +28364,9 @@ var startSchema = external_exports.strictObject({
   authorityRef: identifier,
   parentRunId: identifier.optional(),
   evidenceRefs: external_exports.array(artifactSchema).max(1e3).optional(),
-  budget: external_exports.strictObject({ maxObservedTokens: external_exports.number().int().positive() }).optional()
+  budget: external_exports.strictObject({ maxObservedTokens: external_exports.number().int().positive() }).optional().describe(
+    "Optional cumulative worker input plus output token ceiling, including repeated cached input on each call. Stops new dispatch after the ceiling; does not interrupt running workers. Omit unless a cumulative ceiling is wanted."
+  )
 });
 var agentV2OptionsSchema = external_exports.strictObject({
   label: text.optional().describe("Short worker title."),
@@ -30530,7 +30532,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.9",
+  version: "0.4.10",
   private: true,
   type: "module",
   engines: {
@@ -30990,10 +30992,12 @@ async function readWorkerHistory(instanceId, cwd, threadId, cursor) {
     const page = await workerRequest(transport, "thread/items/list", {
       threadId,
       cursor: cursor ?? null,
-      limit: 10
+      limit: 10,
+      sortDirection: "desc"
     });
     return {
       threadId,
+      order: "newest-first",
       nextCursor: page.nextCursor,
       items: page.data.map((entry) => {
         const serialized = JSON.stringify(entry);
@@ -32122,6 +32126,8 @@ function compactStatus(runs) {
       title: run.title.slice(0, 160),
       state: run.state,
       acceptance: run.acceptanceOutcome,
+      usage: run.usage,
+      budget: run.budget ?? null,
       workerCounts: counts,
       activeWorkers: run.tasks.filter(
         (task) => ["queued", "waiting", "running", "needs_reconciliation"].includes(task.state)
@@ -32131,7 +32137,10 @@ function compactStatus(runs) {
         requestedModel: task.requestedModel,
         verifiedModel: task.reportedModel ?? "Unknown",
         requestedEffort: task.effort,
-        verifiedEffort: task.reportedEffort ?? "Unknown"
+        verifiedEffort: task.reportedEffort ?? "Unknown",
+        startedAt: task.startedAt,
+        lastActivityAt: task.lastActivityAt,
+        lastActivity: task.lastActivity?.slice(0, 240) ?? null
       })),
       pendingHandoffs: run.handoffs.filter((item) => item.state !== "resolved").slice(0, 10).map((item) => item.id),
       timing: runTiming(run, Date.now()),
