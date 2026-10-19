@@ -14,7 +14,7 @@ it('returns only current safe model/account/profile metadata without selecting a
     accountType: 'chatgpt',
     ordinaryUsageAllowed: true,
     models: [{ model: 'gpt-6.1-sol', reasoningEfforts: ['low'] }],
-    capacity: { requiresLeadGrant: true, hostWideAvailableSlots: null },
+    capacity: { profileWorkerLimit: 3, hostWideAvailableSlots: null },
     blockers: [],
   });
   expect(JSON.stringify(result)).not.toContain('private');

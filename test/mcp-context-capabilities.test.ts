@@ -15,7 +15,7 @@ const capabilities: WorkerCapabilities = {
     { model: 'gpt-6-luna', reasoningEfforts: ['low', 'medium'] },
     { model: 'gpt-6.1-sol', reasoningEfforts: ['high'] },
   ],
-  capacity: { requiresLeadGrant: true, hostWideAvailableSlots: null },
+  capacity: { profileWorkerLimit: 3, hostWideAvailableSlots: null },
   blockers: [],
 };
 

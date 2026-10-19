@@ -27,7 +27,7 @@ export type WorkerCapabilities = {
   accountType: string | null;
   ordinaryUsageAllowed: boolean | null;
   models: { model: string; reasoningEfforts: string[] }[];
-  capacity: { requiresLeadGrant: true; hostWideAvailableSlots: null };
+  capacity: { profileWorkerLimit: 3; hostWideAvailableSlots: null };
   blockers: string[];
 };
 
@@ -38,7 +38,7 @@ function emptyCapabilities(): WorkerCapabilities {
     accountType: null,
     ordinaryUsageAllowed: null,
     models: [],
-    capacity: { requiresLeadGrant: true, hostWideAvailableSlots: null },
+    capacity: { profileWorkerLimit: 3, hostWideAvailableSlots: null },
     blockers: [],
   };
 }

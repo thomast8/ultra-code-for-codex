@@ -30513,7 +30513,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.0",
+  version: "0.4.1",
   private: true,
   type: "module",
   engines: {
@@ -31735,7 +31735,7 @@ function emptyCapabilities() {
     accountType: null,
     ordinaryUsageAllowed: null,
     models: [],
-    capacity: { requiresLeadGrant: true, hostWideAvailableSlots: null },
+    capacity: { profileWorkerLimit: 3, hostWideAvailableSlots: null },
     blockers: []
   };
 }
