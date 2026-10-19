@@ -23,17 +23,20 @@ async function interruptWorker(
   events: WorkerTurnEvents,
   dispatched: Promise<void>,
   grace: number,
+  options: WorkerOptions,
 ): Promise<void> {
   await deadline(dispatched, grace);
   if (events.completed || events.turnId === null) return;
   try {
-    await deadline(
+    const acknowledged = await deadline(
       workerRequest(transport, 'turn/interrupt', {
         threadId: events.threadId,
         turnId: events.turnId,
       }),
       grace,
     );
+    if (acknowledged !== null)
+      await options.onEvent({ type: 'activity', message: 'Worker interrupt acknowledged' });
     await deadline(events.completion, grace);
   } catch {
     /* An acknowledgement failure leaves termination explicitly uncertain. */
@@ -109,7 +112,7 @@ export async function executeWorkerTurn(
     sandboxPolicy: input.sandbox,
     environments: [input.environment],
     runtimeWorkspaceRoots: [spec.assignment.ownership.cwd],
-    outputSchema: input.contract.schema,
+    ...(input.contract.schema === null ? {} : { outputSchema: input.contract.schema }),
     input: [{ type: 'text', text: input.prompt, text_elements: [] }],
   };
   const dispatched = workerRequest<TurnStartResponse>(transport, 'turn/start', params)
@@ -118,7 +121,8 @@ export async function executeWorkerTurn(
   try {
     if (options.signal.aborted) abort();
     await events.wakeup;
-    if (events.completed === null) await interruptWorker(transport, events, dispatched, grace);
+    if (events.completed === null)
+      await interruptWorker(transport, events, dispatched, grace, options);
     await events.drain();
     return finishedResult(spec, events, input.contract);
   } finally {

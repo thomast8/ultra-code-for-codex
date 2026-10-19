@@ -8,9 +8,11 @@ export function RunTiming({ run, now }: { run: RunSnapshot; now: number }) {
       <dl className="workflow-facts">
         {(
           [
-            ['Workers active', times.workers],
-            ['Waiting', times.waiting],
-            ['Lead review', times.review],
+            ['Workers only', times.workersOnly],
+            ['Lead review only', times.reviewOnly],
+            ['Workers and lead review', times.overlap],
+            ['Waiting or other', times.waiting],
+            ['Cumulative worker time', times.workerSum],
           ] as const
         ).map(([label, value]) => (
           <div className="workflow-fact" key={label}>
@@ -22,10 +24,9 @@ export function RunTiming({ run, now }: { run: RunSnapshot; now: number }) {
       <details className="workflow-muted">
         <summary>Timing definitions</summary>
         <p>
-          Workers active measures wall time with at least one worker running. Lead review runs from
-          handoff claim to resolution. Waiting covers time with neither active, including queues and
-          unclaimed handoffs. Worker and lead time can overlap; parallel workers are counted once.
-          These durations do not measure the lead’s unrecorded activity.
+          The first four rows partition elapsed wall time. Lead review runs from handoff claim to
+          resolution. Cumulative worker time adds agent durations and can exceed elapsed time when
+          agents run in parallel. Unrecorded lead activity is included in waiting or other.
         </p>
       </details>
     </div>

@@ -158,6 +158,7 @@ export class Workers {
       call.threadId = event.threadId;
       call.instructionSources = event.instructionSources;
       task.reportedModel = event.reportedModel;
+      if (event.reportedEffort) task.reportedEffort = event.reportedEffort;
     }
     if (event.type === 'turn') {
       call.threadId = event.threadId;

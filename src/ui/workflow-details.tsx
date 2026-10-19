@@ -19,16 +19,27 @@ const tones: Record<string, string> = {
   pending: 'attention',
   claimed: 'attention',
   completed: 'completed',
+  finished: 'completed',
+  reviewing: 'running',
+  'awaiting lead review': 'attention',
   succeeded: 'completed',
   cancelled: 'queued',
   resolved: 'completed',
   failed: 'failed',
 };
 
-export function StatusBadge({ state }: { state: string }) {
+export function StatusBadge({
+  state,
+  label,
+  tone,
+}: {
+  state: string;
+  label?: string;
+  tone?: string | undefined;
+}) {
   return (
-    <span className={`workflow-badge tone-${tones[state] ?? 'attention'}`}>
-      {state.replaceAll('_', ' ')}
+    <span className={`workflow-badge tone-${tone ?? tones[state] ?? 'attention'}`}>
+      {label ?? state.replaceAll('_', ' ')}
     </span>
   );
 }
@@ -176,7 +187,10 @@ export function taskRoutingLabel(task: TaskSnapshot): string {
   const model = task.reportedModel
     ? `Reported model: ${task.reportedModel}`
     : `Requested model: ${task.requestedModel} (unverified)`;
-  return `${model} · Requested reasoning effort: ${task.effort}`;
+  const effort = task.reportedEffort
+    ? `Verified effort: ${task.reportedEffort}`
+    : `Requested effort: ${task.effort} (unverified)`;
+  return `${model} · ${effort}`;
 }
 
 export function TaskDetails({ task, now }: { task: TaskSnapshot; now: number }) {
@@ -193,6 +207,8 @@ export function TaskDetails({ task, now }: { task: TaskSnapshot; now: number }) 
         <dd>{task.reportedModel ?? 'Not reported'}</dd>
         <dt>Requested reasoning effort</dt>
         <dd>{task.effort}</dd>
+        <dt>Verified reasoning effort</dt>
+        <dd>{task.reportedEffort ?? 'Unknown'}</dd>
         <dt>Elapsed</dt>
         <dd>{taskElapsed(task, now)}</dd>
         <dt>Last activity</dt>
@@ -206,12 +222,19 @@ export function TaskDetails({ task, now }: { task: TaskSnapshot; now: number }) 
         value={task.usage ?? result?.usage ?? null}
         complete={['completed', 'cancelled', 'failed'].includes(task.state)}
       />
-      <details>
-        <summary>Why this model and effort</summary>
-        <AssessmentDetails task={task} />
-      </details>
+      <AssessmentSection task={task} />
       {result && <TaskResultDetails result={result} />}
     </div>
+  );
+}
+
+function AssessmentSection({ task }: { task: TaskSnapshot }) {
+  if (!task.assessment) return null;
+  return (
+    <details>
+      <summary>Why this model and effort</summary>
+      <AssessmentDetails task={task} />
+    </details>
   );
 }
 
@@ -238,6 +261,7 @@ function TaskResultDetails({ result }: { result: TaskResult }) {
 }
 
 function AssessmentDetails({ task }: { task: TaskSnapshot }) {
+  if (!task.assessment) return null;
   const values = [
     ['Model choice', task.assessment.modelRationale],
     ['Difficulty', task.assessment.difficulty],

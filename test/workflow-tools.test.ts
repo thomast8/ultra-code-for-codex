@@ -3,10 +3,17 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { expect, it } from 'vitest';
 import { z } from 'zod';
 import { createPanelServer } from '../src/mcp/panel-server.js';
-import { request, single, until } from './runtime-fixture.js';
+import { request, until } from './runtime-fixture.js';
 import { runningFixture } from './local-runtime-fixture.js';
 
-async function connected() {
+function start(script = 'return 7;', extra: Record<string, unknown> = {}) {
+  const body = request(script);
+  delete body.authorityRef;
+  delete body.maxAgentCalls;
+  return { ...body, ...extra, contractVersion: 2 };
+}
+
+async function connected(admission?: 'blocked' | 'stale') {
   const f = await runningFixture();
   const server = createPanelServer(
     async (key) =>
@@ -21,7 +28,16 @@ async function connected() {
           },
     f.dataDir,
     async () => '<main>fixture</main>',
-    f.call,
+    (method, params) => {
+      if (admission === 'blocked' && method === 'capabilities')
+        return Promise.resolve({
+          status: 'blocked',
+          blockers: ['Worker backend request failed: config/read'],
+        });
+      if (admission === 'stale' && method === 'health')
+        return Promise.resolve({ version: 'stale-plugin' });
+      return f.call(method, params);
+    },
   );
   const client = new Client({ name: 'runtime-tests', version: '1' });
   const [a, b] = InMemoryTransport.createLinkedPair();
@@ -53,7 +69,7 @@ it('opens bound with runtime capability and executes through the MCP/daemon boun
       .parse(opened.structuredContent).bindingNonce;
     const started = await f.client.callTool({
       name: 'ultra_start',
-      arguments: { ...request(single), capacity: f.grant.capacity },
+      arguments: start('return await agent("Inspect");'),
     });
     expect(started.isError).not.toBe(true);
     const runId = z.object({ id: z.string() }).parse(started.structuredContent).id;
@@ -69,6 +85,33 @@ it('opens bound with runtime capability and executes through the MCP/daemon boun
         })
       ).structuredContent,
     ).toMatchObject({ id: runId });
+    const taskId = `${runId}:1`;
+    expect(
+      (
+        await f.client.callTool({
+          name: 'ultra_result',
+          arguments: { contextKey: 'verified', runId, taskId },
+        })
+      ).structuredContent,
+    ).toMatchObject({
+      savedReference: { uri: `ultra://run/${runId}/task/${taskId}` },
+    });
+    expect(
+      (
+        await f.client.callTool({
+          name: 'ultra_status',
+          arguments: { contextKey: 'verified', runIds: [runId] },
+        })
+      ).structuredContent,
+    ).toMatchObject({ runs: [{ id: runId, workerCounts: { completed: 1 } }] });
+    expect(
+      (
+        await f.client.callTool({
+          name: 'ultra_inspect',
+          arguments: { contextKey: 'verified', runId, taskId: 'foreign-task' },
+        })
+      ).isError,
+    ).toBe(true);
     expect(
       (
         await f.client.callTool({
@@ -90,6 +133,23 @@ it('opens bound with runtime capability and executes through the MCP/daemon boun
   }
 });
 
+it.each(['blocked', 'stale'] as const)(
+  'rejects %s worker admission before creating a run',
+  async (admission) => {
+    const f = await connected(admission);
+    try {
+      const result = await f.client.callTool({
+        name: 'ultra_start',
+        arguments: start('return 1;'),
+      });
+      expect(result.isError).toBe(true);
+      expect(f.daemon.engine.status(f.owner)).toEqual([]);
+    } finally {
+      await f.finish();
+    }
+  },
+);
+
 it('rejects guessed owners, unbound nonces, unknown contexts and ambiguous access', async () => {
   const f = await connected();
   try {
@@ -105,7 +165,7 @@ it('rejects guessed owners, unbound nonces, unknown contexts and ambiguous acces
     }
     const result = await f.client.callTool({
       name: 'ultra_start',
-      arguments: { ...request(), contextKey: 'unknown', capacity: f.grant.capacity },
+      arguments: start('return 7;', { contextKey: 'unknown' }),
     });
     expect(result.isError).toBe(true);
     expect(f.daemon.engine.status(f.owner)).toEqual([]);
@@ -117,11 +177,10 @@ it('rejects guessed owners, unbound nonces, unknown contexts and ambiguous acces
 it('claims and resolves lead handoffs atomically through the verified context', async () => {
   const f = await connected();
   try {
-    const script =
-      'return await lead({phase:phase("Decision"),objective:"Verify result",resources:[],evidence:[]});';
+    const script = 'return await lead("Verify result");';
     await f.client.callTool({
       name: 'ultra_start',
-      arguments: { ...request(script), capacity: f.grant.capacity },
+      arguments: start(script),
     });
     await until(() => f.daemon.engine.status(f.owner)[0]?.handoffs.length === 1);
     const handoff = f.daemon.engine.status(f.owner)[0]!.handoffs[0]!;
@@ -171,7 +230,7 @@ async function assertControlSchemas(client: Client): Promise<void> {
   const start = listed.find((tool) => tool.name === 'ultra_start')!;
   expect(start.inputSchema.properties?.script).toMatchObject({
     type: 'string',
-    description: expect.stringContaining('log(message: string)'),
+    description: expect.stringContaining('agent(prompt, options?)'),
   });
   expect(model._meta).toMatchObject({ ui: { visibility: ['model'] } });
   expect(panel._meta).toMatchObject({ ui: { visibility: ['app'] } });
@@ -199,12 +258,7 @@ it('separates model and panel controls and rejects nonce-only model resume', asy
       .parse(opened.structuredContent).bindingNonce;
     const started = await f.client.callTool({
       name: 'ultra_start',
-      arguments: {
-        ...request(
-          `return await lead({phase:phase('Verify'),objective:'Inspect',resources:[],evidence:[]});`,
-        ),
-        capacity: f.grant.capacity,
-      },
+      arguments: start('return await lead("Inspect");'),
     });
     const runId = z.object({ id: z.string() }).parse(started.structuredContent).id;
     await until(() => f.daemon.engine.status(f.owner)[0]!.handoffs.length === 1);
@@ -257,7 +311,7 @@ it('rejects unbound or wrong-chat panel control and context-only panel fallback'
       .parse(opened.structuredContent).bindingNonce;
     const started = await f.client.callTool({
       name: 'ultra_start',
-      arguments: { ...request(), capacity: f.grant.capacity },
+      arguments: start(),
     });
     const runId = z.object({ id: z.string() }).parse(started.structuredContent).id;
     for (const access of [{ nonce: 'unbound' }, { nonce }, { contextKey: 'verified' }]) {

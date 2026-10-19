@@ -18,8 +18,12 @@ export async function workerRequest<T>(
 ): Promise<T> {
   try {
     return await transport.request<T>(method, params);
-  } catch {
-    throw new WorkerBlocked(`Worker backend request failed: ${method}`);
+  } catch (error) {
+    const code =
+      error && typeof error === 'object' && 'code' in error && typeof error.code === 'number'
+        ? ` (RPC ${error.code})`
+        : '';
+    throw new WorkerBlocked(`Worker backend request failed: ${method}${code}`);
   }
 }
 

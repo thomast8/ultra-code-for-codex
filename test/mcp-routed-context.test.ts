@@ -9,12 +9,21 @@ import type { DaemonCall } from '../src/local/client.js';
 import { createPanelServer } from '../src/mcp/panel-server.js';
 import { assertRoutedContext } from '../src/mcp/panel-owner.js';
 import { authority, request } from './runtime-fixture.js';
+import packageMetadata from '../package.json';
 
 const sessionId = '01a2090e-4f83-7a73-8500-f87c808e0e85';
 const otherId = '01a3090e-4f83-7a73-8500-f87c808e0e85';
 const routed = { thread_id: sessionId, threadId: sessionId };
 async function connected() {
-  const runtime = vi.fn<DaemonCall>(async () => ({ state: 'running', runs: [], cursor: 0 }));
+  const runtime = vi.fn<DaemonCall>(async (method) => {
+    if (method === 'health') return { version: packageMetadata.version };
+    if (method === 'capabilities')
+      return {
+        status: 'verified-metadata',
+        models: [{ model: authority.context.model, reasoningEfforts: [authority.context.effort] }],
+      };
+    return { state: 'running', runs: [], cursor: 0 };
+  });
   const server = createPanelServer(
     async () => ({ ...authority.context, sessionId }),
     await mkdtemp(join(tmpdir(), 'ultra-routing-')),
@@ -38,13 +47,16 @@ async function connected() {
   };
 }
 function operations(nonce: string) {
+  const old = request();
+  delete old.authorityRef;
+  delete old.maxAgentCalls;
   return [
     { name: 'ultra_panel', arguments: { contextKey: 'current' } },
     { name: 'ultra_panel_bind', arguments: { contextKey: 'current', nonce } },
     { name: 'ultra_context', arguments: { contextKey: 'current' } },
     {
       name: 'ultra_start',
-      arguments: { ...request(), contextKey: 'current', capacity: authority.capacity },
+      arguments: { ...old, contractVersion: 2, contextKey: 'current' },
     },
     { name: 'ultra_status', arguments: { contextKey: 'current' } },
     { name: 'ultra_result', arguments: { contextKey: 'current', runId: 'run' } },

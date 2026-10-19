@@ -73,12 +73,14 @@ it('renders three concurrent workflows with dynamic phases and separate executio
     '#run-run-1',
   );
   const completed = within(screen.getByRole('region', { name: 'Check references' }));
-  expect(completed.getByText('blocked').className).toContain('tone-attention');
+  expect(completed.getByText('finished', { selector: '.workflow-badge' }).className).toContain(
+    'tone-attention',
+  );
   expect(completed.getAllByText('Acceptance: blocked')[0]).toBeDefined();
   expect(completed.queryByRole('button', { name: /Cancel/ })).toBeNull();
-  expect(screen.getAllByText('running', { selector: '.workflow-badge' })[0]?.className).toContain(
-    'tone-running',
-  );
+  expect(
+    screen.getAllByText('awaiting lead review', { selector: '.workflow-badge' })[0]?.className,
+  ).toContain('tone-attention');
   expect(screen.getByText('queued', { selector: '.workflow-badge' }).className).toContain(
     'tone-queued',
   );
@@ -104,7 +106,7 @@ it('drills into rationale, actual model and token subsets without adding cached 
   expect(first.getAllByText('5 (included in output)')[0]).toBeDefined();
   expect(first.queryByText('165 worker tokens')).toBeNull();
   fireEvent.click(first.getByRole('button', { name: 'Back to all 4 agents' }));
-  fireEvent.click(first.getByRole('button', { name: /Verify the register · completed/ }));
+  fireEvent.click(first.getByRole('button', { name: /Verify the register · Returned/ }));
   fireEvent.click(first.getByText('View activity and evidence'));
   expect(first.getByText('Confirm whether the lease was uploaded.')).toBeDefined();
   expect(first.getByRole('link', { name: 'Original register' }).getAttribute('href')).toBe(

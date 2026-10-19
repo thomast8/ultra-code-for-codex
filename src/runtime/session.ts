@@ -9,6 +9,7 @@ import type { AgentSpec, JsonValue, LeadHandoffSpec } from '../contracts/workflo
 import type { Journal } from './journal.js';
 import { attachTask, createCall, refreshSnapshot } from './records.js';
 import { resolveAgentRequest } from './agent-request.js';
+import { resolveAgentV2, resolveLeadV2 } from './agent-v2.js';
 import { requireWriterLease, snapshotClaims } from './resources.js';
 import { ScriptMachine } from './sandbox.js';
 import type { CallKind, CallRecord, RunRecord } from './types.js';
@@ -46,7 +47,7 @@ export class RunSession {
         this.machine.close();
         return;
       }
-      this.machine.start(this.run.request.script, this.run.request.args);
+      this.machine.start(this.run.request.script, this.run.request.args ?? null, this.run.version);
     } catch (error) {
       this.fail(error instanceof Error ? error.message : String(error));
     }
@@ -80,13 +81,8 @@ export class RunSession {
   }
   private sync(kind: 'phase' | 'log', value: JsonValue): JsonValue {
     if (!['phase', 'log'].includes(kind)) throw new Error('Unknown synchronous host call');
-    if (typeof value !== 'string' || !value.trim() || value.length > 32_768)
-      throw new Error(
-        `${kind}() expects a nonempty string of at most 32768 characters; received ${typeof value}. ` +
-          (kind === 'log'
-            ? 'Use log(JSON.stringify(plan)) for structured data.'
-            : 'Use phase("Phase label").'),
-      );
+    if (kind === 'log' && this.run.version === 2) return this.logV2(value);
+    this.requireMessage(kind, value);
     const { call, replay } = this.intent(kind, value);
     if (replay) return call.result;
     call.result =
@@ -98,10 +94,29 @@ export class RunSession {
     this.journal.save(this.run, kind, kind === 'log' ? value : call.result);
     return call.result;
   }
+  private requireMessage(kind: 'phase' | 'log', value: JsonValue): asserts value is string {
+    if (typeof value !== 'string' || !value.trim() || value.length > 32_768)
+      throw new Error(
+        `${kind}() expects a nonempty string of at most 32768 characters; received ${typeof value}. ` +
+          (kind === 'log'
+            ? 'Use log(JSON.stringify(plan)) for structured data.'
+            : 'Use phase("Phase label").'),
+      );
+  }
+  private logV2(value: JsonValue): null {
+    const preview = typeof value === 'string' ? value : JSON.stringify(value);
+    const { call, replay } = this.intent('log', preview.slice(0, 32_768));
+    if (!replay) {
+      call.result = null;
+      call.state = 'resolved';
+      this.journal.save(this.run, 'log', call.payload);
+    }
+    return null;
+  }
   private call(kind: CallKind, value: JsonValue): Promise<JsonValue> {
     try {
       if (kind !== 'agent' && kind !== 'lead') throw new Error('Unknown asynchronous host call');
-      if (kind === 'agent') value = resolveAgentRequest(value, this.run.authority.context);
+      value = this.normalizeCall(kind, value);
       const { call, replay } = this.intent(kind, value);
       if (!replay) this.prepare(call);
       const result = new Promise<JsonValue>((resolve) => this.replies.set(call.id, resolve));
@@ -121,6 +136,15 @@ export class RunSession {
       return Promise.reject(error);
     }
   }
+  private normalizeCall(kind: 'agent' | 'lead', value: JsonValue): JsonValue {
+    if (kind === 'agent') return this.agentRequest(value);
+    return this.run.version === 2 ? resolveLeadV2(value, this.run) : value;
+  }
+  private agentRequest(value: JsonValue): JsonValue {
+    return this.run.version === 2
+      ? resolveAgentV2(value, this.run)
+      : resolveAgentRequest(value, this.run.authority.context);
+  }
   private prepare(call: CallRecord): void {
     if (call.kind === 'agent') this.prepareAgent(call);
     else {
@@ -134,7 +158,8 @@ export class RunSession {
   }
   private prepareAgent(call: CallRecord): void {
     const count = this.run.calls.filter((item) => item.kind === 'agent').length;
-    if (count > this.run.request.maxAgentCalls) throw new Error('maxAgentCalls exceeded');
+    if (count > (this.run.request.maxAgentCalls ?? 1_000))
+      throw new Error('maxAgentCalls exceeded');
     const spec = agentSchema.parse(call.payload) as AgentSpec;
     const plan = this.run.authority.context.collaborationMode.toLowerCase().includes('plan');
     if (
@@ -189,7 +214,10 @@ export class RunSession {
       if (!reply) return;
       this.replies.delete(call.id);
       this.settlement++;
-      reply(call.result);
+      if (this.run.version === 2 && call.kind === 'agent') {
+        const result = call.result as unknown as { execution: string; value: JsonValue };
+        reply(result.execution === 'completed' ? result.value : null);
+      } else reply(call.result);
     }
   }
   private done(value: JsonValue): void {
@@ -202,6 +230,11 @@ export class RunSession {
       this.run.snapshot.result = value;
       this.run.snapshot.acceptanceOutcome = acceptance(this.run, value);
       if (this.run.calls.some((call) => call.state !== 'resolved'))
+        this.run.snapshot.acceptanceOutcome = 'incomplete';
+      if (
+        this.run.version === 2 &&
+        this.run.snapshot.tasks.some((task) => task.result?.execution !== 'completed')
+      )
         this.run.snapshot.acceptanceOutcome = 'incomplete';
       this.run.snapshot.finishedAt = Date.now();
       this.workers.cancelQueued(

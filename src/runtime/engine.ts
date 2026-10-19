@@ -1,5 +1,12 @@
+import { Script } from 'node:vm';
 import type { LeadContext } from '../activation/types.js';
-import { assertPayloadBound, capacitySchema, startSchema } from '../contracts/schema.js';
+import {
+  assertPayloadBound,
+  capacitySchema,
+  hostCapacitySchema,
+  startSchema,
+  startV2Schema,
+} from '../contracts/schema.js';
 import type {
   EventBatch,
   ExecuteWorker,
@@ -19,6 +26,8 @@ import { RunSession } from './session.js';
 import type { CallRecord, Owner, RunRecord } from './types.js';
 import { Workers } from './workers.js';
 import type { AgentSpec, JsonValue } from '../contracts/workflow.js';
+import { readWorkerHistory } from '../codex/worker-history.js';
+import { prepareRun } from './run-admission.js';
 
 export class WorkflowEngine {
   private readonly journal: Journal;
@@ -47,14 +56,19 @@ export class WorkflowEngine {
   start(request: StartRequest, authority: RunAuthority): RunSnapshot {
     this.assertOpen();
     assertPayloadBound(request);
-    startSchema.parse(request);
-    capacitySchema.parse(authority.capacity);
+    if (request.contractVersion === 2) {
+      startV2Schema.parse(request);
+      hostCapacitySchema.parse(authority.capacity);
+      new Script(`(async () => { ${request.script}\n })`);
+    } else {
+      startSchema.parse(request);
+      capacitySchema.parse(authority.capacity);
+    }
     const owner = {
       instanceId: authority.context.instanceId,
       sessionId: authority.context.sessionId,
     };
     assertContext(owner, authority.context);
-    if (request.parentRunId) this.owned(owner, request.parentRunId);
     const existing = [...this.runs.values()].find(
       (run) =>
         run.request.requestId === request.requestId &&
@@ -67,6 +81,7 @@ export class WorkflowEngine {
       return this.snapshot(existing);
     }
     const run = createRun(request, authority);
+    prepareRun(run, (id) => this.owned(owner, id), this.runs.values());
     this.journal.save(run, 'run.created');
     this.runs.set(run.snapshot.id, run);
     this.launch(run);
@@ -87,6 +102,18 @@ export class WorkflowEngine {
     const task = run.calls.find((call) => call.task?.id === taskId)?.task;
     if (!task) throw new Error('Task not found in this run');
     return structuredClone(task.result);
+  }
+  async inspect(owner: Owner, runId: string, taskId: string, cursor?: string) {
+    const run = this.owned(owner, runId);
+    const call = run.calls.find((item) => item.task?.id === taskId);
+    if (!call?.threadId || !call.task) throw new Error('Worker history is unavailable');
+    const spec = call.payload as AgentSpec;
+    return readWorkerHistory(
+      owner.instanceId,
+      spec.assignment.ownership.cwd,
+      call.threadId,
+      cursor,
+    );
   }
   control(owner: Owner, runId: string, action: 'pause' | 'resume' | 'cancel'): RunSnapshot {
     this.assertOpen();

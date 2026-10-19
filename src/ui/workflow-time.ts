@@ -33,7 +33,15 @@ function duration(intervals: Interval[], start: number, end: number): number {
 
 export function runTiming(run: RunSnapshot, now: number) {
   if (['completed', 'failed', 'cancelled'].includes(run.state) && run.finishedAt === null)
-    return { workers: null, review: null, waiting: null };
+    return {
+      workers: null,
+      review: null,
+      waiting: null,
+      workersOnly: null,
+      reviewOnly: null,
+      overlap: null,
+      workerSum: null,
+    };
   const end = run.finishedAt ?? now;
   const workers: Interval[] = run.tasks.flatMap((task) =>
     task.startedAt === null ? [] : [[task.startedAt, task.finishedAt ?? end]],
@@ -48,13 +56,51 @@ export function runTiming(run: RunSnapshot, now: number) {
       task.finishedAt === null &&
       ['completed', 'failed', 'cancelled', 'needs_reconciliation'].includes(task.state),
   );
-  const leadKnown = run.leadReviews !== undefined;
+  return timingBuckets(
+    workers,
+    reviews,
+    run.createdAt,
+    end,
+    unknown,
+    run.leadReviews !== undefined,
+  );
+}
+
+function timingBuckets(
+  workers: Interval[],
+  reviews: Interval[],
+  start: number,
+  end: number,
+  unknown: boolean,
+  leadKnown: boolean,
+) {
+  const workerWall = unknown ? null : duration(workers, start, end);
+  const reviewWall = leadKnown ? duration(reviews, start, end) : null;
+  const union = unknown || !leadKnown ? null : duration([...workers, ...reviews], start, end);
+  const workerSum = unknown
+    ? null
+    : workers.reduce((total, [a, b]) => total + Math.max(0, b - a), 0);
+  return additiveBuckets(workerWall, reviewWall, union, workerSum, end - start);
+}
+
+function additiveBuckets(
+  workerWall: number | null,
+  reviewWall: number | null,
+  union: number | null,
+  workerSum: number | null,
+  elapsedMs: number,
+) {
+  const overlap =
+    workerWall === null || reviewWall === null || union === null
+      ? null
+      : workerWall + reviewWall - union;
   return {
-    workers: unknown ? null : duration(workers, run.createdAt, end),
-    review: leadKnown ? duration(reviews, run.createdAt, end) : null,
-    waiting:
-      unknown || !leadKnown
-        ? null
-        : Math.max(0, end - run.createdAt - duration([...workers, ...reviews], run.createdAt, end)),
+    workers: workerWall,
+    review: reviewWall,
+    workersOnly: overlap === null || workerWall === null ? null : workerWall - overlap,
+    reviewOnly: overlap === null || reviewWall === null ? null : reviewWall - overlap,
+    overlap,
+    workerSum,
+    waiting: union === null ? null : Math.max(0, elapsedMs - union),
   };
 }

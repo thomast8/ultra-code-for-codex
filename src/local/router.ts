@@ -2,8 +2,15 @@ import packageMetadata from '../../package.json' with { type: 'json' };
 import { z } from 'zod';
 import type { StartRequest, LeadResult } from '../contracts/workflow.js';
 import type { LeadContext } from '../activation/types.js';
-import { capacitySchema, leadResultSchema, startSchema } from '../contracts/schema.js';
+import {
+  capacitySchema,
+  hostCapacitySchema,
+  leadResultSchema,
+  startSchema,
+  startV2Schema,
+} from '../contracts/schema.js';
 import type { WorkflowEngine } from '../runtime/engine.js';
+import { compactStatus } from '../runtime/compact-status.js';
 
 const ownerSchema = z.object({ instanceId: z.string().min(1), sessionId: z.string().min(1) });
 const contextSchema = ownerSchema.extend({
@@ -18,6 +25,7 @@ const contextSchema = ownerSchema.extend({
 const selectSchema = z.object({
   owner: ownerSchema,
   runIds: z.array(z.string()).max(1_000).optional(),
+  compact: z.boolean().optional(),
 });
 const eventSchema = selectSchema.extend({
   afterCursor: z.number().int().nonnegative(),
@@ -37,15 +45,18 @@ const handoffSchema = z.object({
   resolution: leadResultSchema.optional(),
 });
 const createSchema = z.object({
-  request: startSchema,
-  authority: z.object({ context: contextSchema, capacity: capacitySchema }),
+  request: z.union([startSchema, startV2Schema]),
+  authority: z.object({
+    context: contextSchema,
+    capacity: z.union([capacitySchema, hostCapacitySchema]),
+  }),
 });
 export type CapabilitiesReader = (instanceId: string, cwd: string) => Promise<unknown>;
 const capabilitiesSchema = z.object({ owner: ownerSchema, cwd: z.string().min(1) });
 
 export type EngineService = Pick<
   WorkflowEngine,
-  'start' | 'status' | 'result' | 'control' | 'events' | 'currentCursor' | 'handoff'
+  'start' | 'status' | 'result' | 'inspect' | 'control' | 'events' | 'currentCursor' | 'handoff'
 >;
 
 async function waitForEvents(engine: EngineService, value: unknown): Promise<unknown> {
@@ -66,8 +77,12 @@ async function waitForEvents(engine: EngineService, value: unknown): Promise<unk
 
 function read(engine: EngineService, method: string, params: unknown): unknown {
   if (method === 'status') {
-    const { owner, runIds } = selectSchema.parse(params);
-    return { runs: engine.status(owner, runIds), cursor: engine.currentCursor(owner, runIds) };
+    const { owner, runIds, compact } = selectSchema.parse(params);
+    const runs = engine.status(owner, runIds);
+    return {
+      runs: compact ? compactStatus(runs) : runs,
+      cursor: engine.currentCursor(owner, runIds),
+    };
   }
   if (method === 'result') {
     const { owner, runId, taskId } = taskSchema.parse(params);
@@ -114,6 +129,13 @@ export function routeDaemon(
       pid: process.pid,
     });
   if (method === 'wait') return waitForEvents(engine, params);
+  if (method === 'inspect') {
+    const { owner, runId, taskId, cursor } = taskSchema
+      .extend({ cursor: z.string().optional() })
+      .parse(params);
+    if (!taskId) return Promise.reject(new Error('A task ID is required for inspection'));
+    return engine.inspect(owner, runId, taskId, cursor);
+  }
   if (['status', 'result', 'events'].includes(method))
     return Promise.resolve(read(engine, method, params));
   if (['start', 'control', 'handoff'].includes(method))

@@ -29303,7 +29303,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.3.2",
+  version: "0.4.0",
   private: true,
   type: "module",
   engines: {
@@ -29499,6 +29499,9 @@ var assessmentSchema = external_exports.strictObject({
   coordinationOverhead: text
 });
 var agentSchema = external_exports.strictObject({
+  format: external_exports.enum(["plain", "json"]).optional(),
+  prompt: text.optional(),
+  resumeThreadId: identifier.optional(),
   phase: phaseSchema,
   title: text,
   assignment: external_exports.strictObject({
@@ -29554,12 +29557,44 @@ var startSchema = external_exports.strictObject({
   evidenceRefs: external_exports.array(artifactSchema).max(1e3).optional(),
   budget: external_exports.strictObject({ maxObservedTokens: external_exports.number().int().positive() }).optional()
 });
+var startV2Schema = startSchema.omit({ maxAgentCalls: true, authorityRef: true, args: true }).extend({
+  contractVersion: external_exports.literal(2).default(2),
+  script: external_exports.string().min(1).max(262144).describe(
+    "JavaScript function body. Use agent(prompt, options?) with optional label, phase, cwd, access, schema, model and effort; phase(label), log(value), parallel(factories), pipeline(items, fn) and lead(spec)."
+  ),
+  args: json2.optional(),
+  maxAgentCalls: external_exports.number().int().min(1).max(1e3).optional(),
+  continuationOf: external_exports.strictObject({ runId: identifier, taskId: identifier }).optional()
+});
+var agentV2OptionsSchema = external_exports.strictObject({
+  label: text.optional(),
+  phase: text.optional(),
+  cwd: path.optional(),
+  access: external_exports.enum(["read-only", "workspace-write"]).optional(),
+  schema: external_exports.record(external_exports.string(), json2).optional(),
+  model: identifier.optional(),
+  effort: identifier.optional()
+});
+var agentV2Schema = external_exports.strictObject({
+  prompt: text,
+  options: agentV2OptionsSchema.optional()
+});
+var leadV2Schema = external_exports.strictObject({
+  objective: text,
+  evidence: external_exports.array(artifactSchema).max(1e3).optional()
+});
 var capacitySchema = external_exports.strictObject({
   source: external_exports.literal("lead-session"),
   totalSlots: external_exports.number().int().positive(),
   reservedSlots: external_exports.number().int().min(1),
   evidence: text
 }).refine((value) => value.totalSlots > value.reservedSlots, "No worker capacity remains");
+var hostCapacitySchema = external_exports.strictObject({
+  source: external_exports.literal("host-profile"),
+  totalSlots: external_exports.literal(3),
+  reservedSlots: external_exports.literal(0),
+  evidence: external_exports.literal("Ultra profile limit")
+});
 var tokenUsageSchema = external_exports.strictObject({
   inputTokens: external_exports.number().int().nonnegative(),
   cachedInputTokens: external_exports.number().int().nonnegative(),
@@ -37970,6 +38005,7 @@ function profileFrom(dataDir) {
 }
 
 // src/mcp/workflow-tools.ts
+import { createHash as createHash4 } from "node:crypto";
 var accessShape = {
   contextKey: external_exports.string().min(1).optional(),
   nonce: external_exports.string().min(1).optional()
@@ -38015,6 +38051,7 @@ async function result(action) {
   }
 }
 function registerReadTools(options) {
+  registerInspectTool(options);
   K3(
     options.server,
     "ultra_status",
@@ -38027,7 +38064,8 @@ function registerReadTools(options) {
     (input2, extra) => result(
       async () => options.call("status", {
         owner: await owner(options, input2, extra._meta),
-        runIds: input2.runIds
+        runIds: input2.runIds,
+        compact: !input2.nonce
       })
     )
   );
@@ -38040,13 +38078,22 @@ function registerReadTools(options) {
       inputSchema: { ...accessShape, runId: external_exports.string(), taskId: external_exports.string().optional() },
       _meta: { ui: { visibility: ["model", "app"] } }
     },
-    (input2, extra) => result(
-      async () => options.call("result", {
+    (input2, extra) => result(async () => {
+      const saved = await options.call("result", {
         owner: await owner(options, input2, extra._meta),
         runId: input2.runId,
         taskId: input2.taskId
-      })
-    )
+      });
+      if (!input2.taskId || !saved || typeof saved !== "object") return saved;
+      return {
+        ...saved,
+        savedReference: {
+          id: input2.taskId,
+          description: "Saved worker result",
+          uri: `ultra://run/${input2.runId}/task/${input2.taskId}`
+        }
+      };
+    })
   );
   options.server.registerTool(
     "ultra_wait",
@@ -38070,20 +38117,96 @@ function registerReadTools(options) {
     )
   );
 }
+function registerInspectTool(options) {
+  options.server.registerTool(
+    "ultra_inspect",
+    {
+      title: "Inspect one saved worker history",
+      description: "Read one bounded page of local tool history for a worker owned by this chat.",
+      inputSchema: {
+        contextKey: external_exports.string(),
+        runId: external_exports.string(),
+        taskId: external_exports.string(),
+        cursor: external_exports.string().optional()
+      }
+    },
+    (input2, extra) => result(
+      async () => options.call("inspect", {
+        owner: await owner(options, input2, extra._meta),
+        ...input2
+      })
+    )
+  );
+}
 function registerStart(options) {
   options.server.registerTool(
     "ultra_start",
     {
       title: "Start an Ultra Code workflow",
-      description: "Start a quality-first dynamic workflow for substantive Ultra work. Workers inherit the captured lead model/effort unless overridden. Supply observed session capacity, reserving the lead and occupied slots; this is local admission, not a host-wide reservation. Keep conversation and trivial mechanical edits direct.",
-      inputSchema: { ...startSchema.shape, capacity: capacitySchema }
+      description: "Start a workflow. Use agent(prompt, options?) for independent work; workers inherit the verified lead model and effort. Ultra controls shared capacity and verifies worker readiness before admission.",
+      inputSchema: startV2Schema.shape
     },
     (input2, extra) => result(async () => {
-      const { capacity, ...request } = input2;
-      const context = await lead(options, request.contextKey, extra._meta);
-      return options.call("start", { request, authority: { context, capacity } });
+      const context = await lead(options, input2.contextKey, extra._meta);
+      await workerReady(options, context);
+      const request = { ...input2, contractVersion: 2, args: input2.args ?? null };
+      return options.call("start", { request, authority: { context, capacity: hostCapacity } });
     })
   );
+  options.server.registerTool(
+    "ultra_continue",
+    {
+      title: "Continue a saved Ultra worker",
+      description: "Continue one owned worker in its saved local thread. A continuation of failed work is visibly a repair.",
+      inputSchema: {
+        contextKey: external_exports.string(),
+        runId: external_exports.string(),
+        taskId: external_exports.string(),
+        prompt: external_exports.string().trim().min(1).max(32768)
+      }
+    },
+    (input2, extra) => result(async () => {
+      const context = await lead(options, input2.contextKey, extra._meta);
+      await workerReady(options, context);
+      const request = {
+        contractVersion: 2,
+        requestId: createHash4("sha256").update(JSON.stringify([context.sessionId, input2.runId, input2.taskId, input2.prompt])).digest("hex"),
+        contextKey: input2.contextKey,
+        title: "Continue worker",
+        objective: input2.prompt,
+        acceptance: ["Lead verifies continuation"],
+        script: "return await agent(args.prompt);",
+        args: { prompt: input2.prompt },
+        maxAgentCalls: 1,
+        parentRunId: input2.runId,
+        continuationOf: { runId: input2.runId, taskId: input2.taskId }
+      };
+      return options.call("start", { request, authority: { context, capacity: hostCapacity } });
+    })
+  );
+}
+var hostCapacity = {
+  source: "host-profile",
+  totalSlots: 3,
+  reservedSlots: 0,
+  evidence: "Ultra profile limit"
+};
+async function workerReady(options, context) {
+  const health = await options.call("health", {});
+  if (health.version !== package_default.version)
+    throw new Error("Ultra client and daemon versions differ; refresh the plugin connection");
+  const capabilities = await options.call("capabilities", {
+    owner: { instanceId: context.instanceId, sessionId: context.sessionId },
+    cwd: context.cwd
+  });
+  if (capabilities.status !== "verified-metadata")
+    throw new Error(
+      `Ultra workers are not ready: ${capabilities.blockers?.join("; ") || "capability verification failed"}`
+    );
+  if (!capabilities.models?.some(
+    (item) => item.model === context.model && item.reasoningEfforts.includes(context.effort)
+  ))
+    throw new Error("Selected lead model and effort are unavailable to Ultra workers");
 }
 async function controlOwner(options, contextKey, action, metadata) {
   const context = await lead(options, contextKey, metadata);

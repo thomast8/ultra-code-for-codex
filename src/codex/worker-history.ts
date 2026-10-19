@@ -1,0 +1,38 @@
+import type { ThreadItemsListResponse } from './generated/v2/ThreadItemsListResponse.js';
+import {
+  openRestrictedBackend,
+  restrictedWorkerConfig,
+  launchWorkerTransport,
+} from './launch-policy.js';
+import { workerRequest } from './worker-protocol.js';
+
+export async function readWorkerHistory(
+  instanceId: string,
+  cwd: string,
+  threadId: string,
+  cursor?: string,
+) {
+  const transport = await openRestrictedBackend(
+    instanceId,
+    cwd,
+    restrictedWorkerConfig(cwd, 'read-only'),
+    launchWorkerTransport,
+  );
+  try {
+    const page = await workerRequest<ThreadItemsListResponse>(transport, 'thread/items/list', {
+      threadId,
+      cursor: cursor ?? null,
+      limit: 10,
+    });
+    return {
+      threadId,
+      nextCursor: page.nextCursor,
+      items: page.data.map((entry) => {
+        const serialized = JSON.stringify(entry);
+        return { preview: serialized.slice(0, 32_768), truncated: serialized.length > 32_768 };
+      }),
+    };
+  } finally {
+    transport.close();
+  }
+}

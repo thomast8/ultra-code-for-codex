@@ -21,6 +21,9 @@ export type Assessment = {
   coordinationOverhead: string;
 };
 export type AgentSpec = {
+  format?: 'plain' | 'json';
+  prompt?: string;
+  resumeThreadId?: string;
   phase: PhaseRef;
   title: string;
   assignment: {
@@ -77,6 +80,8 @@ export type LeadResult = {
   revision?: string;
 };
 export type StartRequest = {
+  contractVersion?: 2;
+  continuationOf?: { runId: string; taskId: string };
   requestId: string;
   contextKey: string;
   title: string;
@@ -84,20 +89,26 @@ export type StartRequest = {
   acceptance: string[];
   script: string;
   args: JsonValue;
-  maxAgentCalls: number;
-  authorityRef: string;
+  maxAgentCalls?: number;
+  authorityRef?: string;
   parentRunId?: string;
   evidenceRefs?: ArtifactRef[];
   budget?: { maxObservedTokens: number };
 };
 export type CapacityGrant = {
-  source: 'lead-session';
+  source: 'lead-session' | 'host-profile';
   totalSlots: number;
   reservedSlots: number;
   evidence: string;
 };
 export type WorkerEvent =
-  | { type: 'thread'; threadId: string; instructionSources: string[]; reportedModel: string }
+  | {
+      type: 'thread';
+      threadId: string;
+      instructionSources: string[];
+      reportedModel: string;
+      reportedEffort?: string;
+    }
   | { type: 'turn'; threadId: string; turnId: string }
   | { type: 'usage'; usage: TokenUsage }
   | { type: 'activity'; message: string };
@@ -120,7 +131,8 @@ export type TaskSnapshot = {
   requestedModel: string;
   reportedModel: string | null;
   effort: string;
-  assessment: Assessment;
+  reportedEffort?: string;
+  assessment?: Assessment;
   createdAt: number;
   startedAt: number | null;
   finishedAt: number | null;
@@ -138,6 +150,8 @@ export type HandoffSnapshot = {
 };
 export type RunSnapshot = {
   id: string;
+  attemptKind?: 'follow-up' | 'repair';
+  continuationOf?: { runId: string; taskId: string; kind: 'follow-up' | 'repair' };
   title: string;
   objective: string;
   budget?: { maxObservedTokens: number };

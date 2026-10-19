@@ -28,6 +28,9 @@ const assessmentSchema = z.strictObject({
   coordinationOverhead: text,
 });
 export const agentSchema = z.strictObject({
+  format: z.enum(['plain', 'json']).optional(),
+  prompt: text.optional(),
+  resumeThreadId: identifier.optional(),
   phase: phaseSchema,
   title: text,
   assignment: z.strictObject({
@@ -89,6 +92,38 @@ export const startSchema = z.strictObject({
   evidenceRefs: z.array(artifactSchema).max(1_000).optional(),
   budget: z.strictObject({ maxObservedTokens: z.number().int().positive() }).optional(),
 });
+export const startV2Schema = startSchema
+  .omit({ maxAgentCalls: true, authorityRef: true, args: true })
+  .extend({
+    contractVersion: z.literal(2).default(2),
+    script: z
+      .string()
+      .min(1)
+      .max(262_144)
+      .describe(
+        'JavaScript function body. Use agent(prompt, options?) with optional label, phase, cwd, access, schema, model and effort; phase(label), log(value), parallel(factories), pipeline(items, fn) and lead(spec).',
+      ),
+    args: json.optional(),
+    maxAgentCalls: z.number().int().min(1).max(1_000).optional(),
+    continuationOf: z.strictObject({ runId: identifier, taskId: identifier }).optional(),
+  });
+export const agentV2OptionsSchema = z.strictObject({
+  label: text.optional(),
+  phase: text.optional(),
+  cwd: path.optional(),
+  access: z.enum(['read-only', 'workspace-write']).optional(),
+  schema: z.record(z.string(), json).optional(),
+  model: identifier.optional(),
+  effort: identifier.optional(),
+});
+export const agentV2Schema = z.strictObject({
+  prompt: text,
+  options: agentV2OptionsSchema.optional(),
+});
+export const leadV2Schema = z.strictObject({
+  objective: text,
+  evidence: z.array(artifactSchema).max(1_000).optional(),
+});
 export const capacitySchema = z
   .strictObject({
     source: z.literal('lead-session'),
@@ -97,6 +132,12 @@ export const capacitySchema = z
     evidence: text,
   })
   .refine((value) => value.totalSlots > value.reservedSlots, 'No worker capacity remains');
+export const hostCapacitySchema = z.strictObject({
+  source: z.literal('host-profile'),
+  totalSlots: z.literal(3),
+  reservedSlots: z.literal(0),
+  evidence: z.literal('Ultra profile limit'),
+});
 
 export function assertPayloadBound(value: unknown): void {
   const serialized = JSON.stringify(value);

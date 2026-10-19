@@ -39,45 +39,48 @@ const assessment = z.object({
   delegationBenefit: z.string(),
   coordinationOverhead: z.string(),
 });
-const task = z.object({
-  id: z.string(),
-  title: z.string(),
-  phase,
-  state: z.enum([
-    'queued',
-    'waiting',
-    'running',
-    'completed',
-    'failed',
-    'cancelled',
-    'needs_reconciliation',
-  ]),
-  waitingReason: z.string().nullable(),
-  requestedModel: z.string(),
-  reportedModel: z.string().nullable(),
-  effort: z.string(),
-  assessment,
-  createdAt: z.number(),
-  startedAt: z.number().nullable(),
-  finishedAt: z.number().nullable(),
-  lastActivityAt: z.number(),
-  lastActivity: z.string().nullable(),
-  usage,
-  result: z
-    .object({
-      execution: z.enum(['completed', 'failed', 'interrupted', 'uncertain']),
-      acceptance,
-      value: z.json(),
-      evidence: z.array(artifact),
-      unresolved: z.array(z.string()),
-      usage,
-      requestedModel: z.string(),
-      reportedModel: z.string().nullable(),
-      error: z.string().optional(),
-    })
-    .transform(presentFields)
-    .nullable(),
-});
+const task = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    phase,
+    state: z.enum([
+      'queued',
+      'waiting',
+      'running',
+      'completed',
+      'failed',
+      'cancelled',
+      'needs_reconciliation',
+    ]),
+    waitingReason: z.string().nullable(),
+    requestedModel: z.string(),
+    reportedModel: z.string().nullable(),
+    effort: z.string(),
+    reportedEffort: z.string().optional(),
+    assessment: assessment.optional(),
+    createdAt: z.number(),
+    startedAt: z.number().nullable(),
+    finishedAt: z.number().nullable(),
+    lastActivityAt: z.number(),
+    lastActivity: z.string().nullable(),
+    usage,
+    result: z
+      .object({
+        execution: z.enum(['completed', 'failed', 'interrupted', 'uncertain']),
+        acceptance,
+        value: z.json(),
+        evidence: z.array(artifact),
+        unresolved: z.array(z.string()),
+        usage,
+        requestedModel: z.string(),
+        reportedModel: z.string().nullable(),
+        error: z.string().optional(),
+      })
+      .transform(presentFields)
+      .nullable(),
+  })
+  .transform(presentFields);
 const resource = z
   .object({
     key: z.string(),
@@ -112,6 +115,14 @@ const handoff = z.object({
 const run: z.ZodType<RunSnapshot> = z
   .object({
     id: z.string(),
+    attemptKind: z.enum(['follow-up', 'repair']).optional(),
+    continuationOf: z
+      .object({
+        runId: z.string(),
+        taskId: z.string(),
+        kind: z.enum(['follow-up', 'repair']),
+      })
+      .optional(),
     title: z.string(),
     objective: z.string(),
     state: z.enum([

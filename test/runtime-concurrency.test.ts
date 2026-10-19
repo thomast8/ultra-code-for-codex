@@ -32,7 +32,7 @@ it('streams each item forward while keeping the final array in input order', asy
   await engine.close();
 });
 
-it('fairly shares the smallest active grant across three runs and isolates cancellation', async () => {
+it('shares three profile slots across runs and isolates cancellation', async () => {
   const { engine, calls } = harness();
   const script = `const p=phase('Discover'); return await pipeline([1,2,3],n=>agent({...args.spec,phase:p,title:args.name+n}));`;
   const runs = ['a', 'b', 'c'].map((name) =>
@@ -44,20 +44,16 @@ it('fairly shares the smallest active grant across three runs and isolates cance
       { ...authority, capacity: { ...authority.capacity, totalSlots: 2 } },
     ),
   );
-  await until(() => calls.length === 1);
-  expect(calls[0]!.spec.title).toBe('a1');
-  engine.control(owner, runs[0]!.id, 'pause');
-  calls[0]!.finish(output());
-  await until(() => calls.length === 2);
-  expect(calls[1]!.spec.title).toBe('b1');
-  engine.control(owner, runs[1]!.id, 'cancel');
   await until(() => calls.length === 3);
-  expect(calls[2]!.spec.title).toBe('c1');
-  expect(calls[2]!.options.signal.aborted).toBe(false);
+  expect(new Set(calls.map((call) => call.spec.title))).toEqual(new Set(['a1', 'b1', 'c1']));
+  engine.control(owner, runs[0]!.id, 'pause');
+  calls.find((call) => call.spec.title === 'a1')!.finish(output());
+  engine.control(owner, runs[1]!.id, 'cancel');
+  expect(calls.find((call) => call.spec.title === 'c1')!.options.signal.aborted).toBe(false);
   engine.control(owner, runs[0]!.id, 'resume');
-  calls[2]!.finish(output());
-  await until(() => calls.length === 4);
-  expect(calls[3]!.spec.title).toBe('a2');
+  calls.find((call) => call.spec.title === 'c1')!.finish(output());
+  await until(() => calls.length >= 4);
+  expect(calls[3]!.spec.title).toMatch(/^[ac]2$/);
   for (const run of runs) engine.control(owner, run.id, 'cancel');
   await engine.close();
 });
@@ -180,7 +176,7 @@ it('warns when the final result is the first report above the threshold', async 
   await engine.close();
 });
 
-it('keeps uncertain worker capacity reserved across restart', async () => {
+it('keeps an uncertain worker reservation across restart', async () => {
   const { engine, calls, dataDir } = harness();
   const oneSlot = { ...authority, capacity: { ...authority.capacity, totalSlots: 2 } };
   engine.start(
@@ -197,7 +193,7 @@ it('keeps uncertain worker capacity reserved across restart', async () => {
     authority,
   );
   await until(() => engine.status(owner)[1]?.tasks.length === 1);
-  expect(calls).toHaveLength(1);
+  expect(calls).toHaveLength(2);
   engine.control(owner, before.id, 'cancel');
   await engine.close();
   const { WorkflowEngine } = await import('../src/runtime/engine.js');
@@ -216,7 +212,7 @@ it('keeps uncertain worker capacity reserved across restart', async () => {
     authority,
   );
   await until(() => recovered.status(owner)[2]?.tasks.length === 1);
-  expect(recoveredCalls).toHaveLength(0);
+  await until(() => recoveredCalls.length === 1);
   recovered.control(owner, after.id, 'cancel');
   await recovered.close();
 });

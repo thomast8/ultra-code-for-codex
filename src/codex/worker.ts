@@ -7,6 +7,7 @@ import type {
 } from '../contracts/workflow.js';
 import type { ThreadStartParams } from './generated/v2/ThreadStartParams.js';
 import type { ThreadStartResponse } from './generated/v2/ThreadStartResponse.js';
+import type { ThreadResumeResponse } from './generated/v2/ThreadResumeResponse.js';
 import {
   launchWorkerTransport,
   prepareWorkerTransport,
@@ -126,15 +127,29 @@ async function prepareWorkerThread(
     runtimeWorkspaceRoots: [spec.assignment.ownership.cwd],
     approvalPolicy: 'never',
     sandbox: spec.capability,
-    ephemeral: true,
+    ephemeral: spec.format === undefined,
     dynamicTools: [],
     selectedCapabilityRoots: [],
     config,
   };
   const thread = await awaitPreflight(
-    workerRequest<ThreadStartResponse>(transport, 'thread/start', params),
+    spec.resumeThreadId
+      ? workerRequest<ThreadResumeResponse>(transport, 'thread/resume', {
+          threadId: spec.resumeThreadId,
+          model: spec.model,
+          cwd: spec.assignment.ownership.cwd,
+          runtimeWorkspaceRoots: [spec.assignment.ownership.cwd],
+          approvalPolicy: 'never',
+          sandbox: params.sandbox,
+          config,
+        })
+      : workerRequest<ThreadStartResponse>(transport, 'thread/start', params),
     options.signal,
   );
+  if (spec.resumeThreadId) {
+    requireWorker(thread.thread.id === spec.resumeThreadId, 'Resumed worker identity differs');
+    requireWorker(thread.thread.status.type === 'idle', 'Worker has a conflicting active turn');
+  }
   observed.reportedModel = typeof thread.model === 'string' ? thread.model : null;
   const evidence = await awaitPreflight(
     verifyRestrictedWorker(
@@ -146,7 +161,12 @@ async function prepareWorkerThread(
     options.signal,
   );
   const environment = await awaitPreflight(
-    verifyLocalEnvironment(transport, thread, spec.assignment.ownership.cwd),
+    verifyLocalEnvironment(
+      transport,
+      thread,
+      spec.assignment.ownership.cwd,
+      spec.format === undefined,
+    ),
     options.signal,
   );
   await awaitPreflight(
@@ -156,6 +176,7 @@ async function prepareWorkerThread(
         threadId: thread.thread.id,
         instructionSources: evidence.instructionSources,
         reportedModel: thread.model,
+        reportedEffort: evidence.effort,
       }),
     ),
     options.signal,

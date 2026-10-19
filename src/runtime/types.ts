@@ -26,7 +26,14 @@ export type CallRecord = {
   instructionSources: string[];
 };
 export type RunRecord = {
-  version: 1;
+  version: 1 | 2;
+  continuation?: {
+    threadId: string;
+    cwd: string;
+    capability: AgentSpec['capability'];
+    kind: 'follow-up' | 'repair';
+  };
+  sourceEvidence?: string[];
   cancelRequested: boolean;
   owner: Owner;
   request: StartRequest;
