@@ -177,7 +177,7 @@ function registerStart(options: WorkflowTools): void {
     {
       title: 'Start an Ultra Code workflow',
       description:
-        'Start a workflow. Use agent(prompt, options?) for independent work; workers inherit the verified lead model and effort. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. Ultra controls shared capacity and verifies worker readiness before admission.',
+        'Start a workflow. Use agent(prompt, options?) for independent work; workers inherit the verified lead model and effort. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed or truncated command inside a running worker is locally recoverable and is not a workflow execution or dispatch failure. Ultra controls shared capacity and verifies worker readiness before admission.',
       inputSchema: startV2Schema.omit({ evidenceRefs: true }).shape,
     },
     (input, extra) =>

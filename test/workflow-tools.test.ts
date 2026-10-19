@@ -240,6 +240,7 @@ async function assertControlSchemas(client: Client): Promise<void> {
     description: expect.stringContaining('CSV paths'),
   });
   expect(start.inputSchema.properties).not.toHaveProperty('evidenceRefs');
+  expect(start.description).toContain('not a workflow execution or dispatch failure');
   expect(model._meta).toMatchObject({ ui: { visibility: ['model'] } });
   expect(panel._meta).toMatchObject({ ui: { visibility: ['app'] } });
   expect(model.inputSchema.required).toContain('contextKey');

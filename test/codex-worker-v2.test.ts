@@ -13,9 +13,10 @@ it('gives v2 readers the shared read-only shell rule and local recovery boundary
   );
   expect(reader).toContain('Do not use shell heredocs');
   expect(reader).toContain('python3 -c');
-  expect(reader).toContain('not a terminal workflow failure');
+  expect(reader).toContain('not a workflow execution or dispatch failure');
+  expect(reader).toContain('Retry the same failed operation at most twice');
   expect(writer).not.toContain('Read-only execution cannot create temporary files');
-  expect(writer).toContain('not a terminal workflow failure');
+  expect(writer).toContain('not a workflow execution or dispatch failure');
 });
 
 function durable(status: 'idle' | 'active' = 'idle') {
