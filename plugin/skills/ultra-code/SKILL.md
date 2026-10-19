@@ -5,6 +5,8 @@ description: Orchestrate substantive work through Ultra workflows while the sele
 
 Use Ultra for substantive work when explicitly requested or active in the verified turn. Resolve the exact current `ultra_context` handle before starting. Keep the selected lead model and effort. If worker capability is blocked, report the blocker; do not substitute native subagents. Plan mode is read-only. All repository quality, permission, and user scope rules still apply.
 
+After `ultra_context` returns `workflowContextBound: true`, omit `contextKey` on subsequent workflow calls. The host retains the exact verified turn; a new turn requires fresh verification. Clients without routed chat metadata still supply the explicit handle.
+
 Read [the generated authoring reference](references/authoring.md) before writing a workflow. Use contract version 2: `agent(prompt, options?)`, optional schemas, host-owned capacity and workspace claims. The script is JavaScript, not prose. Use `ultra_start`; confirm its saved run ID with `ultra_status`. Use `ultra_result` for complete results, `ultra_inspect` for owned local histories, and `ultra_wait` for meaningful changes. Open `ultra_panel` only when a panel is useful.
 
 The installed reference defines the active API even when working on an older plugin checkout. For authorized edits use `access: "workspace-write"`; the default is `"read-only"`. A returned run ID confirms creation only. Check `ultra_status` for dispatched workers before claiming they started.

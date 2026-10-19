@@ -275,7 +275,10 @@ async function assertControlSchemas(client: Client): Promise<void> {
   expect(start.description).toContain(workflowPlanningPolicy);
   expect(model._meta).toMatchObject({ ui: { visibility: ['model'] } });
   expect(panel._meta).toMatchObject({ ui: { visibility: ['app'] } });
-  expect(model.inputSchema.required).toContain('contextKey');
+  expect(model.inputSchema.required).not.toContain('contextKey');
+  expect(model.inputSchema.properties?.contextKey).toMatchObject({
+    description: expect.stringContaining('Omit after ultra_context'),
+  });
   expect(model.inputSchema.properties).not.toHaveProperty('nonce');
   expect(panel.inputSchema.required).toContain('nonce');
 }

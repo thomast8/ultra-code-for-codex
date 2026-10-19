@@ -2,6 +2,8 @@
 
 The selected chat remains the lead. Submit a JavaScript function body to `ultra_start` with the task title, objective, acceptance criteria, and JSON `args`. The runtime verifies worker readiness and shares three worker slots across this profile. It saves all calls and results.
 
+Verify the current hook handle once with `ultra_context`. When it returns `workflowContextBound: true`, omit `contextKey` from subsequent workflow tools. The host retains that exact verification across connections and rejects it when a newer turn supersedes it. Unrouted clients still supply the explicit current handle. An explicitly supplied wrong handle is rejected, never silently corrected.
+
 Inspect enough context to choose useful work before dispatch. For a broad task, identify independently answerable questions and dispatch them together with parallel(factories); use their distinct evidence in lead review. Do not delegate an entire multi-concern task to one general worker by default. A narrow review or coupled edit can use one worker; state the task-specific reason. Keep dependent decisions and final synthesis with the lead. Do not add workers merely to fill slots.
 
 agent(prompt, options?) requires a nonempty string prompt. agent(prompt) is read-only and cannot edit files. For an authorized coding task call agent(prompt, {access: "workspace-write"}). Both return final text or null on terminal failure. Options: label, phase, cwd, access, schema, model, effort. access must be "read-only" or "workspace-write". phase is a string label. Omit schema for text; if supplied, it must be a JSON Schema.

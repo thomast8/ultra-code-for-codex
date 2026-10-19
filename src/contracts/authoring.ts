@@ -12,6 +12,8 @@ export function authoringReference(): string {
 
 The selected chat remains the lead. Submit a JavaScript function body to \`ultra_start\` with the task title, objective, acceptance criteria, and JSON \`args\`. The runtime verifies worker readiness and shares three worker slots across this profile. It saves all calls and results.
 
+Verify the current hook handle once with \`ultra_context\`. When it returns \`workflowContextBound: true\`, omit \`contextKey\` from subsequent workflow tools. The host retains that exact verification across connections and rejects it when a newer turn supersedes it. Unrouted clients still supply the explicit current handle. An explicitly supplied wrong handle is rejected, never silently corrected.
+
 ${workflowPlanningPolicy}
 
 ${agentV2CallDescription}

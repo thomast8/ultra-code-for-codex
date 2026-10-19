@@ -88,6 +88,40 @@ export async function currentPanelContextKey(
   }
 }
 
+export async function rememberVerifiedTurn(
+  bindings: DatabaseSync,
+  dataDir: string,
+  key: string,
+  metadata: unknown,
+  resolver: ContextResolver,
+): Promise<boolean> {
+  const sessionId = currentPanelSessionId(metadata);
+  if (!sessionId || (await currentPanelContextKey(dataDir, metadata, resolver)) !== key)
+    return false;
+  bindings
+    .prepare('INSERT OR REPLACE INTO verified_turns(session_id,context_key) VALUES (?,?)')
+    .run(sessionId, key);
+  return true;
+}
+
+export async function verifiedTurnKey(
+  bindings: DatabaseSync,
+  dataDir: string,
+  metadata: unknown,
+  resolver: ContextResolver,
+): Promise<string | undefined> {
+  const sessionId = currentPanelSessionId(metadata);
+  if (!sessionId) return;
+  const saved = bindings
+    .prepare('SELECT context_key FROM verified_turns WHERE session_id=?')
+    .get(sessionId);
+  if (typeof saved?.context_key !== 'string') return;
+  // Never promote a saved verification to a newer turn merely because it is current.
+  if ((await currentPanelContextKey(dataDir, metadata, resolver)) === saved.context_key)
+    return saved.context_key;
+  return;
+}
+
 function currentPanelSessionId(metadata: unknown): string | undefined {
   const identity = routedContextIdentity.safeParse(metadata);
   if (!identity.success) return;

@@ -29327,7 +29327,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.13",
+  version: "0.4.14",
   private: true,
   type: "module",
   engines: {
@@ -37975,6 +37975,10 @@ function openBindings(dataDir) {
     state TEXT NOT NULL CHECK (state IN ('pending', 'binding', 'bound', 'failed')),
     owner TEXT
   )`);
+  database.exec(`CREATE TABLE IF NOT EXISTS verified_turns (
+    session_id TEXT PRIMARY KEY,
+    context_key TEXT NOT NULL
+  )`);
   return database;
 }
 function panelKey(owner2) {
@@ -38036,6 +38040,22 @@ async function currentPanelContextKey(dataDir, metadata, resolver) {
     return void 0;
   }
 }
+async function rememberVerifiedTurn(bindings, dataDir, key, metadata, resolver) {
+  const sessionId = currentPanelSessionId(metadata);
+  if (!sessionId || await currentPanelContextKey(dataDir, metadata, resolver) !== key)
+    return false;
+  bindings.prepare("INSERT OR REPLACE INTO verified_turns(session_id,context_key) VALUES (?,?)").run(sessionId, key);
+  return true;
+}
+async function verifiedTurnKey(bindings, dataDir, metadata, resolver) {
+  const sessionId = currentPanelSessionId(metadata);
+  if (!sessionId) return;
+  const saved = bindings.prepare("SELECT context_key FROM verified_turns WHERE session_id=?").get(sessionId);
+  if (typeof saved?.context_key !== "string") return;
+  if (await currentPanelContextKey(dataDir, metadata, resolver) === saved.context_key)
+    return saved.context_key;
+  return;
+}
 function currentPanelSessionId(metadata) {
   const identity = routedContextIdentity.safeParse(metadata);
   if (!identity.success) return;
@@ -38050,21 +38070,29 @@ function profileFrom(dataDir) {
 
 // src/mcp/workflow-tools.ts
 import { createHash as createHash4 } from "node:crypto";
+var contextKeyOption = external_exports.string().min(1).optional().describe(
+  "Omit after ultra_context reports workflowContextBound in a native chat. The host retains that exact verified turn. Explicit current handles remain supported for clients without chat routing."
+);
 var accessShape = {
-  contextKey: external_exports.string().min(1).optional(),
+  contextKey: contextKeyOption,
   nonce: external_exports.string().min(1).optional()
 };
 async function lead(options, contextKey, metadata) {
-  const context = await options.resolver(contextKey, options.dataDir);
+  const key = contextKey ?? await verifiedTurnKey(options.bindings, options.dataDir, metadata, options.resolver);
+  if (!key)
+    throw new Error("Call ultra_context with the exact current hook handle before workflow calls");
+  const context = await options.resolver(key, options.dataDir);
   assertRoutedContext(metadata, context.sessionId);
   if (context.resolutionStatus !== "verified") throw new Error(context.resolutionReason);
-  return context;
+  return { context, contextKey: key };
 }
 async function owner(options, access, metadata) {
-  if (Boolean(access.contextKey) === Boolean(access.nonce))
+  if (access.contextKey && access.nonce)
     throw new Error("Supply exactly one chat context or panel nonce");
-  if (access.contextKey) {
-    const { instanceId: instanceId2, sessionId: sessionId2 } = await lead(options, access.contextKey, metadata);
+  if (!access.nonce) {
+    const {
+      context: { instanceId: instanceId2, sessionId: sessionId2 }
+    } = await lead(options, access.contextKey, metadata);
     return { instanceId: instanceId2, sessionId: sessionId2 };
   }
   const row = options.bindings.prepare("SELECT owner FROM bindings WHERE nonce=? AND state='bound'").get(access.nonce);
@@ -38145,7 +38173,7 @@ function registerReadTools(options) {
       title: "Wait for workflow changes",
       description: "Wait up to 25 seconds across this chat\u2019s workflows for meaningful events. Idle waits require no worker or inference calls.",
       inputSchema: {
-        contextKey: external_exports.string(),
+        contextKey: contextKeyOption,
         afterCursor: external_exports.number().int().nonnegative(),
         runIds: external_exports.array(external_exports.string()).max(1e3).optional(),
         timeoutMs: external_exports.number().int().min(0).max(25e3).optional()
@@ -38168,7 +38196,7 @@ function registerInspectTool(options) {
       title: "Inspect one saved worker history",
       description: "Read the newest local tool history for a worker owned by this chat. Pass nextCursor to read older events; omit cursor to refresh current activity.",
       inputSchema: {
-        contextKey: external_exports.string(),
+        contextKey: contextKeyOption,
         runId: external_exports.string(),
         taskId: external_exports.string(),
         cursor: external_exports.string().optional()
@@ -38188,13 +38216,14 @@ function registerStart(options) {
     {
       title: "Start an Ultra Code workflow",
       description: `${workflowPlanningPolicy} Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.`,
-      inputSchema: startV2Schema.omit({ evidenceRefs: true, reviewAfterWorkers: true }).shape
+      inputSchema: startV2Schema.omit({ evidenceRefs: true, reviewAfterWorkers: true }).extend({ contextKey: contextKeyOption }).shape
     },
     (input2, extra) => result(async () => {
-      const context = await lead(options, input2.contextKey, extra._meta);
+      const { context, contextKey } = await lead(options, input2.contextKey, extra._meta);
       await workerReady(options, context);
       const request = {
         ...input2,
+        contextKey,
         contractVersion: 2,
         args: input2.args ?? null,
         reviewAfterWorkers: true
@@ -38208,20 +38237,20 @@ function registerStart(options) {
       title: "Continue a saved Ultra worker",
       description: "Continue one owned worker in its saved local thread. A continuation of failed work is visibly a repair.",
       inputSchema: {
-        contextKey: external_exports.string(),
+        contextKey: contextKeyOption,
         runId: external_exports.string(),
         taskId: external_exports.string(),
         prompt: external_exports.string().trim().min(1).max(32768)
       }
     },
     (input2, extra) => result(async () => {
-      const context = await lead(options, input2.contextKey, extra._meta);
+      const { context, contextKey } = await lead(options, input2.contextKey, extra._meta);
       await workerReady(options, context);
       const request = {
         contractVersion: 2,
         reviewAfterWorkers: true,
         requestId: createHash4("sha256").update(JSON.stringify([context.sessionId, input2.runId, input2.taskId, input2.prompt])).digest("hex"),
-        contextKey: input2.contextKey,
+        contextKey,
         title: "Continue worker",
         objective: input2.prompt,
         acceptance: ["Lead verifies continuation"],
@@ -38261,7 +38290,7 @@ async function workerReady(options, context) {
     throw new Error("Selected lead model and effort are unavailable to Ultra workers");
 }
 async function controlOwner(options, contextKey, action, metadata) {
-  const context = await lead(options, contextKey, metadata);
+  const { context } = await lead(options, contextKey, metadata);
   if (action === "resume" && context.collaborationMode !== "default")
     throw new Error("A verified Default-mode turn is required to resume execution");
   return { instanceId: context.instanceId, sessionId: context.sessionId };
@@ -38298,7 +38327,7 @@ function registerControl(options) {
       title: "Control one workflow",
       description: "Pause new dispatch, resume, or cancel only this run. Cancellation preserves edits and uncertain writes.",
       inputSchema: {
-        contextKey: external_exports.string().min(1),
+        contextKey: contextKeyOption,
         runId: external_exports.string(),
         action: external_exports.enum(["pause", "resume", "cancel"])
       },
@@ -38318,14 +38347,14 @@ function registerControl(options) {
       title: "Claim or resolve a lead decision",
       description: "Atomically claim a handoff for the current verified turn, or resolve with evidence. An uncertain external action requires readback before resolution; never repeat it automatically.",
       inputSchema: {
-        contextKey: external_exports.string(),
+        contextKey: contextKeyOption,
         id: external_exports.string(),
         action: external_exports.enum(["claim", "resolve"]),
         resolution: leadResultSchema.optional()
       }
     },
     (input2, extra) => result(async () => {
-      const context = await lead(options, input2.contextKey, extra._meta);
+      const { context } = await lead(options, input2.contextKey, extra._meta);
       return options.call("handoff", {
         owner: { instanceId: context.instanceId, sessionId: context.sessionId },
         id: input2.id,
@@ -38461,7 +38490,7 @@ function createPanelServer(resolveContext2, dataDir, loadPanelHtml = () => readF
       );
     }
   );
-  registerContextTool(server, resolveContext2, dataDir, runtime);
+  registerContextTool(server, bindings, resolveContext2, dataDir, runtime);
   if (runtime)
     registerWorkflowTools({ server, bindings, resolver: resolveContext2, dataDir, call: runtime });
   return server;
@@ -38577,7 +38606,7 @@ function registerPanelStatus(server, bindings) {
     }
   );
 }
-function registerContextTool(server, resolveContext2, dataDir, runtime) {
+function registerContextTool(server, bindings, resolveContext2, dataDir, runtime) {
   server.registerTool(
     "ultra_context",
     {
@@ -38598,18 +38627,32 @@ function registerContextTool(server, resolveContext2, dataDir, runtime) {
         capabilityAvailability: external_exports.enum(["available", "unavailable"]),
         capabilityReason: external_exports.string(),
         executionCapabilities: external_exports.unknown().optional(),
-        requestMetadataKind: external_exports.enum(["absent", "generic", "routed"])
+        requestMetadataKind: external_exports.enum(["absent", "generic", "routed"]),
+        workflowContextBound: external_exports.literal(true).optional()
       }
     },
     async ({ contextKey }, extra) => {
       try {
         const context = await resolveForCaller(resolveContext2, extra._meta)(contextKey, dataDir);
+        const bound = await rememberVerifiedTurn(
+          bindings,
+          dataDir,
+          contextKey,
+          extra._meta,
+          resolveContext2
+        );
         const message = context.resolutionStatus === "verified" ? "Verified exact-turn context is available." : context.resolutionReason;
         return withContextCapabilities(
           {
-            content: [{ type: "text", text: `${message} ${RUNTIME_UNVERIFIED}` }],
+            content: [
+              {
+                type: "text",
+                text: `${message} ${bound ? "Omit contextKey on subsequent workflow calls; this exact verified turn is retained. " : ""}${RUNTIME_UNVERIFIED}`
+              }
+            ],
             structuredContent: {
               ...context,
+              ...bound ? { workflowContextBound: true } : {},
               requestMetadataKind: requestMetadataKind(extra._meta),
               capabilityAvailability: "unavailable",
               capabilityReason: RUNTIME_UNVERIFIED

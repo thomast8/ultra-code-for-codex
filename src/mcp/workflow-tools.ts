@@ -13,7 +13,7 @@ import {
 } from '../contracts/schema.js';
 import type { DaemonCall } from '../local/client.js';
 import type { ContextResolver } from './panel-server.js';
-import { assertRoutedContext } from './panel-owner.js';
+import { assertRoutedContext, verifiedTurnKey } from './panel-owner.js';
 
 export type WorkflowTools = {
   server: McpServer;
@@ -23,27 +23,37 @@ export type WorkflowTools = {
   call: DaemonCall;
 };
 type Access = { contextKey?: string | undefined; nonce?: string | undefined };
+const contextKeyOption = z
+  .string()
+  .min(1)
+  .optional()
+  .describe(
+    'Omit after ultra_context reports workflowContextBound in a native chat. The host retains that exact verified turn. Explicit current handles remain supported for clients without chat routing.',
+  );
 const accessShape = {
-  contextKey: z.string().min(1).optional(),
+  contextKey: contextKeyOption,
   nonce: z.string().min(1).optional(),
 };
 
-async function lead(
-  options: WorkflowTools,
-  contextKey: string,
-  metadata?: unknown,
-): Promise<LeadContext> {
-  const context = await options.resolver(contextKey, options.dataDir);
+async function lead(options: WorkflowTools, contextKey: string | undefined, metadata?: unknown) {
+  const key =
+    contextKey ??
+    (await verifiedTurnKey(options.bindings, options.dataDir, metadata, options.resolver));
+  if (!key)
+    throw new Error('Call ultra_context with the exact current hook handle before workflow calls');
+  const context = await options.resolver(key, options.dataDir);
   assertRoutedContext(metadata, context.sessionId);
   if (context.resolutionStatus !== 'verified') throw new Error(context.resolutionReason);
-  return context;
+  return { context, contextKey: key };
 }
 
 async function owner(options: WorkflowTools, access: Access, metadata?: unknown) {
-  if (Boolean(access.contextKey) === Boolean(access.nonce))
+  if (access.contextKey && access.nonce)
     throw new Error('Supply exactly one chat context or panel nonce');
-  if (access.contextKey) {
-    const { instanceId, sessionId } = await lead(options, access.contextKey, metadata);
+  if (!access.nonce) {
+    const {
+      context: { instanceId, sessionId },
+    } = await lead(options, access.contextKey, metadata);
     return { instanceId, sessionId };
   }
   const row = options.bindings
@@ -135,7 +145,7 @@ function registerReadTools(options: WorkflowTools): void {
       description:
         'Wait up to 25 seconds across this chat’s workflows for meaningful events. Idle waits require no worker or inference calls.',
       inputSchema: {
-        contextKey: z.string(),
+        contextKey: contextKeyOption,
         afterCursor: z.number().int().nonnegative(),
         runIds: z.array(z.string()).max(1_000).optional(),
         timeoutMs: z.number().int().min(0).max(25_000).optional(),
@@ -161,7 +171,7 @@ function registerInspectTool(options: WorkflowTools): void {
       description:
         'Read the newest local tool history for a worker owned by this chat. Pass nextCursor to read older events; omit cursor to refresh current activity.',
       inputSchema: {
-        contextKey: z.string(),
+        contextKey: contextKeyOption,
         runId: z.string(),
         taskId: z.string(),
         cursor: z.string().optional(),
@@ -183,14 +193,17 @@ function registerStart(options: WorkflowTools): void {
     {
       title: 'Start an Ultra Code workflow',
       description: `${workflowPlanningPolicy} Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.`,
-      inputSchema: startV2Schema.omit({ evidenceRefs: true, reviewAfterWorkers: true }).shape,
+      inputSchema: startV2Schema
+        .omit({ evidenceRefs: true, reviewAfterWorkers: true })
+        .extend({ contextKey: contextKeyOption }).shape,
     },
     (input, extra) =>
       result(async () => {
-        const context = await lead(options, input.contextKey, extra._meta);
+        const { context, contextKey } = await lead(options, input.contextKey, extra._meta);
         await workerReady(options, context);
         const request = {
           ...input,
+          contextKey,
           contractVersion: 2 as const,
           args: input.args ?? null,
           reviewAfterWorkers: true,
@@ -205,7 +218,7 @@ function registerStart(options: WorkflowTools): void {
       description:
         'Continue one owned worker in its saved local thread. A continuation of failed work is visibly a repair.',
       inputSchema: {
-        contextKey: z.string(),
+        contextKey: contextKeyOption,
         runId: z.string(),
         taskId: z.string(),
         prompt: z.string().trim().min(1).max(32_768),
@@ -213,7 +226,7 @@ function registerStart(options: WorkflowTools): void {
     },
     (input, extra) =>
       result(async () => {
-        const context = await lead(options, input.contextKey, extra._meta);
+        const { context, contextKey } = await lead(options, input.contextKey, extra._meta);
         await workerReady(options, context);
         const request = {
           contractVersion: 2 as const,
@@ -221,7 +234,7 @@ function registerStart(options: WorkflowTools): void {
           requestId: createHash('sha256')
             .update(JSON.stringify([context.sessionId, input.runId, input.taskId, input.prompt]))
             .digest('hex'),
-          contextKey: input.contextKey,
+          contextKey,
           title: 'Continue worker',
           objective: input.prompt,
           acceptance: ['Lead verifies continuation'],
@@ -271,11 +284,11 @@ async function workerReady(options: WorkflowTools, context: LeadContext): Promis
 
 async function controlOwner(
   options: WorkflowTools,
-  contextKey: string,
+  contextKey: string | undefined,
   action: string,
   metadata?: unknown,
 ) {
-  const context = await lead(options, contextKey, metadata);
+  const { context } = await lead(options, contextKey, metadata);
   if (action === 'resume' && context.collaborationMode !== 'default')
     throw new Error('A verified Default-mode turn is required to resume execution');
   return { instanceId: context.instanceId, sessionId: context.sessionId };
@@ -316,7 +329,7 @@ function registerControl(options: WorkflowTools): void {
       description:
         'Pause new dispatch, resume, or cancel only this run. Cancellation preserves edits and uncertain writes.',
       inputSchema: {
-        contextKey: z.string().min(1),
+        contextKey: contextKeyOption,
         runId: z.string(),
         action: z.enum(['pause', 'resume', 'cancel']),
       },
@@ -338,7 +351,7 @@ function registerControl(options: WorkflowTools): void {
       description:
         'Atomically claim a handoff for the current verified turn, or resolve with evidence. An uncertain external action requires readback before resolution; never repeat it automatically.',
       inputSchema: {
-        contextKey: z.string(),
+        contextKey: contextKeyOption,
         id: z.string(),
         action: z.enum(['claim', 'resolve']),
         resolution: leadResultSchema.optional(),
@@ -346,7 +359,7 @@ function registerControl(options: WorkflowTools): void {
     },
     (input, extra) =>
       result(async () => {
-        const context = await lead(options, input.contextKey, extra._meta);
+        const { context } = await lead(options, input.contextKey, extra._meta);
         return options.call('handoff', {
           owner: { instanceId: context.instanceId, sessionId: context.sessionId },
           id: input.id,

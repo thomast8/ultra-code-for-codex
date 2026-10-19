@@ -14,6 +14,7 @@ import {
   requestMetadataKind,
   restorePanelOwner,
   currentPanelContextKey,
+  rememberVerifiedTurn,
 } from './panel-owner.js';
 import type { DaemonCall } from '../local/client.js';
 import { registerWorkflowTools } from './workflow-tools.js';
@@ -91,7 +92,7 @@ export function createPanelServer(
     },
   );
 
-  registerContextTool(server, resolveContext, dataDir, runtime);
+  registerContextTool(server, bindings, resolveContext, dataDir, runtime);
   if (runtime)
     registerWorkflowTools({ server, bindings, resolver: resolveContext, dataDir, call: runtime });
   return server;
@@ -224,6 +225,7 @@ function registerPanelStatus(server: McpServer, bindings: DatabaseSync) {
 
 function registerContextTool(
   server: McpServer,
+  bindings: DatabaseSync,
   resolveContext: ContextResolver,
   dataDir: string,
   runtime?: DaemonCall,
@@ -250,20 +252,34 @@ function registerContextTool(
         capabilityReason: z.string(),
         executionCapabilities: z.unknown().optional(),
         requestMetadataKind: z.enum(['absent', 'generic', 'routed']),
+        workflowContextBound: z.literal(true).optional(),
       },
     },
     async ({ contextKey }, extra) => {
       try {
         const context = await resolveForCaller(resolveContext, extra._meta)(contextKey, dataDir);
+        const bound = await rememberVerifiedTurn(
+          bindings,
+          dataDir,
+          contextKey,
+          extra._meta,
+          resolveContext,
+        );
         const message =
           context.resolutionStatus === 'verified'
             ? 'Verified exact-turn context is available.'
             : context.resolutionReason;
         return withContextCapabilities(
           {
-            content: [{ type: 'text', text: `${message} ${RUNTIME_UNVERIFIED}` }],
+            content: [
+              {
+                type: 'text',
+                text: `${message} ${bound ? 'Omit contextKey on subsequent workflow calls; this exact verified turn is retained. ' : ''}${RUNTIME_UNVERIFIED}`,
+              },
+            ],
             structuredContent: {
               ...context,
+              ...(bound ? { workflowContextBound: true } : {}),
               requestMetadataKind: requestMetadataKind(extra._meta),
               capabilityAvailability: 'unavailable',
               capabilityReason: RUNTIME_UNVERIFIED,
