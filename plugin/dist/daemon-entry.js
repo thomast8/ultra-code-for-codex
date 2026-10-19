@@ -30526,7 +30526,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.7",
+  version: "0.4.8",
   private: true,
   type: "module",
   engines: {
@@ -31639,7 +31639,7 @@ var WorkerTurnEvents = class {
   }
   failureResult(requestedModel) {
     return {
-      execution: this.stopExecution ?? (this.completed === null ? "uncertain" : this.completed.status === "interrupted" ? "interrupted" : "failed"),
+      execution: this.completed === null ? "uncertain" : this.stopExecution ?? (this.completed.status === "interrupted" ? "interrupted" : "failed"),
       acceptance: "unverified",
       value: null,
       evidence: [],

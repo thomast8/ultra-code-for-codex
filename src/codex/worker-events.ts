@@ -192,12 +192,10 @@ export class WorkerTurnEvents {
   failureResult(requestedModel: string): TaskResult {
     return {
       execution:
-        this.stopExecution ??
-        (this.completed === null
+        this.completed === null
           ? 'uncertain'
-          : this.completed.status === 'interrupted'
-            ? 'interrupted'
-            : 'failed'),
+          : (this.stopExecution ??
+            (this.completed.status === 'interrupted' ? 'interrupted' : 'failed')),
       acceptance: 'unverified',
       value: null,
       evidence: [],
