@@ -5,6 +5,19 @@ import { WorkflowEngine } from '../src/runtime/engine.js';
 import type { RunRecord } from '../src/runtime/types.js';
 import { authority, harness, output, owner, request, single, until } from './runtime-fixture.js';
 
+it('saves direct JSON object logs as JSON text', async () => {
+  const { engine } = harness();
+  try {
+    engine.start(request(`log({plan:'inspect', ready:true}); return 'done';`), authority);
+    await until(() => engine.status(owner)[0]?.state === 'completed');
+    expect(engine.events(owner, 0).events).toContainEqual(
+      expect.objectContaining({ type: 'log', data: '{"plan":"inspect","ready":true}' }),
+    );
+  } finally {
+    await engine.close();
+  }
+});
+
 function alter(dataDir: string, update: (record: RunRecord) => void): void {
   const db = new DatabaseSync(join(dataDir, 'workflow.sqlite'));
   const row = db.prepare('SELECT id,record FROM runs').get()!;

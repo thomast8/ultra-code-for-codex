@@ -28350,7 +28350,7 @@ var startSchema = external_exports.strictObject({
   objective: text,
   acceptance: external_exports.array(text).min(1).max(1e3),
   script: external_exports.string().min(1).max(262144).describe(
-    "Complete plain JavaScript function body executed in QuickJS, not prose, a path, imports or Markdown fences. Use the Ultra authoring reference. Host calls include log(message: string), phase(label: string), agent(spec) and lead(spec). Serialize structured logs with JSON.stringify(plan)."
+    "Complete plain JavaScript function body executed in QuickJS, not prose, a path, imports or Markdown fences. Use the Ultra authoring reference. Host calls include log(value: JSON value), phase(label: string), agent(spec) and lead(spec). Logs preserve strings and serialize other JSON values as JSON text."
   ),
   args: json2,
   maxAgentCalls: external_exports.number().int().min(1).max(1e3),
@@ -29380,6 +29380,14 @@ var ScriptMachine = class _ScriptMachine {
 };
 
 // src/runtime/session.ts
+function syncText(kind, value) {
+  const text2 = kind === "log" && typeof value !== "string" ? JSON.stringify(value) : value;
+  if (typeof text2 !== "string" || !text2.trim() || text2.length > 32768)
+    throw new Error(
+      kind === "log" ? `log() expects nonempty text of at most 32768 characters after JSON serialization; received ${typeof value}.` : `phase() expects a nonempty string of at most 32768 characters; received ${typeof value}. Use phase("Phase label").`
+    );
+  return text2;
+}
 var RunSession = class {
   constructor(run, journal, workers, releaseIdleGrant) {
     this.run = run;
@@ -29448,16 +29456,13 @@ var RunSession = class {
   }
   sync(kind, value) {
     if (!["phase", "log"].includes(kind)) throw new Error("Unknown synchronous host call");
-    if (typeof value !== "string" || !value.trim() || value.length > 32768)
-      throw new Error(
-        `${kind}() expects a nonempty string of at most 32768 characters; received ${typeof value}. ` + (kind === "log" ? "Use log(JSON.stringify(plan)) for structured data." : 'Use phase("Phase label").')
-      );
-    const { call, replay } = this.intent(kind, value);
+    const text2 = syncText(kind, value);
+    const { call, replay } = this.intent(kind, text2);
     if (replay) return call.result;
-    call.result = kind === "phase" ? phaseSchema.parse({ id: `phase-${this.run.snapshot.phases.length + 1}`, label: value }) : null;
+    call.result = kind === "phase" ? phaseSchema.parse({ id: `phase-${this.run.snapshot.phases.length + 1}`, label: text2 }) : null;
     if (kind === "phase") this.run.snapshot.phases.push(phaseSchema.parse(call.result));
     call.state = "resolved";
-    this.journal.save(this.run, kind, kind === "log" ? value : call.result);
+    this.journal.save(this.run, kind, kind === "log" ? text2 : call.result);
     return call.result;
   }
   call(kind, value) {

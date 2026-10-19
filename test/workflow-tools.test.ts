@@ -171,7 +171,7 @@ async function assertControlSchemas(client: Client): Promise<void> {
   const start = listed.find((tool) => tool.name === 'ultra_start')!;
   expect(start.inputSchema.properties?.script).toMatchObject({
     type: 'string',
-    description: expect.stringContaining('log(message: string)'),
+    description: expect.stringContaining('log(value: JSON value)'),
   });
   expect(model._meta).toMatchObject({ ui: { visibility: ['model'] } });
   expect(panel._meta).toMatchObject({ ui: { visibility: ['app'] } });

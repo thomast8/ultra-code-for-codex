@@ -80,7 +80,7 @@ export const startSchema = z.strictObject({
     .min(1)
     .max(262_144)
     .describe(
-      'Complete plain JavaScript function body executed in QuickJS, not prose, a path, imports or Markdown fences. Use the Ultra authoring reference. Host calls include log(message: string), phase(label: string), agent(spec) and lead(spec). Serialize structured logs with JSON.stringify(plan).',
+      'Complete plain JavaScript function body executed in QuickJS, not prose, a path, imports or Markdown fences. Use the Ultra authoring reference. Host calls include log(value: JSON value), phase(label: string), agent(spec) and lead(spec). Logs preserve strings and serialize other JSON values as JSON text.',
     ),
   args: json,
   maxAgentCalls: z.number().int().min(1).max(1_000),
