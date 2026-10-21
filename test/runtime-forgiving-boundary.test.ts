@@ -98,9 +98,9 @@ it('completes a script that forgets to await its final lead call', async () => {
 
 it('surfaces a rejected unawaited call instead of dropping it', async () => {
   const { engine } = harness();
-  engine.start(request('lead(""); return "done";'), host);
+  engine.start(request('agent("Inspect", {cwd: "/nonexistent-ultra-root"}); return "done";'), host);
   await until(() => engine.status(owner)[0]?.state === 'failed');
-  expect(engine.status(owner)[0]?.error).toMatch(/objective|Too small|string/i);
+  expect(engine.status(owner)[0]?.error).toMatch(/ENOENT|no such file/i);
   await engine.close();
 });
 
@@ -140,5 +140,40 @@ it('maps common access aliases onto the two supported worker capabilities', asyn
   engine.start(request('return await agent("R", {access:"readonly"});'), host);
   await until(() => calls.length === 1);
   expect(calls[0]!.spec.capability).toBe('read-only');
+  await engine.close();
+});
+
+it('accepts a bare worker report and a non-string objective in lead()', async () => {
+  const { engine, calls } = harness();
+  engine.start(
+    request(
+      'const report = await agent("Review"); return await lead({ goal: "Synthesize" }, report);',
+    ),
+    host,
+  );
+  await until(() => calls.length === 1);
+  calls[0]!.finish(output('Single report'));
+  await until(() => engine.status(owner)[0]?.handoffs.length === 1);
+  expect(engine.status(owner)[0]!.handoffs[0]!.spec).toMatchObject({
+    objective: '{"goal":"Synthesize"}',
+    evidence: [{ id: 'evidence-1', description: 'Single report' }],
+  });
+  await engine.close();
+});
+
+it('accepts the version 1 object form of agent() without a dispatch failure', async () => {
+  const { engine, calls } = harness();
+  engine.start(
+    request(
+      'return await agent({ title: "Inspect", capability: "read-only", assignment: { outcome: "Find entries" } });',
+    ),
+    host,
+  );
+  await until(() => calls.length === 1);
+  expect(calls[0]!.spec).toMatchObject({
+    title: 'Inspect',
+    capability: 'read-only',
+    assignment: { outcome: 'Find entries' },
+  });
   await engine.close();
 });

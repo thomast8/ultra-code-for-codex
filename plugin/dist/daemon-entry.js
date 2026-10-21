@@ -25215,8 +25215,8 @@ function rewriteKeyNames(ctx) {
       bySchema.set(entry.schema, entry);
   }
   const rewrites = /* @__PURE__ */ new Map();
-  for (const record3 of pendingRecords.get(ctx) ?? []) {
-    const seen = ctx.seen.get(record3);
+  for (const record4 of pendingRecords.get(ctx) ?? []) {
+    const seen = ctx.seen.get(record4);
     const names = (seen?.def ?? seen?.schema)?.propertyNames;
     if (!names || names === true || rewrites.has(names))
       continue;
@@ -29577,7 +29577,7 @@ function phase(run, label) {
   return created;
 }
 function resolveAgentV2(value, run) {
-  const { prompt, options } = agentV2Schema.parse(value);
+  const { prompt, options } = agentV2Schema.parse(agentCall(value));
   return normalizedAgent(prompt, options ?? {}, run);
 }
 function resolveLeadV2(value, run) {
@@ -29596,17 +29596,33 @@ function resolveLeadV2(value, run) {
   };
   return spec;
 }
+function record2(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : void 0;
+}
+function stringOr(value, fallback) {
+  const text2 = typeof value === "string" ? value : value == null ? fallback : JSON.stringify(value);
+  return (text2.trim() ? text2 : fallback).slice(0, 32768);
+}
+function agentCall(value) {
+  const call = record2(value);
+  const spec = record2(call?.prompt);
+  if (!call || !spec) return value;
+  const text2 = spec.prompt ?? record2(spec.assignment)?.outcome ?? spec.title;
+  const inferred = {};
+  if (typeof spec.title === "string") inferred.label = spec.title;
+  if (typeof spec.capability === "string") inferred.access = spec.capability;
+  return { prompt: stringOr(text2 ?? spec, ""), options: { ...inferred, ...record2(call.options) } };
+}
 function leadCall(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  let { objective, evidence } = value;
-  if (objective && typeof objective === "object" && !Array.isArray(objective)) {
-    evidence = objective.evidence ?? evidence;
-    objective = objective.objective ?? null;
-  }
-  if (!Array.isArray(evidence)) return { objective, evidence };
+  const call = record2(value);
+  if (!call) return value;
+  const wrapped = record2(call.objective);
+  const objective = wrapped && "objective" in wrapped ? wrapped.objective : call.objective;
+  const evidence = wrapped?.evidence ?? call.evidence;
+  const items = evidence === void 0 ? [] : Array.isArray(evidence) ? evidence : [evidence];
   return {
-    objective,
-    evidence: evidence.map((item, index) => artifact(item, index))
+    objective: stringOr(objective, "Lead review"),
+    evidence: items.slice(0, 1e3).map((item, index) => artifact(item, index))
   };
 }
 function artifact(item, index) {
@@ -30412,7 +30428,7 @@ var PROHIBITED_WORKER_FEATURES = [
 function block(reason) {
   throw new WorkerBlocked(`Restricted worker verification failed: ${reason}`);
 }
-function record2(value, label) {
+function record3(value, label) {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return block(`${label} metadata is unavailable`);
   }
@@ -30436,7 +30452,7 @@ async function inspect(transport, method, params) {
   } catch {
     return block(`${method} could not be inspected`);
   }
-  return record2(response, method);
+  return record3(response, method);
 }
 async function pages(transport, method, params) {
   const rows = [];
@@ -30462,7 +30478,7 @@ async function pages(transport, method, params) {
 function verifyFeatures(rows) {
   const features = /* @__PURE__ */ new Map();
   for (const value of rows) {
-    const feature = record2(value, "feature");
+    const feature = record3(value, "feature");
     if (typeof feature.name !== "string" || typeof feature.enabled !== "boolean") {
       return block("feature inventory contains unknown state");
     }
@@ -30476,10 +30492,10 @@ function verifyFeatures(rows) {
 }
 function verifyMcpServers(rows) {
   for (const value of rows) {
-    const server = record2(value, "MCP server");
+    const server = record3(value, "MCP server");
     if (server.runtimeStatus !== "disabled") return block("MCP server is not verified disabled");
     if (server.toolsError !== null) return block("MCP tool discovery is incomplete");
-    if (Object.keys(record2(server.tools, "MCP tools")).length !== 0) {
+    if (Object.keys(record3(server.tools, "MCP tools")).length !== 0) {
       return block("inherited MCP tools remain available");
     }
   }
@@ -30487,7 +30503,7 @@ function verifyMcpServers(rows) {
 function verifyApps(response) {
   const apps = array2(response.apps, "app");
   for (const value of apps) {
-    const app = record2(value, "app");
+    const app = record3(value, "app");
     if (app.enabled !== false || app.callable !== false) {
       return block("inherited app is not verified disabled and non-callable");
     }
@@ -30497,18 +30513,18 @@ function verifyApps(response) {
 function verifyHooks(response, cwd) {
   const entries = array2(response.data, "hook");
   if (entries.length !== 1) return block("exact-cwd hook inventory is unavailable");
-  const entry = record2(entries[0], "hook");
+  const entry = record3(entries[0], "hook");
   if (entry.cwd !== cwd) return block("hook inventory does not match the worker cwd");
   if (array2(entry.errors, "hook errors").length > 0) return block("hook inspection has errors");
   const hooks = array2(entry.hooks, "hook");
   for (const value of hooks) {
-    if (record2(value, "hook").enabled !== false)
+    if (record3(value, "hook").enabled !== false)
       return block("inherited hook is not verified disabled");
   }
   return hooks.length;
 }
 function verifyIdentity(thread, expected) {
-  record2(thread, "worker thread");
+  record3(thread, "worker thread");
   if (!isAbsolute4(expected.cwd) || !expected.model || !expected.effort) {
     return block("expected worker identity is incomplete");
   }
@@ -30628,7 +30644,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.16",
+  version: "0.4.17",
   private: true,
   type: "module",
   engines: {

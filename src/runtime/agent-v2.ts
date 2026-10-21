@@ -21,7 +21,7 @@ function phase(run: RunRecord, label: string): PhaseRef {
 }
 
 export function resolveAgentV2(value: JsonValue, run: RunRecord): JsonValue {
-  const { prompt, options } = agentV2Schema.parse(value);
+  const { prompt, options } = agentV2Schema.parse(agentCall(value));
   return normalizedAgent(prompt, options ?? {}, run) as unknown as JsonValue;
 }
 
@@ -42,19 +42,39 @@ export function resolveLeadV2(value: JsonValue, run: RunRecord): JsonValue {
   return spec as unknown as JsonValue;
 }
 
-/** Forgive the shapes a chat-authored script commonly uses for lead(). */
+type Record_ = { [key: string]: JsonValue };
+function record(value: JsonValue | undefined): Record_ | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
+}
+function stringOr(value: JsonValue | undefined, fallback: string): string {
+  const text = typeof value === 'string' ? value : value == null ? fallback : JSON.stringify(value);
+  return (text.trim() ? text : fallback).slice(0, 32_768);
+}
+
+/** agent() accepts the version 1 object form: {prompt|assignment.outcome, title, capability}. */
+function agentCall(value: JsonValue): JsonValue {
+  const call = record(value);
+  const spec = record(call?.prompt);
+  if (!call || !spec) return value;
+  const text = spec.prompt ?? record(spec.assignment)?.outcome ?? spec.title;
+  const inferred: Record_ = {};
+  if (typeof spec.title === 'string') inferred.label = spec.title;
+  if (typeof spec.capability === 'string') inferred.access = spec.capability;
+  return { prompt: stringOr(text ?? spec, ''), options: { ...inferred, ...record(call.options) } };
+}
+
+/** lead() is total over script input: any objective and any evidence shape become a handoff. */
 function leadCall(value: JsonValue): JsonValue {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
-  let { objective, evidence } = value;
-  if (objective && typeof objective === 'object' && !Array.isArray(objective)) {
-    evidence = objective.evidence ?? evidence;
-    objective = objective.objective ?? null;
-  }
-  if (!Array.isArray(evidence)) return { objective, evidence } as JsonValue;
+  const call = record(value);
+  if (!call) return value;
+  const wrapped = record(call.objective);
+  const objective = wrapped && 'objective' in wrapped ? wrapped.objective : call.objective;
+  const evidence = wrapped?.evidence ?? call.evidence;
+  const items = evidence === undefined ? [] : Array.isArray(evidence) ? evidence : [evidence];
   return {
-    objective,
-    evidence: evidence.map((item, index) => artifact(item, index)),
-  } as JsonValue;
+    objective: stringOr(objective, 'Lead review'),
+    evidence: items.slice(0, 1_000).map((item, index) => artifact(item, index)),
+  };
 }
 
 function artifact(item: JsonValue, index: number): JsonValue {
