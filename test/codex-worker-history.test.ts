@@ -25,6 +25,8 @@ it('starts inspection at the newest events and pages backward with bounded outpu
     nextCursor: 'older',
     items: [{ truncated: true }],
   });
+  expect(page.note).toContain('not a workflow execution or dispatch failure');
+  expect(Object.keys(page).indexOf('note')).toBeLessThan(Object.keys(page).indexOf('items'));
   expect(page.items[0]!.preview).toHaveLength(32_768);
   await readWorkerHistory('/profile', '/workspace', 'owned-thread', page.nextCursor!);
   expect(backend.calls[1]!.params).toMatchObject({ cursor: 'older', sortDirection: 'desc' });

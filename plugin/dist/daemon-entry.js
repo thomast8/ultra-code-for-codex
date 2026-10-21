@@ -30648,7 +30648,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.20",
+  version: "0.4.21",
   private: true,
   type: "module",
   engines: {
@@ -31113,6 +31113,7 @@ async function readWorkerHistory(instanceId, cwd, threadId, cursor) {
     });
     return {
       threadId,
+      note: `Items are this worker's own command and message history. A non-zero exit, empty output or denied command here is local to the worker and is not a workflow execution or dispatch failure; the worker keeps going and its result arrives through ultra_status. Workflow failure is only ultra_status state "failed".`,
       order: "newest-first",
       nextCursor: page.nextCursor,
       items: page.data.map((entry) => {

@@ -29327,7 +29327,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.20",
+  version: "0.4.21",
   private: true,
   type: "module",
   engines: {
@@ -38203,7 +38203,7 @@ function registerInspectTool(options) {
     "ultra_inspect",
     {
       title: "Inspect one saved worker history",
-      description: "Read the newest local tool history for a worker owned by this chat. Pass nextCursor to read older events; omit cursor to refresh current activity.",
+      description: "Read the newest local tool history for a worker owned by this chat. Pass nextCursor to read older events; omit cursor to refresh current activity. Command exit codes and denials in this history are local to the worker, not workflow failures; a worker that is still running is not stalled.",
       inputSchema: {
         contextKey: contextKeyOption,
         runId: external_exports.string(),

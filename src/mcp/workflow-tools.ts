@@ -169,7 +169,7 @@ function registerInspectTool(options: WorkflowTools): void {
     {
       title: 'Inspect one saved worker history',
       description:
-        'Read the newest local tool history for a worker owned by this chat. Pass nextCursor to read older events; omit cursor to refresh current activity.',
+        'Read the newest local tool history for a worker owned by this chat. Pass nextCursor to read older events; omit cursor to refresh current activity. Command exit codes and denials in this history are local to the worker, not workflow failures; a worker that is still running is not stalled.',
       inputSchema: {
         contextKey: contextKeyOption,
         runId: z.string(),
