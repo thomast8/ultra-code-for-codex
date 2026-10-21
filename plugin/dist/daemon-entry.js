@@ -29813,13 +29813,17 @@ var preludeV2 = prelude.replace(
   "const pipeline = (items, fn) => Promise.all(items.map((item, index) => fn(item, index)));",
   "const pipeline = (items, ...stages) => Promise.all(items.map(async (item, index) => { let value = item; for (const stage of stages) { if (value === null) return null; value = await stage(value, index); } return value; }));"
 );
+function cpuNow() {
+  const usage = process.cpuUsage();
+  return (usage.user + usage.system) / 1e3;
+}
 var ScriptMachine = class _ScriptMachine {
   constructor(vm, hooks) {
     this.vm = vm;
     this.hooks = hooks;
     vm.runtime.setMemoryLimit(32 * 1024 * 1024);
     vm.runtime.setMaxStackSize(512 * 1024);
-    vm.runtime.setInterruptHandler(() => --this.fuel <= 0 || performance.now() > this.deadline);
+    vm.runtime.setInterruptHandler(() => --this.fuel <= 0 || cpuNow() > this.deadline);
     vm.newFunction(
       "__call",
       (kind, payload) => this.host(() => this.bridge(vm.getString(kind), vm.getString(payload)))
@@ -29847,18 +29851,18 @@ var ScriptMachine = class _ScriptMachine {
     return new _ScriptMachine((await quickJS()).newContext(), hooks);
   }
   host(action) {
-    const start = performance.now();
+    const start = cpuNow();
     try {
       return action();
     } finally {
-      this.deadline += performance.now() - start;
+      this.deadline += cpuNow() - start;
     }
   }
   start(script, args, version2 = 1) {
     if (this.stopped) return;
     try {
       this.version = version2;
-      this.deadline = performance.now() + 100;
+      this.deadline = cpuNow() + 100;
       this.result = this.vm.unwrapResult(
         this.vm.evalCode(`(async () => { 'use strict';
         ${version2 === 2 ? preludeV2 : prelude}
@@ -29907,7 +29911,7 @@ var ScriptMachine = class _ScriptMachine {
   }
   pump() {
     if (!this.result || this.stopped) return;
-    this.deadline = performance.now() + 100;
+    this.deadline = cpuNow() + 100;
     const jobs = this.vm.runtime.executePendingJobs();
     if (jobs.error) {
       const error62 = this.vm.dump(jobs.error);
@@ -30644,7 +30648,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.19",
+  version: "0.4.20",
   private: true,
   type: "module",
   engines: {

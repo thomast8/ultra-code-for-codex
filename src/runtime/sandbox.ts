@@ -45,6 +45,12 @@ const preludeV2 = prelude
     'const pipeline = (items, ...stages) => Promise.all(items.map(async (item, index) => { let value = item; for (const stage of stages) { if (value === null) return null; value = await stage(value, index); } return value; }));',
   );
 
+/** Guest budget in CPU milliseconds of this process, so host load cannot interrupt a script. */
+function cpuNow(): number {
+  const usage = process.cpuUsage();
+  return (usage.user + usage.system) / 1000;
+}
+
 export class ScriptMachine {
   private readonly deferred = new Set<QuickJSDeferredPromise>();
   private result: QuickJSHandle | undefined;
@@ -58,7 +64,7 @@ export class ScriptMachine {
   ) {
     vm.runtime.setMemoryLimit(32 * 1024 * 1024);
     vm.runtime.setMaxStackSize(512 * 1024);
-    vm.runtime.setInterruptHandler(() => --this.fuel <= 0 || performance.now() > this.deadline);
+    vm.runtime.setInterruptHandler(() => --this.fuel <= 0 || cpuNow() > this.deadline);
     vm.newFunction('__call', (kind, payload) =>
       this.host(() => this.bridge(vm.getString(kind) as CallKind, vm.getString(payload))),
     ).consume((handle) => vm.setProp(vm.global, '__call', handle));
@@ -79,18 +85,18 @@ export class ScriptMachine {
     return new ScriptMachine((await quickJS()).newContext(), hooks);
   }
   private host<T>(action: () => T): T {
-    const start = performance.now();
+    const start = cpuNow();
     try {
       return action();
     } finally {
-      this.deadline += performance.now() - start;
+      this.deadline += cpuNow() - start;
     }
   }
   start(script: string, args: JsonValue, version: 1 | 2 = 1): void {
     if (this.stopped) return;
     try {
       this.version = version;
-      this.deadline = performance.now() + 100;
+      this.deadline = cpuNow() + 100;
       this.result = this.vm.unwrapResult(
         this.vm.evalCode(`(async () => { 'use strict';
         ${version === 2 ? preludeV2 : prelude}
@@ -140,7 +146,7 @@ export class ScriptMachine {
   }
   private pump(): void {
     if (!this.result || this.stopped) return;
-    this.deadline = performance.now() + 100;
+    this.deadline = cpuNow() + 100;
     const jobs = this.vm.runtime.executePendingJobs();
     if (jobs.error) {
       const error = this.vm.dump(jobs.error) as unknown;
