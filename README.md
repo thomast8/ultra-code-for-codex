@@ -187,8 +187,7 @@ from manual code style and coverage.
 
 See [Desktop compatibility evidence](docs/desktop-compatibility.md). Local tests
 and standalone MCP checks do not establish native Desktop QA. The exact-turn log
-adapter accepts the verified 0.160.0, 0.160.1, 0.162.0-alpha.17.2, 0.163.0-alpha.10.2 and 0.163.0-alpha.11 formats; unknown
-versions remain unknown. Plan Mode stays read-only. Changing mode does not silently
+adapter verifies each turn by its session, turn, cwd, model, effort, mode and filesystem fields; a log without a well-formed version, or missing any of those fields, stays unknown. Native QA is recorded for 0.160.0, 0.160.1, 0.162.0-alpha.17.2, 0.163.0-alpha.10.2 and 0.163.0-alpha.11. Plan Mode stays read-only. Changing mode does not silently
 cancel an already authorized immutable run.
 
 With Ultra selected in Plan Mode, the hook activates the planning policy. The

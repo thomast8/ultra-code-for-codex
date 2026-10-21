@@ -19788,13 +19788,6 @@ function filesystemAuthority(value) {
 
 // src/activation/session-source.ts
 var PARSER_ADAPTER_VERSION = "codex-turn-context-v1";
-var SUPPORTED_CLI_VERSIONS = [
-  "0.160.0",
-  "0.160.1",
-  "0.162.0-alpha.17.2",
-  "0.163.0-alpha.10.2",
-  "0.163.0-alpha.11"
-];
 var MAX_METADATA_LINE = 64 * 1024;
 var READ_CHUNK = 64 * 1024;
 function isObject2(value) {
@@ -19885,14 +19878,14 @@ function requiredText(value, field) {
   if (!found) throw new Error(`Incomplete exact-turn metadata: ${field}`);
   return found;
 }
-function makeContext(meta3, turn, input2) {
-  if (!SUPPORTED_CLI_VERSIONS.includes(
-    text(meta3.cli_version)
-  )) {
-    throw new Error(
-      `Unsupported Codex log version ${versionLabel(meta3.cli_version)} for ${PARSER_ADAPTER_VERSION}`
-    );
+function requireVersion(meta3) {
+  const version2 = versionLabel(meta3.cli_version);
+  if (version2 === "(missing)" || version2 === "(invalid)") {
+    throw new Error(`Unsupported Codex log version ${version2} for ${PARSER_ADAPTER_VERSION}`);
   }
+}
+function makeContext(meta3, turn, input2) {
+  requireVersion(meta3);
   const sessionId = requiredText(meta3.session_id ?? meta3.id, "session_id");
   const turnId = requiredText(turn.turn_id, "turn_id");
   const cwd = requiredText(turn.cwd, "cwd");

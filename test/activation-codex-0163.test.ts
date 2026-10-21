@@ -83,24 +83,24 @@ it.each([
   },
 );
 
-it('verifies the 0.163.0-alpha.11 Desktop log with the same turn-context adapter', async () => {
-  const records = await rows();
-  records[0]!.payload.cli_version = '0.163.0-alpha.11';
-  expect(parseExactTurn(serializeRows(...records), fixtureInput)).toMatchObject({
-    resolutionStatus: 'verified',
-  });
-});
-
-it.each(['0.163.0-alpha.10.3', '0.163.0-alpha.12', '0.164.0', ''])(
-  'keeps unvalidated version %s blocked with its reason',
+it.each(['0.163.0-alpha.11', '0.163.0-alpha.12', '0.164.0'])(
+  'verifies Desktop log version %s with the same turn-context adapter',
   async (version) => {
     const records = await rows();
     records[0]!.payload.cli_version = version;
-    expect(() => parseExactTurn(serializeRows(...records), fixtureInput)).toThrow(
-      `Unsupported Codex log version ${version || '(missing)'} for codex-turn-context-v1`,
-    );
+    expect(parseExactTurn(serializeRows(...records), fixtureInput)).toMatchObject({
+      resolutionStatus: 'verified',
+    });
   },
 );
+
+it('keeps a log without a version blocked with its reason', async () => {
+  const records = await rows();
+  records[0]!.payload.cli_version = '';
+  expect(() => parseExactTurn(serializeRows(...records), fixtureInput)).toThrow(
+    'Unsupported Codex log version (missing) for codex-turn-context-v1',
+  );
+});
 
 it.each(['sentinel-secret', `1.2.3-${'x'.repeat(65)}`])(
   'does not echo invalid version data in diagnostics: %s',

@@ -25,14 +25,20 @@ describe('versioned Desktop activation compatibility', () => {
     },
   );
 
-  it.each(['0.162.0', '0.162.0-alpha.17.1', '0.162.0-alpha.17.3', ''])(
-    'keeps unvalidated or absent version %s unsupported',
+  it.each(['0.162.0', '0.162.0-alpha.17.1', '0.162.0-alpha.17.3'])(
+    'verifies unlisted version %s when the required fields are present',
     (version) => {
-      expect(() => parseExactTurn(compatibilityLog(version), fixtureInput)).toThrow(
-        'Unsupported Codex log version',
-      );
+      expect(parseExactTurn(compatibilityLog(version), fixtureInput)).toMatchObject({
+        resolutionStatus: 'verified',
+      });
     },
   );
+
+  it('keeps an absent version unsupported', () => {
+    expect(() => parseExactTurn(compatibilityLog(''), fixtureInput)).toThrow(
+      'Unsupported Codex log version (missing)',
+    );
+  });
 
   it.each([
     ['ultra', 'default'],

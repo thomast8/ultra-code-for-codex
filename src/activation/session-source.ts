@@ -5,6 +5,7 @@ import type { HookInput, LeadContext } from './types.js';
 import { filesystemAuthority } from './permissions.js';
 
 export const PARSER_ADAPTER_VERSION = 'codex-turn-context-v1';
+/** Desktop CLI versions with recorded native QA. Other well-formed versions verify by field checks. */
 export const SUPPORTED_CLI_VERSIONS = [
   '0.160.0',
   '0.160.1',
@@ -168,16 +169,15 @@ function requiredText(value: unknown, field: string): string {
   return found;
 }
 
-function makeContext(meta: JsonObject, turn: JsonObject, input: HookInput): LeadContext {
-  if (
-    !SUPPORTED_CLI_VERSIONS.includes(
-      text(meta.cli_version) as (typeof SUPPORTED_CLI_VERSIONS)[number],
-    )
-  ) {
-    throw new Error(
-      `Unsupported Codex log version ${versionLabel(meta.cli_version)} for ${PARSER_ADAPTER_VERSION}`,
-    );
+function requireVersion(meta: JsonObject): void {
+  const version = versionLabel(meta.cli_version);
+  if (version === '(missing)' || version === '(invalid)') {
+    throw new Error(`Unsupported Codex log version ${version} for ${PARSER_ADAPTER_VERSION}`);
   }
+}
+
+function makeContext(meta: JsonObject, turn: JsonObject, input: HookInput): LeadContext {
+  requireVersion(meta);
   const sessionId = requiredText(meta.session_id ?? meta.id, 'session_id');
   const turnId = requiredText(turn.turn_id, 'turn_id');
   const cwd = requiredText(turn.cwd, 'cwd');

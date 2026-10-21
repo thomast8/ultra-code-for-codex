@@ -93,8 +93,8 @@ describe('exact-turn parser', () => {
     expect(parseExactTurn(records(), input).model).toBe('gpt-6-luna');
   });
 
-  it.each(['0.161.0', '0.153.4'])('rejects unsupported CLI version %s', (version) => {
-    expect(() => parseExactTurn(records(version), input)).toThrow('Unsupported Codex log version');
+  it.each(['0.161.0', '0.170.0-alpha.3'])('verifies unlisted CLI version %s by its fields', (v) => {
+    expect(parseExactTurn(records(v), input)).toMatchObject({ resolutionStatus: 'verified' });
   });
 
   it('rejects absent exact-turn metadata and ignores a partial trailing line', () => {
@@ -216,7 +216,7 @@ describe('activation source streaming', () => {
   });
 
   it('keeps unsupported and conflicting source metadata explicitly unknown', async () => {
-    const unsupportedPath = await transcript(records('0.161.0'));
+    const unsupportedPath = await transcript(records(''));
     const unsupported = await readExactTurn({ ...input, transcript_path: unsupportedPath }, 0);
     expect(unsupported.resolutionStatus).toBe('unknown');
     const conflictPath = await transcript(records(undefined, { conflict: true }));
@@ -370,10 +370,10 @@ describe('verified Ultra policy', () => {
     expect(output.hookSpecificOutput.additionalContext).toContain('never native subagents');
   });
 
-  it.each(['0.160.1', '0.161.0'])('does not activate unverified Ultra in %s', async (version) => {
+  it.each(['0.160.1', ''])('does not activate unverified Ultra in %j', async (version) => {
     const dataDir = await tempDir();
     const sourcePath = await transcript(
-      version === '0.161.0' ? records(version).replace('"medium"', '"ultra"') : records(version),
+      version === '' ? records(version).replace('"medium"', '"ultra"') : records(version),
     );
     const output = await runUserPromptHook(
       { hook_event_name: 'UserPromptSubmit', ...input, transcript_path: sourcePath },

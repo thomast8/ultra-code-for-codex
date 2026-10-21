@@ -30644,7 +30644,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.17",
+  version: "0.4.18",
   private: true,
   type: "module",
   engines: {
