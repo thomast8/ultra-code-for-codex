@@ -26,12 +26,12 @@ export function needsLeadFollowup(run: RunSnapshot): boolean {
 }
 
 export function runStatus(run: RunSnapshot): string {
-  if (run.state !== 'completed') return run.state;
-  if (needsLeadFollowup(run)) return 'needs_reconciliation';
-  if (run.error) return 'failed';
-  if (run.acceptanceOutcome === 'satisfied') return 'succeeded';
-  if (run.tasks.some((task) => task.state === 'failed')) return 'failed';
-  return run.acceptanceOutcome;
+  if (run.state === 'completed') return 'finished';
+  if (run.state === 'running' && run.handoffs.some((item) => item.state === 'claimed'))
+    return 'reviewing';
+  if (run.state === 'running' && run.handoffs.some((item) => item.state === 'pending'))
+    return 'awaiting lead review';
+  return run.state;
 }
 
 export function needsAttention(run: RunSnapshot): boolean {
@@ -92,6 +92,8 @@ export function taskUsage(task: TaskSnapshot): TokenUsage | null {
 
 export function taskLabel(task: TaskSnapshot): string {
   if (task.state === 'running') return 'Working';
+  if (task.state === 'completed') return 'Returned';
+  if (task.state === 'needs_reconciliation') return 'Execution uncertain';
   return task.state.replaceAll('_', ' ');
 }
 
@@ -110,7 +112,8 @@ export function agentCounts(tasks: TaskSnapshot[]): string {
 function taskNeedsAttention(task: TaskSnapshot): boolean {
   return (
     ['failed', 'needs_reconciliation'].includes(task.state) ||
-    (task.state === 'completed' && Boolean(task.result) && task.result?.acceptance !== 'satisfied')
+    (task.state === 'completed' &&
+      ['incomplete', 'blocked'].includes(task.result?.acceptance ?? ''))
   );
 }
 
@@ -120,7 +123,7 @@ export function finishedAgentLabel(tasks: TaskSnapshot[]): string {
     return usage ? [usage.totalTokens] : [];
   });
   const usage = known.length ? { totalTokens: known.reduce((sum, value) => sum + value, 0) } : null;
-  const state = tasks.every((task) => task.state === 'completed') ? 'completed' : 'finished';
+  const state = tasks.every((task) => task.state === 'completed') ? 'returned' : 'finished';
   return `${tasks.length} ${state} · ${tokenLabel(usage, known.length === tasks.length)}`;
 }
 

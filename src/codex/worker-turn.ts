@@ -8,6 +8,9 @@ import { workerTransportFailure } from './diagnostics.js';
 import { type OutputContract, parseWorkerOutput } from './worker-output.js';
 import { WorkerBlocked, workerRequest, type WorkerTransport } from './worker-protocol.js';
 
+const DEFAULT_WORKER_IDLE_TIMEOUT_MS = 300_000;
+const MAX_WORKER_DURATION_MS = 3_600_000;
+
 function deadline<T>(promise: Promise<T>, milliseconds: number): Promise<T | null> {
   let timer: NodeJS.Timeout;
   return Promise.race([
@@ -23,17 +26,20 @@ async function interruptWorker(
   events: WorkerTurnEvents,
   dispatched: Promise<void>,
   grace: number,
+  options: WorkerOptions,
 ): Promise<void> {
   await deadline(dispatched, grace);
   if (events.completed || events.turnId === null) return;
   try {
-    await deadline(
+    const acknowledged = await deadline(
       workerRequest(transport, 'turn/interrupt', {
         threadId: events.threadId,
         turnId: events.turnId,
       }),
       grace,
     );
+    if (acknowledged !== null)
+      await options.onEvent({ type: 'activity', message: 'Worker interrupt acknowledged' });
     await deadline(events.completion, grace);
   } catch {
     /* An acknowledgement failure leaves termination explicitly uncertain. */
@@ -92,13 +98,29 @@ export async function executeWorkerTurn(
   },
   grace: number,
 ): Promise<TaskResult> {
-  const events = new WorkerTurnEvents(input.threadId, spec.model, options);
+  let idleTimer: NodeJS.Timeout | undefined;
+  let stopForIdleTimeout: () => void = () => undefined;
+  const resetIdleTimer = () => {
+    if (spec.timeoutMs !== undefined) return;
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(stopForIdleTimeout, DEFAULT_WORKER_IDLE_TIMEOUT_MS);
+  };
+  const events = new WorkerTurnEvents(input.threadId, spec.model, options, resetIdleTimer);
+  stopForIdleTimeout = () => events.stop('Worker idle timeout exceeded', 'failed');
   const unsubscribe = transport.onNotification(
     (message) => events.receive(message),
     (error) => events.stop(workerTransportFailure(error)),
   );
   const abort = () => events.stop('Worker cancellation requested');
-  const timer = setTimeout(() => events.stop('Worker timeout exceeded'), spec.timeoutMs ?? 300_000);
+  const durationTimer = setTimeout(
+    () =>
+      events.stop(
+        spec.timeoutMs === undefined ? 'Worker duration limit exceeded' : 'Worker timeout exceeded',
+        'failed',
+      ),
+    spec.timeoutMs ?? MAX_WORKER_DURATION_MS,
+  );
+  resetIdleTimer();
   options.signal.addEventListener('abort', abort, { once: true });
   const params: TurnStartParams = {
     threadId: input.threadId,
@@ -109,7 +131,7 @@ export async function executeWorkerTurn(
     sandboxPolicy: input.sandbox,
     environments: [input.environment],
     runtimeWorkspaceRoots: [spec.assignment.ownership.cwd],
-    outputSchema: input.contract.schema,
+    ...(input.contract.schema === null ? {} : { outputSchema: input.contract.schema }),
     input: [{ type: 'text', text: input.prompt, text_elements: [] }],
   };
   const dispatched = workerRequest<TurnStartResponse>(transport, 'turn/start', params)
@@ -118,11 +140,13 @@ export async function executeWorkerTurn(
   try {
     if (options.signal.aborted) abort();
     await events.wakeup;
-    if (events.completed === null) await interruptWorker(transport, events, dispatched, grace);
+    if (events.completed === null)
+      await interruptWorker(transport, events, dispatched, grace, options);
     await events.drain();
     return finishedResult(spec, events, input.contract);
   } finally {
-    clearTimeout(timer);
+    clearTimeout(idleTimer);
+    clearTimeout(durationTimer);
     options.signal.removeEventListener('abort', abort);
     unsubscribe();
     events.dispose();

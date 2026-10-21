@@ -30,6 +30,26 @@ const prelude = `
   const parallel = factories => Promise.all(factories.map(factory => factory()));
   const pipeline = (items, fn) => Promise.all(items.map((item, index) => fn(item, index)));
 `;
+const preludeV2 = prelude
+  .replace(
+    "const agent = spec => __call('agent', JSON.stringify(spec)).then(JSON.parse);",
+    'const __pending = new Set(); const __track = promise => { __pending.add(promise); promise.then(() => __pending.delete(promise), () => __pending.delete(promise)); return promise; };\n' +
+      "const agent = (prompt, options) => __track(__call('agent', JSON.stringify({prompt, options})).then(JSON.parse));",
+  )
+  .replace(
+    "const lead = spec => __call('lead', JSON.stringify(spec)).then(JSON.parse);",
+    "let __lastLead; const lead = (objective, evidence) => __track(__call('lead', JSON.stringify({objective, evidence})).then(JSON.parse).then(value => (__lastLead = value)));",
+  )
+  .replace(
+    'const pipeline = (items, fn) => Promise.all(items.map((item, index) => fn(item, index)));',
+    'const pipeline = (items, ...stages) => Promise.all(items.map(async (item, index) => { let value = item; for (const stage of stages) { if (value === null) return null; value = await stage(value, index); } return value; }));',
+  );
+
+/** Guest budget in CPU milliseconds of this process, so host load cannot interrupt a script. */
+function cpuNow(): number {
+  const usage = process.cpuUsage();
+  return (usage.user + usage.system) / 1000;
+}
 
 export class ScriptMachine {
   private readonly deferred = new Set<QuickJSDeferredPromise>();
@@ -37,20 +57,26 @@ export class ScriptMachine {
   private stopped = false;
   private deadline = 0;
   private fuel = 100_000;
+  private version: 1 | 2 = 1;
   private constructor(
     private readonly vm: QuickJSContext,
     private readonly hooks: Hooks,
   ) {
     vm.runtime.setMemoryLimit(32 * 1024 * 1024);
     vm.runtime.setMaxStackSize(512 * 1024);
-    vm.runtime.setInterruptHandler(() => --this.fuel <= 0 || performance.now() > this.deadline);
+    vm.runtime.setInterruptHandler(() => --this.fuel <= 0 || cpuNow() > this.deadline);
     vm.newFunction('__call', (kind, payload) =>
       this.host(() => this.bridge(vm.getString(kind) as CallKind, vm.getString(payload))),
     ).consume((handle) => vm.setProp(vm.global, '__call', handle));
     vm.newFunction('__sync', (kind, payload) =>
       this.host(() => {
-        const value = this.parse(vm.getString(payload));
-        const result = hooks.sync(vm.getString(kind) as 'phase' | 'log', value);
+        const method = vm.getString(kind) as 'phase' | 'log';
+        const serialized = vm.getString(payload);
+        const value =
+          method === 'log' && this.version === 2
+            ? serialized.slice(0, 32_768)
+            : this.parse(serialized);
+        const result = hooks.sync(method, value);
         return vm.newString(JSON.stringify(result));
       }),
     ).consume((handle) => vm.setProp(vm.global, '__sync', handle));
@@ -59,22 +85,25 @@ export class ScriptMachine {
     return new ScriptMachine((await quickJS()).newContext(), hooks);
   }
   private host<T>(action: () => T): T {
-    const start = performance.now();
+    const start = cpuNow();
     try {
       return action();
     } finally {
-      this.deadline += performance.now() - start;
+      this.deadline += cpuNow() - start;
     }
   }
-  start(script: string, args: JsonValue): void {
+  start(script: string, args: JsonValue, version: 1 | 2 = 1): void {
     if (this.stopped) return;
     try {
-      this.deadline = performance.now() + 100;
+      this.version = version;
+      this.deadline = cpuNow() + 100;
       this.result = this.vm.unwrapResult(
         this.vm.evalCode(`(async () => { 'use strict';
-        ${prelude}
+        ${version === 2 ? preludeV2 : prelude}
         const args = freeze(JSON.parse(${JSON.stringify(JSON.stringify(args))}));
-        return await (async () => { ${script}\n })();
+        const __value = await (async () => { ${script}\n })();
+        ${version === 2 ? 'while (__pending.size) await Promise.all([...__pending]); if (__value === undefined) return __lastLead === undefined ? null : __lastLead;' : ''}
+        return __value;
       })()`),
       );
       this.pump();
@@ -117,7 +146,7 @@ export class ScriptMachine {
   }
   private pump(): void {
     if (!this.result || this.stopped) return;
-    this.deadline = performance.now() + 100;
+    this.deadline = cpuNow() + 100;
     const jobs = this.vm.runtime.executePendingJobs();
     if (jobs.error) {
       const error = this.vm.dump(jobs.error) as unknown;

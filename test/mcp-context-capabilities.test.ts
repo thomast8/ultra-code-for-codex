@@ -15,7 +15,7 @@ const capabilities: WorkerCapabilities = {
     { model: 'gpt-6-luna', reasoningEfforts: ['low', 'medium'] },
     { model: 'gpt-6.1-sol', reasoningEfforts: ['high'] },
   ],
-  capacity: { requiresLeadGrant: true, hostWideAvailableSlots: null },
+  capacity: { profileWorkerLimit: 3, hostWideAvailableSlots: null },
   blockers: [],
 };
 
@@ -89,6 +89,21 @@ it('does not inspect or launch a backend for unknown context', async () => {
     expect(result.structuredContent).not.toHaveProperty('executionCapabilities');
     expect(runtime).not.toHaveBeenCalled();
     expect(JSON.stringify(result)).not.toContain('Compatibility probe');
+  } finally {
+    await f.close();
+  }
+});
+
+it('reports missing exact-turn filesystem authority before backend inspection', async () => {
+  const runtime = vi.fn<DaemonCall>();
+  const f = await connected(runtime);
+  f.resolver.mockResolvedValueOnce({ ...f.grant.context, filesystem: undefined });
+  try {
+    expect((await f.read()).structuredContent).toMatchObject({
+      capabilityAvailability: 'unavailable',
+      capabilityReason: 'Exact-turn filesystem authority is unavailable',
+    });
+    expect(runtime).not.toHaveBeenCalled();
   } finally {
     await f.close();
   }

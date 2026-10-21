@@ -93,7 +93,11 @@ function AgentRow({
       data-agent-id={task.id}
       onClick={() => select(task.id)}
     >
-      {task.state === 'running' ? <Icon name="running" /> : <StatusBadge state={task.state} />}
+      {task.state === 'running' ? (
+        <Icon name="running" />
+      ) : (
+        <StatusBadge state={task.state} label={taskLabel(task)} />
+      )}
       <span className="agent-row-copy">
         <span>
           {task.title} · {taskLabel(task)}
@@ -129,7 +133,7 @@ export function AgentDetail({
         <h3 tabIndex={-1} ref={heading}>
           {task.title}
         </h3>
-        <StatusBadge state={task.state} />
+        <StatusBadge state={task.state} label={taskLabel(task)} />
       </header>
       <div className="agent-detail-card">
         <p className="workflow-muted">Phase: {task.phase.label}</p>

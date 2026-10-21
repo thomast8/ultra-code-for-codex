@@ -476,3 +476,17 @@ linked recoveries. No Bind click or queued binding message was needed. The panel
 keeps verification with the lead and does not request human review of worker
 output. See the latest [acceptance ledger](../acceptance.md) for the deliberately
 preserved negative outcomes and observed usage.
+
+### Field-verified activation across Desktop updates
+
+Every Desktop update that changed the bundled CLI version string stopped Ultra
+until a release added that string to an exact allowlist, including
+0.163.0-alpha.11 on 21 October 2026. The allowlist never checked anything the
+parser does not already check: the exact session and turn identifiers, cwd,
+model, effort, collaboration mode and filesystem authority are each required and
+compared against the hook input, and an unsupported sandbox shape fails closed.
+
+From 0.4.18 the parser requires a well-formed version string and those fields,
+and no longer compares the version against a list. The list of versions with
+native QA stays in the source as evidence, not as a gate. A future log format
+that drops or renames a required field still fails closed with the field name.

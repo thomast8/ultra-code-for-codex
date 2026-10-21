@@ -2,13 +2,16 @@ import { open, realpath } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import type { HookInput, LeadContext } from './types.js';
+import { filesystemAuthority } from './permissions.js';
 
 export const PARSER_ADAPTER_VERSION = 'codex-turn-context-v1';
+/** Desktop CLI versions with recorded native QA. Other well-formed versions verify by field checks. */
 export const SUPPORTED_CLI_VERSIONS = [
   '0.160.0',
   '0.160.1',
   '0.162.0-alpha.17.2',
   '0.163.0-alpha.10.2',
+  '0.163.0-alpha.11',
 ] as const;
 
 type JsonObject = Record<string, unknown>;
@@ -58,6 +61,7 @@ function turnMetadata(payload: JsonObject): JsonObject {
     model: text(payload.model),
     effort: text(payload.effort),
     collaboration_mode: mode,
+    filesystem: filesystemAuthority(payload.file_system_sandbox_policy),
   };
 }
 
@@ -165,16 +169,15 @@ function requiredText(value: unknown, field: string): string {
   return found;
 }
 
-function makeContext(meta: JsonObject, turn: JsonObject, input: HookInput): LeadContext {
-  if (
-    !SUPPORTED_CLI_VERSIONS.includes(
-      text(meta.cli_version) as (typeof SUPPORTED_CLI_VERSIONS)[number],
-    )
-  ) {
-    throw new Error(
-      `Unsupported Codex log version ${versionLabel(meta.cli_version)} for ${PARSER_ADAPTER_VERSION}`,
-    );
+function requireVersion(meta: JsonObject): void {
+  const version = versionLabel(meta.cli_version);
+  if (version === '(missing)' || version === '(invalid)') {
+    throw new Error(`Unsupported Codex log version ${version} for ${PARSER_ADAPTER_VERSION}`);
   }
+}
+
+function makeContext(meta: JsonObject, turn: JsonObject, input: HookInput): LeadContext {
+  requireVersion(meta);
   const sessionId = requiredText(meta.session_id ?? meta.id, 'session_id');
   const turnId = requiredText(turn.turn_id, 'turn_id');
   const cwd = requiredText(turn.cwd, 'cwd');
@@ -202,6 +205,9 @@ function makeContext(meta: JsonObject, turn: JsonObject, input: HookInput): Lead
     sessionId,
     turnId,
     cwd,
+    ...(turn.filesystem
+      ? { filesystem: turn.filesystem as NonNullable<LeadContext['filesystem']> }
+      : {}),
     model,
     effort,
     collaborationMode,

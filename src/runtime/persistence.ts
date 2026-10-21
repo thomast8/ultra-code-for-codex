@@ -1,12 +1,15 @@
 import { z } from 'zod';
+import { filesystemAuthoritySchema } from '../activation/permissions.js';
 import {
   agentSchema,
   capacitySchema,
+  hostCapacitySchema,
   handoffSchema,
   leadResultSchema,
   phaseSchema,
   resourceSchema,
   startSchema,
+  startV2Schema,
   taskResultSchema,
   tokenUsageSchema,
 } from '../contracts/schema.js';
@@ -18,8 +21,10 @@ const contextSchema = z.strictObject({
   sessionId: z.string().min(1),
   turnId: z.string().min(1),
   cwd: z.string(),
+  filesystem: filesystemAuthoritySchema.optional(),
   model: z.string(),
   effort: z.string(),
+  reportedEffort: z.string().optional(),
   collaborationMode: z.string(),
   resolutionStatus: z.literal('verified'),
   resolutionReason: z.string(),
@@ -48,7 +53,8 @@ const taskRecord = z.strictObject({
   requestedModel: z.string(),
   reportedModel: z.string().nullable(),
   effort: z.string(),
-  assessment: agentSchema.shape.assessment,
+  reportedEffort: z.string().optional(),
+  assessment: agentSchema.shape.assessment.optional(),
   createdAt: z.number(),
   startedAt: z.number().nullable(),
   finishedAt: z.number().nullable(),
@@ -73,6 +79,14 @@ const callSchema = z.strictObject({
 });
 const snapshotSchema = z.strictObject({
   id: z.string(),
+  attemptKind: z.enum(['follow-up', 'repair']).optional(),
+  continuationOf: z
+    .strictObject({
+      runId: z.string(),
+      taskId: z.string(),
+      kind: z.enum(['follow-up', 'repair']),
+    })
+    .optional(),
   title: z.string(),
   objective: z.string(),
   budget: startSchema.shape.budget,
@@ -96,16 +110,29 @@ const snapshotSchema = z.strictObject({
   handoffs: z.array(handoffRecord),
   usage: tokenUsageSchema.nullable(),
   accountingComplete: z.boolean(),
+  proposedResult: z.json().optional(),
   result: z.json(),
   error: z.string().nullable(),
 });
 const recordSchema = z.strictObject({
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
+  sourceEvidence: z.array(z.string()).optional(),
+  continuation: z
+    .strictObject({
+      threadId: z.string(),
+      cwd: z.string(),
+      capability: z.enum(['read-only', 'workspace-write']),
+      kind: z.enum(['follow-up', 'repair']),
+    })
+    .optional(),
   cancelRequested: z.boolean(),
   owner: ownerSchema,
-  request: startSchema,
+  request: z.union([startSchema, startV2Schema]),
   requestBytes: z.string(),
-  authority: z.strictObject({ context: contextSchema, capacity: capacitySchema }),
+  authority: z.strictObject({
+    context: contextSchema,
+    capacity: z.union([capacitySchema, hostCapacitySchema]),
+  }),
   snapshot: snapshotSchema,
   calls: z.array(callSchema),
   nextSettlement: z.number().int().positive(),
@@ -115,6 +142,7 @@ export function parseRecord(serialized: string): RunRecord {
   if (!result.success)
     throw new Error(`Unsupported or corrupt workflow journal: ${result.error.message}`);
   const run = JSON.parse(serialized) as RunRecord;
+  verifyVersion(run);
   const identity = run.authority.context;
   if (
     run.owner.instanceId !== identity.instanceId ||
@@ -136,4 +164,12 @@ export function parseRecord(serialized: string): RunRecord {
   if (run.request.budget) run.snapshot.budget = structuredClone(run.request.budget);
   else delete run.snapshot.budget;
   return run;
+}
+
+function verifyVersion(run: RunRecord): void {
+  if (
+    (run.version === 2) !== (run.request.contractVersion === 2) ||
+    (run.version === 2) !== (run.authority.capacity.source === 'host-profile')
+  )
+    throw new Error('Unsupported or corrupt workflow journal: contract version mismatch');
 }

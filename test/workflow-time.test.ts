@@ -11,7 +11,15 @@ describe('workflow timing', () => {
       tasks: [taskFixture({ startedAt: 4, finishedAt: 172_108, state: 'completed' })],
       leadReviews: [{ handoffId: 'review', startedAt: 431_660, finishedAt: 433_147 }],
     });
-    expect(runTiming(run, 999_999)).toEqual({ workers: 172_104, waiting: 259_560, review: 1487 });
+    expect(runTiming(run, 999_999)).toMatchObject({
+      workers: 172_104,
+      workersOnly: 172_104,
+      overlap: 0,
+      waiting: 259_560,
+      review: 1487,
+      reviewOnly: 1487,
+      workerSum: 172_104,
+    });
   });
 
   it('counts parallel workers once and excludes overlapping reviews from waiting', () => {
@@ -20,11 +28,25 @@ describe('workflow timing', () => {
       tasks: [taskFixture({ startedAt: 1000, finishedAt: 5000 }), taskFixture({ startedAt: 3000 })],
       leadReviews: [{ handoffId: 'review', startedAt: 4000, finishedAt: null }],
     });
-    expect(runTiming(run, 7000)).toEqual({ workers: 6000, review: 3000, waiting: 1000 });
+    expect(runTiming(run, 7000)).toMatchObject({
+      workers: 6000,
+      workersOnly: 3000,
+      review: 3000,
+      reviewOnly: 0,
+      overlap: 3000,
+      waiting: 1000,
+      workerSum: 8000,
+    });
   });
 
   it('does not invent lead timing for snapshots without journal timing', () => {
-    expect(runTiming(runFixture(), 5000)).toEqual({ workers: 4000, waiting: null, review: null });
+    expect(runTiming(runFixture(), 5000)).toMatchObject({
+      workers: 4000,
+      workersOnly: null,
+      waiting: null,
+      review: null,
+      overlap: null,
+    });
   });
 
   it('marks unknown worker termination and uncertain waiting without hiding known review', () => {
@@ -32,7 +54,13 @@ describe('workflow timing', () => {
       tasks: [taskFixture({ state: 'needs_reconciliation' })],
       leadReviews: [],
     });
-    expect(runTiming(run, 5000)).toEqual({ workers: null, waiting: null, review: 0 });
+    expect(runTiming(run, 5000)).toMatchObject({
+      workers: null,
+      workersOnly: null,
+      waiting: null,
+      review: 0,
+      overlap: null,
+    });
   });
 
   it('counts queued time as waiting and clips intervals to the run lifetime', () => {
@@ -42,7 +70,14 @@ describe('workflow timing', () => {
       tasks: [taskFixture({ startedAt: null })],
       leadReviews: [{ handoffId: 'review', startedAt: 4000, finishedAt: 9000 }],
     });
-    expect(runTiming(run, 10000)).toEqual({ workers: 0, waiting: 2000, review: 2000 });
+    expect(runTiming(run, 10000)).toMatchObject({
+      workers: 0,
+      workersOnly: 0,
+      waiting: 2000,
+      review: 2000,
+      reviewOnly: 2000,
+      overlap: 0,
+    });
   });
 });
 

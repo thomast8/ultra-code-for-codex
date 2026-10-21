@@ -3,6 +3,7 @@ export interface LeadContext {
   sessionId: string;
   turnId: string;
   cwd: string;
+  filesystem?: { readAll: true; writableRoots: string[] } | undefined;
   model: string;
   effort: string;
   collaborationMode: string;

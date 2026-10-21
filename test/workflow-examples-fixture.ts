@@ -107,7 +107,14 @@ export function exampleHarness(
         args,
         maxAgentCalls: callLimits[name],
       }),
-      authority,
+      {
+        ...authority,
+        context: {
+          ...authority.context,
+          cwd: root,
+          filesystem: { readAll: true, writableRoots: [root] },
+        },
+      },
     );
   return { root, calls, engine, script, start };
 }

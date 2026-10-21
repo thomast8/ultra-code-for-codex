@@ -79,6 +79,17 @@ it('interrupts a timeout and keeps confirmed late completion separate from uncer
   });
 });
 
+it('retains uncertain execution when a timeout interrupt is only acknowledged', async () => {
+  const h = workerHarness();
+  h.backend.execute = async () => undefined;
+  h.backend.overrides['turn/interrupt'] = async () => ({});
+  expect(await h.execute(workerSpec({ timeoutMs: 5 }), h.options)).toMatchObject({
+    execution: 'uncertain',
+    error: 'Worker timeout exceeded',
+  });
+  expect(h.backend.calls.filter((call) => call.method === 'turn/interrupt')).toHaveLength(1);
+});
+
 it('records dispatch ambiguity without guessing an interrupt target', async () => {
   const h = workerHarness();
   h.backend.overrides['turn/start'] = () => {

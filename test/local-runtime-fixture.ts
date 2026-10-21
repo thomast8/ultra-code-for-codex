@@ -22,6 +22,14 @@ export async function runningFixture() {
         dataDir: join(fixture.dataDir, 'runtime'),
         executeWorker: async () => output('résultat'),
       }),
+    async () => ({
+      status: 'verified-metadata',
+      blockers: [],
+      profileVerified: true,
+      models: [
+        { model: fixture.grant.context.model, reasoningEfforts: [fixture.grant.context.effort] },
+      ],
+    }),
   );
   const call = createDaemonClient(fixture.dataDir, async () => {
     throw new Error('Unexpected launch');

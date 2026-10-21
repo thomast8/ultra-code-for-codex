@@ -1,11 +1,32 @@
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { URL } from 'node:url';
 import { build } from 'esbuild';
+import { format } from 'prettier';
 import './check-runtime.mjs';
 import { thirdPartyNotices } from './notices.mjs';
 
 const output = new URL('../plugin/dist/', import.meta.url);
 await mkdir(output, { recursive: true });
+const authoring = await build({
+  entryPoints: ['src/contracts/authoring.ts'],
+  bundle: true,
+  write: false,
+  platform: 'node',
+  format: 'esm',
+  target: 'node26',
+});
+const reference = await import(
+  `data:text/javascript;base64,${Buffer.from(authoring.outputFiles[0].contents).toString('base64')}`
+);
+await writeFile(
+  new URL('../plugin/skills/ultra-code/references/authoring.md', import.meta.url),
+  await format(reference.authoringReference(), {
+    parser: 'markdown',
+    printWidth: 100,
+    singleQuote: true,
+    trailingComma: 'all',
+  }),
+);
 const ui = await build({
   metafile: true,
   entryPoints: ['src/ui/panel.tsx'],

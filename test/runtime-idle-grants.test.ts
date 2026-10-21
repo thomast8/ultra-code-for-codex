@@ -76,7 +76,7 @@ it.each(['running', 'paused'] as const)(
   },
 );
 
-it('restores a released one-slot grant before admitting workers after review', async () => {
+it('enforces a legacy run limit without throttling other chats after review', async () => {
   const { engine, calls } = harness();
   try {
     engine.start(
@@ -95,24 +95,22 @@ it('restores a released one-slot grant before admitting workers after review', a
       value: 'Checked',
       evidence: [{ id: 'check', description: 'Observed' }],
     });
-    await until(() => engine.status(owner)[0]!.tasks.length === 3);
-    expect(calls).toHaveLength(2);
-    calls[0]!.finish(output());
-    await until(() => engine.status(otherOwner)[0]!.tasks[0]!.state === 'completed');
-    expect(calls).toHaveLength(2);
-    calls[1]!.finish(output());
     await until(() => calls.length === 3);
     expect(engine.status(owner)[0]!.tasks.map((task) => task.state)).toEqual([
       'running',
       'queued',
       'queued',
     ]);
+    calls[0]!.finish(output());
+    calls[1]!.finish(output());
+    await until(() => engine.status(otherOwner)[0]?.state === 'completed');
+    expect(calls).toHaveLength(3);
     calls[2]!.finish(output());
     await until(() => calls.length === 4);
     expect(engine.status(owner)[0]!.tasks.map((task) => task.state)).toEqual([
       'completed',
       'running',
-      'queued',
+      'waiting',
     ]);
     calls[3]!.finish(output());
     await until(() => calls.length === 5);

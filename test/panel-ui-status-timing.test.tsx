@@ -53,11 +53,11 @@ it('archives a resolved failed attempt after its successful continuation without
   });
   await open([failed, accepted]);
   expect(screen.queryByRole('region', { name: 'Original attempt' })).toBeNull();
-  expect(screen.getByText('succeeded').className).toContain('tone-completed');
+  expect(screen.getByText('finished').className).toContain('tone-completed');
   fireEvent.click(screen.getByRole('button', { name: 'History · 1' }));
   const card = within(screen.getByRole('region', { name: 'Original attempt' }));
-  expect(card.getByText('failed', { selector: '.workflow-badge' }).className).toContain(
-    'tone-failed',
+  expect(card.getByText('finished', { selector: '.workflow-badge' }).className).toContain(
+    'tone-attention',
   );
   expect(card.getByText('Finished with issues')).toBeDefined();
   expect(card.queryByText('Lead follow-up')).toBeNull();
@@ -69,15 +69,15 @@ it.each(['incomplete', 'blocked', 'unverified'] as const)(
     await open([
       runFixture({ state: 'completed', acceptanceOutcome, tasks: [], finishedAt: 10_000 }),
     ]);
-    expect(
-      screen.getByText(acceptanceOutcome, { selector: '.workflow-badge' }).className,
-    ).toContain('tone-attention');
+    expect(screen.getByText('finished', { selector: '.workflow-badge' }).className).toContain(
+      'tone-attention',
+    );
     expect(screen.queryByText('completed', { selector: '.workflow-badge' })).toBeNull();
     expect(screen.queryByText('Lead follow-up')).toBeNull();
   },
 );
 
-it('shows the three timing categories separately on the collapsed run', async () => {
+it('shows additive wall time and cumulative worker time on the collapsed run', async () => {
   await open([
     runFixture({
       state: 'completed',
@@ -88,9 +88,11 @@ it('shows the three timing categories separately on the collapsed run', async ()
     }),
   ]);
   for (const [label, value] of [
-    ['Workers active', '2m 52s'],
-    ['Waiting', '4m 19s'],
-    ['Lead review', '1s'],
+    ['Workers only', '2m 52s'],
+    ['Waiting or other', '4m 19s'],
+    ['Lead review only', '1s'],
+    ['Workers and lead review', '0s'],
+    ['Cumulative worker time', '2m 52s'],
   ] as const) {
     expect(screen.getByText(label).nextElementSibling?.textContent).toBe(value);
   }

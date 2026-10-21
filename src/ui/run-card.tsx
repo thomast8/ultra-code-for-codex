@@ -139,7 +139,7 @@ function Attention({ run }: { run: RunSnapshot }) {
 }
 
 function eyebrow(run: RunSnapshot, attention: boolean, finished: boolean): string {
-  if (needsLeadFollowup(run)) return 'Lead follow-up';
+  if (needsLeadFollowup(run)) return 'Attention needed';
   if (attention && finished) return 'Finished with issues';
   return finished ? 'Latest result' : 'In progress';
 }
@@ -161,8 +161,22 @@ function RunHeading({
           {lead ?? eyebrow(run, attention, finished)}
         </p>
         <h2>{run.title}</h2>
+        {(run.continuationOf || run.attemptKind) && (
+          <p className="workflow-muted">
+            {run.attemptKind === 'repair' ? 'Repair attempt' : 'Linked follow-up'}
+            {' · Original run '}
+            {run.parentRunId}
+          </p>
+        )}
       </div>
-      <StatusBadge state={runStatus(run)} />
+      <StatusBadge
+        state={runStatus(run)}
+        tone={
+          run.state === 'completed' && run.acceptanceOutcome !== 'satisfied'
+            ? 'attention'
+            : undefined
+        }
+      />
     </header>
   );
 }

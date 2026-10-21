@@ -12,7 +12,7 @@ import type { CallKind, CallRecord, RunRecord } from './types.js';
 export function createRun(request: StartRequest, authority: RunAuthority): RunRecord {
   const now = Date.now();
   return {
-    version: 1,
+    version: request.contractVersion === 2 ? 2 : 1,
     cancelRequested: false,
     owner: { instanceId: authority.context.instanceId, sessionId: authority.context.sessionId },
     request: structuredClone(request),
@@ -22,6 +22,9 @@ export function createRun(request: StartRequest, authority: RunAuthority): RunRe
     nextSettlement: 1,
     snapshot: {
       id: randomUUID(),
+      ...(request.continuationOf
+        ? { continuationOf: { ...request.continuationOf, kind: 'follow-up' as const } }
+        : {}),
       title: request.title,
       objective: request.objective,
       ...(request.budget ? { budget: structuredClone(request.budget) } : {}),
@@ -68,7 +71,7 @@ export function attachTask(call: CallRecord, spec: AgentSpec): void {
     requestedModel: spec.model,
     reportedModel: null,
     effort: spec.effort,
-    assessment: spec.assessment,
+    ...(spec.format ? {} : { assessment: spec.assessment }),
     createdAt: Date.now(),
     startedAt: null,
     finishedAt: null,

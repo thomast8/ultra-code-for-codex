@@ -4,6 +4,30 @@ import { nestedValueSchema } from '../src/codex/worker-schema.js';
 import { outputContract, parseWorkerOutput } from '../src/codex/worker-output.js';
 import { outputText, workerSpec } from './codex-worker-fixture.js';
 
+it('returns plain text by default and validates optional v2 JSON without an acceptance envelope', () => {
+  const plain = outputContract(workerSpec({ format: 'plain', prompt: 'Review source' }));
+  expect(plain.schema).toBeNull();
+  expect(parseWorkerOutput('Found two issues', plain)).toMatchObject({
+    acceptance: 'unverified',
+    value: 'Found two issues',
+    evidence: [],
+  });
+  const json = outputContract(
+    workerSpec({
+      format: 'json',
+      prompt: 'Report count',
+      outputSchema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['count'],
+        properties: { count: { type: 'integer' } },
+      },
+    }),
+  );
+  expect(parseWorkerOutput('{"count":2}', json).value).toEqual({ count: 2 });
+  expect(() => parseWorkerOutput('{"count":"two"}', json)).toThrow('schema');
+});
+
 it('preserves standalone value-schema references inside the envelope', () => {
   const spec = workerSpec({
     outputSchema: {

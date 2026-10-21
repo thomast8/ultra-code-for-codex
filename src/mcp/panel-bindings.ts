@@ -14,6 +14,10 @@ export function openBindings(dataDir: string): DatabaseSync {
     state TEXT NOT NULL CHECK (state IN ('pending', 'binding', 'bound', 'failed')),
     owner TEXT
   )`);
+  database.exec(`CREATE TABLE IF NOT EXISTS verified_turns (
+    session_id TEXT PRIMARY KEY,
+    context_key TEXT NOT NULL
+  )`);
   return database;
 }
 

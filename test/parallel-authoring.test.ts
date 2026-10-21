@@ -1,123 +1,54 @@
-import { readFileSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { expect, it } from 'vitest';
-import { authority, harness, output, owner, request, spec, until } from './runtime-fixture.js';
+import { authority, harness, output, owner, until } from './runtime-fixture.js';
 
-it('executes the documented ready-work wave concurrently and retains its planning evidence', async () => {
-  const reference = readFileSync('plugin/skills/ultra-code/references/authoring.md', 'utf8');
-  const script = reference
-    .split('## Choose the assignment graph first')[1]!
-    .match(/```js\n([\s\S]*?)```/)![1]!;
-  const { engine, calls } = harness();
-  try {
-    const run = engine.start(
-      request(script, {
-        maxAgentCalls: 2,
-        args: {
-          cwd: '/tmp',
-          capacityNote: 'Reserve the observed lead slot; two source checks are independent.',
-          questions: [
-            {
-              title: 'First source',
-              question: 'Check the first claim',
-              sourcePath: '/tmp/first.txt',
-            },
-            {
-              title: 'Second source',
-              question: 'Check the second claim',
-              sourcePath: '/tmp/second.txt',
-            },
-          ],
-        },
-      }),
-      authority,
-    );
-    await until(() => calls.length === 2);
-    expect(engine.status(owner)[0]!.tasks.map((task) => task.state)).toEqual([
-      'running',
-      'running',
-    ]);
-    for (const [index, call] of calls.entries()) {
-      expect(call.spec).toMatchObject({
-        model: authority.context.model,
-        effort: authority.context.effort,
-        capability: 'read-only',
-      });
-      call.finish(
-        output(
-          { report: `Source ${index} checked` },
-          {
-            acceptance: 'satisfied',
-            evidence: [{ id: `source-${index}`, description: 'Inspected source' }],
-          },
-        ),
-      );
-    }
-    await until(() => engine.status(owner)[0]!.handoffs.length === 1);
-    const handoff = engine.status(owner)[0]!.handoffs[0]!;
-    expect(handoff.spec.evidence.map((item) => item.id)).toEqual(['source-0', 'source-1']);
-    expect(engine.events(owner, 0, [run.id]).events).toContainEqual(
-      expect.objectContaining({
-        type: 'log',
-        data: JSON.stringify({
-          assignments: ['First source', 'Second source'],
-          dependencies: 'Independent source checks, then lead comparison',
-          reservation: 'Reserve the observed lead slot; two source checks are independent.',
-        }),
-      }),
-    );
-    engine.handoff(owner, handoff.id, 'claim', authority.context);
-    engine.handoff(owner, handoff.id, 'resolve', authority.context, {
-      acceptance: 'satisfied',
-      value: 'Both sources verified',
-      evidence: handoff.spec.evidence,
-    });
-    await until(() => engine.status(owner)[0]!.state === 'completed');
-    expect(engine.status(owner)[0]!.acceptanceOutcome).toBe('satisfied');
-  } finally {
-    await engine.close();
-  }
-});
-
-it.each(['log', 'phase'])(
-  'identifies invalid %s arguments before any worker launches',
-  async (kind) => {
-    const h = harness();
-    try {
-      h.engine.start(
-        request(`${kind}({assignments:['Phone', 'Watch']}); return await agent(args.spec);`),
-        authority,
-      );
-      await until(() => h.engine.status(owner)[0]?.state === 'failed');
-      const run = h.engine.status(owner)[0]!;
-      expect(run.error).toContain(`${kind}() expects a nonempty string`);
-      expect(run.error).toContain('received object');
-      expect(run.error).toContain(kind === 'log' ? 'JSON.stringify(plan)' : 'Use phase(');
-      expect(run.acceptanceOutcome).toBe('incomplete');
-      expect(h.calls).toHaveLength(0);
-    } finally {
-      await h.engine.close();
-    }
-  },
-);
-
-it('executes the documented writer with a canonical root write lease', async () => {
-  const reference = readFileSync('plugin/skills/ultra-code/references/authoring.md', 'utf8');
-  const script = reference
-    .split('For a writing assignment, use this exact lease shape')[1]!
-    .match(/```js\n([\s\S]*?)```/)![1]!;
-  const h = harness();
+it('derives a canonical root lease and serializes v2 writers sharing that root', async () => {
   const cwd = realpathSync(tmpdir());
+  const host = {
+    ...authority,
+    context: {
+      ...authority.context,
+      cwd,
+      filesystem: { readAll: true as const, writableRoots: [cwd] },
+    },
+    capacity: {
+      source: 'host-profile' as const,
+      totalSlots: 3 as const,
+      reservedSlots: 0 as const,
+      evidence: 'Ultra profile limit' as const,
+    },
+  };
+  const h = harness();
   try {
-    h.engine.start(request(script, { args: { spec, cwd, ownedPaths: [] } }), authority);
+    h.engine.start(
+      {
+        contractVersion: 2,
+        requestId: 'writers',
+        contextKey: 'context',
+        title: 'Two edits',
+        objective: 'Edit independent sections',
+        acceptance: ['Lead reviews the changes'],
+        script:
+          'return await parallel([()=>agent("Edit A",{access:"workspace-write",cwd:args.cwd}),()=>agent("Edit B",{access:"workspace-write",cwd:args.cwd})]);',
+        args: { cwd },
+      },
+      host,
+    );
     await until(() => h.calls.length === 1);
-    expect(h.calls[0]!.spec).toMatchObject({
+    expect(h.engine.status(owner)[0]?.tasks.map((task) => task.state)).toEqual([
+      'running',
+      'waiting',
+    ]);
+    expect(h.calls[0]?.spec).toMatchObject({
       capability: 'workspace-write',
-      assignment: { ownership: { cwd, paths: [] } },
-      resources: [{ key: `worktree:${cwd}`, mode: 'write', path: cwd }],
+      assignment: { ownership: { cwd } },
+      resources: [{ key: `workspace:${cwd}`, mode: 'write', path: cwd }],
     });
-    h.calls[0]!.finish(output(null, { acceptance: 'satisfied' }));
-    await until(() => h.engine.status(owner)[0]!.state === 'completed');
+    h.calls[0]!.finish(output('A done'));
+    await until(() => h.calls.length === 2);
+    h.calls[1]!.finish(output('B done'));
+    await until(() => h.engine.status(owner)[0]?.state === 'completed');
   } finally {
     await h.engine.close();
   }

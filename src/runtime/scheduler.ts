@@ -5,7 +5,7 @@ import type { ScheduledWork } from './types.js';
 export class Scheduler {
   readonly resources = new Resources();
   private readonly queues = new Map<string, ScheduledWork[]>();
-  private readonly active = new Set<Promise<void>>();
+  private readonly active = new Map<Promise<void>, string>();
   private grants = new Map<string, number>();
   private readonly uncertainSlots = new Set<string>();
   private lastRun = '';
@@ -36,8 +36,7 @@ export class Scheduler {
     });
   }
   private drain(): void {
-    const capacity = Math.min(...this.grants.values());
-    while (!this.stopped && this.active.size + this.uncertainSlots.size < capacity) {
+    while (!this.stopped && this.active.size + this.uncertainSlots.size < 3) {
       const work = this.next();
       if (!work) break;
       const running = work
@@ -53,7 +52,7 @@ export class Scheduler {
           this.active.delete(running);
           this.wake();
         });
-      this.active.add(running);
+      this.active.set(running, work.runId);
     }
   }
   private next(): ScheduledWork | undefined {
@@ -71,6 +70,15 @@ export class Scheduler {
   }
   private canStart(work: ScheduledWork): boolean {
     if (!work.ready()) return false;
+    const runLimit = this.grants.get(work.runId) ?? 3;
+    const active = [...this.active.values()].filter((id) => id === work.runId).length;
+    const uncertain = [...this.uncertainSlots].filter((id) =>
+      id.startsWith(`${work.runId}:`),
+    ).length;
+    if (active + uncertain >= runLimit) {
+      work.waiting();
+      return false;
+    }
     try {
       const acquired = this.resources.acquire(work.id, work.claims);
       if (!acquired) work.waiting();
@@ -91,7 +99,7 @@ export class Scheduler {
   }
   async close(): Promise<void> {
     this.stopped = true;
-    await Promise.allSettled(this.active);
+    await Promise.allSettled(this.active.keys());
   }
 }
 export function asError(error: unknown): Error {

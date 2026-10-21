@@ -84,8 +84,9 @@ export async function verifyLocalEnvironment(
   transport: WorkerTransport,
   started: ThreadStartResponse,
   cwd: string,
+  ephemeral = true,
 ): Promise<ThreadEnvironment> {
-  requireWorker(started.thread.ephemeral === true, 'Worker thread is not ephemeral');
+  requireWorker(started.thread.ephemeral === ephemeral, 'Worker thread history mode differs');
   const environments = started.thread.environments;
   requireWorker(environments?.length === 1, 'Worker needs one verified local environment');
   const environment = environments[0];

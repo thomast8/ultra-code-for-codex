@@ -63,7 +63,7 @@ it('keeps agent squares, state counts and live usage visible while collapsed', a
   const run = runFixture({ tasks, usage: { ...usage, totalTokens: 18_400 } });
   await loaded([run]);
   expect(screen.getByText('3 agents')).toBeDefined();
-  expect(screen.getByText('2 working · 1 completed')).toBeDefined();
+  expect(screen.getByText('2 working · 1 returned')).toBeDefined();
   expect(screen.getByText('4m 12s elapsed · 18.4k worker tokens (partial)')).toBeDefined();
   expect(screen.queryByText('Requested model')).toBeNull();
   expect(screen.getByRole('button', { name: 'Show agents' }).getAttribute('aria-expanded')).toBe(
@@ -86,20 +86,20 @@ it('drills from a square into current model, tokens and activity and returns to 
   ];
   await loaded([runFixture({ tasks })]);
   fireEvent.click(screen.getByRole('button', { name: 'Show agents' }));
-  fireEvent.click(screen.getByText('1 completed · 120 worker tokens'));
-  const row = screen.getByRole('button', { name: /Finished agent · completed/ });
+  fireEvent.click(screen.getByText('1 returned · 120 worker tokens'));
+  const row = screen.getByRole('button', { name: /Finished agent · Returned/ });
   row.focus();
   fireEvent.click(row);
   expect(screen.getByRole('heading', { name: 'Finished agent' })).toBeDefined();
   expect(
     within(document.querySelector('.agent-detail-card') as HTMLElement).getByText(
-      'Reported model: gpt-6-luna · Requested reasoning effort: medium',
+      'Reported model: gpt-6-luna · Requested effort: medium (unverified)',
     ),
   ).toBeDefined();
   expect(screen.getByText('100 input · 20 output')).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'Back to all 2 agents' }));
   expect(document.activeElement).toBe(row);
-  expect(screen.getByRole('button', { name: /Finished agent · completed/ })).toBeDefined();
+  expect(screen.getByRole('button', { name: /Finished agent · Returned/ })).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'Compare document names: Working' }));
   fireEvent.click(screen.getByText('View activity and evidence'));
   expect(screen.getAllByText('40 (included in input)')[0]).toBeDefined();
@@ -158,12 +158,12 @@ it.each(['running', 'completed'] as const)(
     ];
     await loaded([runFixture({ tasks })]);
     fireEvent.click(screen.getByRole('button', { name: 'Show agents' }));
-    if (state === 'completed') fireEvent.click(screen.getByText('2 completed · 240 worker tokens'));
+    if (state === 'completed') fireEvent.click(screen.getByText('2 returned · 240 worker tokens'));
     for (const task of tasks) {
       const model = task.reportedModel
         ? `Reported model: ${reportedModel}`
         : `Requested model: ${requestedModel} (unverified)`;
-      const routing = `${model} · Requested reasoning effort: medium`;
+      const routing = `${model} · Requested effort: medium (unverified)`;
       const row = screen.getByRole('button', {
         name: new RegExp(
           `${task.title} · .*${task.reportedModel ? 'Reported model:' : 'Requested model:'}`,
@@ -257,11 +257,11 @@ it('archives resolved unsuccessful attempts but keeps reconciliation work curren
   await loaded([failed, blocked, reconcile, finished('newest', 3)]);
   expect(screen.getAllByRole('region')).toHaveLength(2);
   expect(screen.queryByText('Test runner unavailable')).toBeNull();
-  expect(screen.getAllByText('Lead follow-up')).toHaveLength(1);
+  expect(screen.getAllByText('Attention needed')).toHaveLength(1);
   fireEvent.click(screen.getByRole('button', { name: 'History · 2' }));
   expect(screen.getAllByText('Test runner unavailable')).toHaveLength(2);
   expect(screen.getAllByText('Finished with issues')).toHaveLength(2);
-  expect(screen.queryByText('Lead follow-up')).toBeNull();
+  expect(screen.queryByText('Attention needed')).toBeNull();
 });
 
 it('shows missing usage honestly, truncates preview overflow and keeps every agent reachable', async () => {
@@ -292,7 +292,7 @@ it('shows missing usage honestly, truncates preview overflow and keeps every age
   fireEvent.click(screen.getByRole('button', { name: 'queued: queued' }));
   expect(
     within(document.querySelector('.agent-detail-card') as HTMLElement).getByText(
-      'Requested model: gpt-6-luna (unverified) · Requested reasoning effort: medium',
+      'Requested model: gpt-6-luna (unverified) · Requested effort: medium (unverified)',
     ),
   ).toBeDefined();
   expect(

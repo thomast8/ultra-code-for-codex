@@ -19725,19 +19725,69 @@ function formatPendingWorkNotice(counts, handoffs) {
 // src/activation/registry.ts
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, open as open3, readFile, rename, unlink } from "node:fs/promises";
-import { join as join2 } from "node:path";
+import { join as join3 } from "node:path";
 
 // src/activation/session-source.ts
 import { open as open2, realpath } from "node:fs/promises";
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute as isAbsolute2, relative as relative2, resolve } from "node:path";
 import { StringDecoder } from "node:string_decoder";
+
+// src/activation/permissions.ts
+import { realpathSync } from "node:fs";
+import { basename, dirname, isAbsolute, join as join2, relative, sep } from "node:path";
+var filesystemAuthoritySchema = external_exports.object({
+  readAll: external_exports.literal(true),
+  writableRoots: external_exports.array(external_exports.string().min(1).refine(isAbsolute))
+});
+var pathSchema = external_exports.discriminatedUnion("type", [
+  external_exports.object({ type: external_exports.literal("path"), path: external_exports.string().refine(isAbsolute) }),
+  external_exports.object({
+    type: external_exports.literal("special"),
+    value: external_exports.object({ kind: external_exports.enum(["root", "tmpdir", "slash_tmp"]) })
+  })
+]);
+var policySchema = external_exports.object({
+  kind: external_exports.literal("restricted"),
+  entries: external_exports.array(external_exports.object({ path: pathSchema, access: external_exports.enum(["read", "write", "deny"]) }))
+});
+function canonical(path) {
+  try {
+    return realpathSync(path);
+  } catch (error62) {
+    if (error62.code !== "ENOENT" || dirname(path) === path) throw error62;
+    return join2(canonical(dirname(path)), basename(path));
+  }
+}
+function protectedByWorker(root, path) {
+  const part = relative(root, path);
+  if (part === ".." || part.startsWith(`..${sep}`) || isAbsolute(part)) return true;
+  return [".git", ".agents", ".codex", ".aws"].includes(part.split(sep)[0]);
+}
+function filesystemAuthority(value) {
+  const parsed = policySchema.safeParse(value);
+  if (!parsed.success) return void 0;
+  const entries = parsed.data.entries;
+  if (entries.some((entry) => entry.access === "deny")) return void 0;
+  const rootRead = entries.some(
+    (entry) => entry.path.type === "special" && entry.path.value.kind === "root"
+  );
+  if (!rootRead) return void 0;
+  let paths;
+  try {
+    paths = entries.flatMap(
+      (entry) => entry.path.type === "path" ? [{ path: canonical(entry.path.path), access: entry.access }] : []
+    );
+  } catch {
+    return void 0;
+  }
+  const writableRoots = paths.filter((entry) => entry.access === "write").map((entry) => entry.path).filter(
+    (root) => paths.every((entry) => entry.access === "write" || protectedByWorker(root, entry.path))
+  );
+  return { readAll: true, writableRoots: [...new Set(writableRoots)].sort() };
+}
+
+// src/activation/session-source.ts
 var PARSER_ADAPTER_VERSION = "codex-turn-context-v1";
-var SUPPORTED_CLI_VERSIONS = [
-  "0.160.0",
-  "0.160.1",
-  "0.162.0-alpha.17.2",
-  "0.163.0-alpha.10.2"
-];
 var MAX_METADATA_LINE = 64 * 1024;
 var READ_CHUNK = 64 * 1024;
 function isObject2(value) {
@@ -19755,8 +19805,8 @@ function validId(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }
 function exactPath(path, base) {
-  const part = relative(base, path);
-  return part !== "" && !part.startsWith("..") && !isAbsolute(part);
+  const part = relative2(base, path);
+  return part !== "" && !part.startsWith("..") && !isAbsolute2(part);
 }
 function sessionMetadata(payload) {
   return {
@@ -19772,7 +19822,8 @@ function turnMetadata(payload) {
     cwd: text(payload.cwd),
     model: text(payload.model),
     effort: text(payload.effort),
-    collaboration_mode: mode
+    collaboration_mode: mode,
+    filesystem: filesystemAuthority(payload.file_system_sandbox_policy)
   };
 }
 function sameMetadata(left, right) {
@@ -19812,7 +19863,7 @@ function mergeLine(line, state, input2) {
   mergeMetadataLine(type, record2.payload, state, input2);
 }
 function sessionPath(input2) {
-  if (!input2.transcript_path || !isAbsolute(input2.transcript_path)) {
+  if (!input2.transcript_path || !isAbsolute2(input2.transcript_path)) {
     throw new Error("Missing absolute transcript_path");
   }
   const path = resolve(input2.transcript_path);
@@ -19827,14 +19878,14 @@ function requiredText(value, field) {
   if (!found) throw new Error(`Incomplete exact-turn metadata: ${field}`);
   return found;
 }
-function makeContext(meta3, turn, input2) {
-  if (!SUPPORTED_CLI_VERSIONS.includes(
-    text(meta3.cli_version)
-  )) {
-    throw new Error(
-      `Unsupported Codex log version ${versionLabel(meta3.cli_version)} for ${PARSER_ADAPTER_VERSION}`
-    );
+function requireVersion(meta3) {
+  const version2 = versionLabel(meta3.cli_version);
+  if (version2 === "(missing)" || version2 === "(invalid)") {
+    throw new Error(`Unsupported Codex log version ${version2} for ${PARSER_ADAPTER_VERSION}`);
   }
+}
+function makeContext(meta3, turn, input2) {
+  requireVersion(meta3);
   const sessionId = requiredText(meta3.session_id ?? meta3.id, "session_id");
   const turnId = requiredText(turn.turn_id, "turn_id");
   const cwd = requiredText(turn.cwd, "cwd");
@@ -19858,6 +19909,7 @@ function makeContext(meta3, turn, input2) {
     sessionId,
     turnId,
     cwd,
+    ...turn.filesystem ? { filesystem: turn.filesystem } : {},
     model,
     effort,
     collaborationMode,
@@ -19980,7 +20032,7 @@ function isLeadContext(value) {
     value.effort,
     value.resolutionReason
   ];
-  return fields.every((field) => typeof field === "string" && field.length > 0) && ["default", "plan", "unknown"].includes(String(value.collaborationMode)) && ["verified", "unknown"].includes(String(value.resolutionStatus));
+  return fields.every((field) => typeof field === "string" && field.length > 0) && filesystemAuthoritySchema.optional().safeParse(value.filesystem).success && ["default", "plan", "unknown"].includes(String(value.collaborationMode)) && ["verified", "unknown"].includes(String(value.resolutionStatus));
 }
 function isStoredContext(value) {
   if (!isObject3(value) || !isLeadContext(value.context)) return false;
@@ -19988,7 +20040,7 @@ function isStoredContext(value) {
 }
 function contextFile(dataDir, contextKey) {
   if (!/^uctx_[0-9a-f-]{36}$/.test(contextKey)) throw new Error("Invalid context key");
-  return join2(dataDir, "activation", `${contextKey}.json`);
+  return join3(dataDir, "activation", `${contextKey}.json`);
 }
 async function atomicWrite(path, value) {
   const temporary = `${path}.${randomUUID()}.tmp`;
@@ -20009,7 +20061,7 @@ async function atomicWrite(path, value) {
 async function registerContext(input2, dataDir) {
   if (!dataDir) throw new Error("Missing plugin data directory");
   const contextKey = `uctx_${randomUUID()}`;
-  const directory = join2(dataDir, "activation");
+  const directory = join3(dataDir, "activation");
   await mkdir(directory, { recursive: true, mode: 448 });
   await atomicWrite(currentFile(dataDir, input2.session_id), contextKey);
   const context = await readExactTurn(input2);
@@ -20045,7 +20097,7 @@ async function resolveContext(contextKey, dataDir, options = {}) {
 }
 function currentFile(dataDir, sessionId) {
   const identity = createHash("sha256").update(sessionId).digest("hex");
-  return join2(dataDir, "activation", `current-${identity}`);
+  return join3(dataDir, "activation", `current-${identity}`);
 }
 
 // src/activation/hook.ts
