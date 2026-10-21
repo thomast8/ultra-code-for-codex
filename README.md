@@ -187,7 +187,7 @@ from manual code style and coverage.
 
 See [Desktop compatibility evidence](docs/desktop-compatibility.md). Local tests
 and standalone MCP checks do not establish native Desktop QA. The exact-turn log
-adapter accepts the verified 0.160.0, 0.160.1, 0.162.0-alpha.17.2 and 0.163.0-alpha.10.2 formats; unknown
+adapter accepts the verified 0.160.0, 0.160.1, 0.162.0-alpha.17.2, 0.163.0-alpha.10.2 and 0.163.0-alpha.11 formats; unknown
 versions remain unknown. Plan Mode stays read-only. Changing mode does not silently
 cancel an already authorized immutable run.
 

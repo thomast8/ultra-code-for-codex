@@ -83,7 +83,15 @@ it.each([
   },
 );
 
-it.each(['0.163.0-alpha.10.3', '0.164.0', ''])(
+it('verifies the 0.163.0-alpha.11 Desktop log with the same turn-context adapter', async () => {
+  const records = await rows();
+  records[0]!.payload.cli_version = '0.163.0-alpha.11';
+  expect(parseExactTurn(serializeRows(...records), fixtureInput)).toMatchObject({
+    resolutionStatus: 'verified',
+  });
+});
+
+it.each(['0.163.0-alpha.10.3', '0.163.0-alpha.12', '0.164.0', ''])(
   'keeps unvalidated version %s blocked with its reason',
   async (version) => {
     const records = await rows();

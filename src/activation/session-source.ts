@@ -10,6 +10,7 @@ export const SUPPORTED_CLI_VERSIONS = [
   '0.160.1',
   '0.162.0-alpha.17.2',
   '0.163.0-alpha.10.2',
+  '0.163.0-alpha.11',
 ] as const;
 
 type JsonObject = Record<string, unknown>;
