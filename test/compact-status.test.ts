@@ -37,3 +37,24 @@ it('keeps model-facing status bounded without exposing saved worker or run resul
     lastActivity: 'Command completed; exit=0',
   });
 });
+
+it('tells the lead how to finish a run with a pending handoff', () => {
+  const pending = {
+    id: 'run:5',
+    spec: {
+      phase: { id: 'phase-1', label: 'Lead review' },
+      objective: 'Review',
+      resources: [],
+      evidence: [],
+    },
+    state: 'pending' as const,
+    claimedTurnId: null,
+    result: null,
+  };
+  const [withHandoff] = compactStatus([runFixture({ handoffs: [pending] })]);
+  expect(withHandoff!.pendingHandoffs).toEqual(['run:5']);
+  expect(withHandoff!.nextAction).toContain('ultra_handoff {id, action: "claim"}');
+  expect(withHandoff!.nextAction).toContain('not a worker task');
+  const [resolved] = compactStatus([runFixture({ handoffs: [{ ...pending, state: 'resolved' }] })]);
+  expect(resolved!.nextAction).toBeUndefined();
+});

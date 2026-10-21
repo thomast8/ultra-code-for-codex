@@ -192,7 +192,7 @@ function registerStart(options: WorkflowTools): void {
     'ultra_start',
     {
       title: 'Start an Ultra Code workflow',
-      description: `${workflowPlanningPolicy} Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission.`,
+      description: `${workflowPlanningPolicy} Create a workflow; a returned run ID confirms creation only, not worker dispatch. Read ultra_status before claiming workers launched. ${agentV2CallDescription} Workers inherit verified lead model/effort unless overridden. Put local CSV and source paths in worker prompts. savedTaskRefs accepts only saved Ultra task results from ultra_result. A failed, truncated or locally sandbox-denied command inside a running worker is recoverable and is not a workflow execution or dispatch failure unless required task authority itself is unavailable. Ultra controls shared capacity and verifies worker readiness before admission. Every run ends in a lead review handoff that you must claim and resolve with ultra_handoff before replying.`,
       inputSchema: startV2Schema
         .omit({ evidenceRefs: true, reviewAfterWorkers: true })
         .extend({ contextKey: contextKeyOption }).shape,
@@ -349,7 +349,7 @@ function registerControl(options: WorkflowTools): void {
     {
       title: 'Claim or resolve a lead decision',
       description:
-        'Atomically claim a handoff for the current verified turn, or resolve with evidence. An uncertain external action requires readback before resolution; never repeat it automatically.',
+        'Required to finish every run: when ultra_status lists pendingHandoffs, claim that id, inspect the saved results and diff, then resolve it with acceptance, value and evidence. A handoff is a lead decision, not a worker task; the run stays running and unverified until it is resolved. An uncertain external action requires readback before resolution; never repeat it automatically.',
       inputSchema: {
         contextKey: contextKeyOption,
         id: z.string(),
