@@ -136,7 +136,7 @@ and explicit panel buttons. Model controls require the exact current context;
 only a verified Default-mode lead can resume execution. Read the bundled
 [authoring skill](plugin/skills/ultra-code/SKILL.md) and its
 [API reference](plugin/skills/ultra-code/references/authoring.md) before authoring.
-[Research, concepts and coding examples](workflows/README.md) use the same runtime.
+[Research, concepts and coding examples](workflows/README.md) show contract version 1 graphs for the internal engine; chat workflows use the version 2 authoring reference.
 
 Scripts run in bounded QuickJS instances with immutable JSON inputs and no shell,
 filesystem, imports, network, timers, clock or randomness. SQLite records immutable

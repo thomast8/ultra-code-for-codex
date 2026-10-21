@@ -1,9 +1,11 @@
 # Workflow examples
 
-These are raw QuickJS workflow bodies for `ultra_start.script`, not Node scripts or
-engine presets. Each declares its argument contract and required `maxAgentCalls`
-in a header. Supply the exact current context handle, immutable request ID,
-existing authority and an honest lead-session capacity grant separately.
+These are contract version 1 workflow bodies for the internal engine. They are not
+valid `ultra_start.script` input: `ultra_start` runs contract version 2, where
+`agent(prompt, options?)` takes a string prompt. For chat workflows, follow the
+installed authoring reference (`plugin/skills/ultra-code/references/authoring.md`),
+whose two examples run through `ultra_start` in the test suite. Each body here
+declares its argument contract and required `maxAgentCalls` in a header.
 
 - `research.js`: discover up to two source questions, investigate only the returned
   questions, and pass evidence to the lead. Maximum three worker calls.
