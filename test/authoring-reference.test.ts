@@ -77,10 +77,11 @@ it('documents exact access values from the validator at both discovery surfaces'
   const description = startV2Schema.shape.script.description!;
   expect(description).toContain('agent(prompt) is read-only and cannot edit files');
   expect(description).toContain('agent(prompt, {access: "workspace-write"})');
-  for (const access of agentV2OptionsSchema.shape.access.unwrap().options) {
+  for (const access of agentV2OptionsSchema.shape.access.unwrap().out.options) {
     expect(reference).toContain(JSON.stringify(access));
     expect(description).toContain(JSON.stringify(access));
     expect(agentV2OptionsSchema.parse({ access })).toEqual({ access });
   }
-  expect(agentV2OptionsSchema.safeParse({ access: 'write' }).success).toBe(false);
+  expect(agentV2OptionsSchema.parse({ access: 'write' })).toEqual({ access: 'workspace-write' });
+  expect(agentV2OptionsSchema.safeParse({ access: 'rw' }).success).toBe(false);
 });

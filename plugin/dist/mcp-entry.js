@@ -29327,7 +29327,7 @@ async function resolveCurrentContext(contextKey, dataDir) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.14",
+  version: "0.4.15",
   private: true,
   type: "module",
   engines: {
@@ -29497,6 +29497,12 @@ var identifier = external_exports.string().min(1).max(512);
 var json2 = external_exports.json();
 var path = text.refine(isAbsolute2, "An absolute path is required");
 var workerAccessSchema = external_exports.enum(["read-only", "workspace-write"]);
+var accessAliases = {
+  read: "read-only",
+  readonly: "read-only",
+  write: "workspace-write",
+  edit: "workspace-write"
+};
 var phaseSchema = external_exports.strictObject({ id: identifier, label: text });
 var artifactSchema = external_exports.strictObject({
   id: identifier,
@@ -29588,7 +29594,10 @@ var agentV2OptionsSchema = external_exports.strictObject({
   cwd: path.optional().describe(
     "Absolute working directory; defaults to the chat directory. Writers require an explicit root authorized by verified exact-turn filesystem metadata."
   ),
-  access: workerAccessSchema.optional().describe(
+  access: external_exports.preprocess(
+    (value) => typeof value === "string" ? accessAliases[value] ?? value : value,
+    workerAccessSchema
+  ).optional().describe(
     "Defaults to read-only. Authorized edits require workspace-write; Plan mode rejects writes."
   ),
   schema: external_exports.record(external_exports.string(), json2).optional().describe("Optional JSON Schema for the result; omit for plain text."),

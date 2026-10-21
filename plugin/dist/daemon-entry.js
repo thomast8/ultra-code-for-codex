@@ -28285,6 +28285,12 @@ var identifier = external_exports.string().min(1).max(512);
 var json2 = external_exports.json();
 var path = text.refine(isAbsolute, "An absolute path is required");
 var workerAccessSchema = external_exports.enum(["read-only", "workspace-write"]);
+var accessAliases = {
+  read: "read-only",
+  readonly: "read-only",
+  write: "workspace-write",
+  edit: "workspace-write"
+};
 var phaseSchema = external_exports.strictObject({ id: identifier, label: text });
 var artifactSchema = external_exports.strictObject({
   id: identifier,
@@ -28376,7 +28382,10 @@ var agentV2OptionsSchema = external_exports.strictObject({
   cwd: path.optional().describe(
     "Absolute working directory; defaults to the chat directory. Writers require an explicit root authorized by verified exact-turn filesystem metadata."
   ),
-  access: workerAccessSchema.optional().describe(
+  access: external_exports.preprocess(
+    (value) => typeof value === "string" ? accessAliases[value] ?? value : value,
+    workerAccessSchema
+  ).optional().describe(
     "Defaults to read-only. Authorized edits require workspace-write; Plan mode rejects writes."
   ),
   schema: external_exports.record(external_exports.string(), json2).optional().describe("Optional JSON Schema for the result; omit for plain text."),
@@ -29572,7 +29581,7 @@ function resolveAgentV2(value, run) {
   return normalizedAgent(prompt, options ?? {}, run);
 }
 function resolveLeadV2(value, run) {
-  const { objective, evidence } = leadV2Schema.parse(value);
+  const { objective, evidence } = leadV2Schema.parse(leadCall(value));
   const spec = {
     kind: run.authority.context.collaborationMode === "plan" ? "planning" : "action",
     phase: phase(run, "Lead review"),
@@ -29586,6 +29595,31 @@ function resolveLeadV2(value, run) {
     }))
   };
   return spec;
+}
+function leadCall(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  let { objective, evidence } = value;
+  if (objective && typeof objective === "object" && !Array.isArray(objective)) {
+    evidence = objective.evidence ?? evidence;
+    objective = objective.objective ?? null;
+  }
+  if (!Array.isArray(evidence)) return { objective, evidence };
+  return {
+    objective,
+    evidence: evidence.map((item, index) => artifact(item, index))
+  };
+}
+function artifact(item, index) {
+  if (item && typeof item === "object" && !Array.isArray(item) && typeof item.id === "string" && typeof item.description === "string")
+    return item;
+  const id = `evidence-${index + 1}`;
+  if (item === null || item === void 0)
+    return { id, description: "Worker result unavailable: terminal failure or null" };
+  const description = (typeof item === "string" ? item : JSON.stringify(item)).trim();
+  return {
+    id,
+    description: description ? description.slice(0, 32768) : "Worker returned empty output"
+  };
 }
 function normalizedAgent(prompt, options, run) {
   const { cwd, capability, model, effort } = workerSettings(options, run);
@@ -29755,10 +29789,10 @@ var prelude = `
 `;
 var preludeV2 = prelude.replace(
   "const agent = spec => __call('agent', JSON.stringify(spec)).then(JSON.parse);",
-  "const agent = (prompt, options) => __call('agent', JSON.stringify({prompt, options})).then(JSON.parse);"
+  "const __pending = new Set(); const __track = promise => { __pending.add(promise); promise.then(() => __pending.delete(promise), () => __pending.delete(promise)); return promise; };\nconst agent = (prompt, options) => __track(__call('agent', JSON.stringify({prompt, options})).then(JSON.parse));"
 ).replace(
   "const lead = spec => __call('lead', JSON.stringify(spec)).then(JSON.parse);",
-  "const lead = (objective, evidence) => __call('lead', JSON.stringify({objective, evidence})).then(JSON.parse);"
+  "let __lastLead; const lead = (objective, evidence) => __track(__call('lead', JSON.stringify({objective, evidence})).then(JSON.parse).then(value => (__lastLead = value)));"
 ).replace(
   "const pipeline = (items, fn) => Promise.all(items.map((item, index) => fn(item, index)));",
   "const pipeline = (items, ...stages) => Promise.all(items.map(async (item, index) => { let value = item; for (const stage of stages) { if (value === null) return null; value = await stage(value, index); } return value; }));"
@@ -29813,8 +29847,10 @@ var ScriptMachine = class _ScriptMachine {
         this.vm.evalCode(`(async () => { 'use strict';
         ${version2 === 2 ? preludeV2 : prelude}
         const args = freeze(JSON.parse(${JSON.stringify(JSON.stringify(args))}));
-        return await (async () => { ${script}
+        const __value = await (async () => { ${script}
  })();
+        ${version2 === 2 ? "while (__pending.size) await Promise.all([...__pending]); if (__value === undefined) return __lastLead === undefined ? null : __lastLead;" : ""}
+        return __value;
       })()`)
       );
       this.pump();
@@ -30592,7 +30628,7 @@ function workerTransportFailure(error62) {
 // package.json
 var package_default = {
   name: "ultra-code-for-codex",
-  version: "0.4.14",
+  version: "0.4.15",
   private: true,
   type: "module",
   engines: {

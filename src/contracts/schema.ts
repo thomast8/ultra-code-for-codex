@@ -6,6 +6,12 @@ const identifier = z.string().min(1).max(512);
 const json = z.json();
 const path = text.refine(isAbsolute, 'An absolute path is required');
 const workerAccessSchema = z.enum(['read-only', 'workspace-write']);
+const accessAliases: Record<string, string> = {
+  read: 'read-only',
+  readonly: 'read-only',
+  write: 'workspace-write',
+  edit: 'workspace-write',
+};
 export const phaseSchema = z.strictObject({ id: identifier, label: text });
 export const artifactSchema = z.strictObject({
   id: identifier,
@@ -110,7 +116,11 @@ export const agentV2OptionsSchema = z.strictObject({
     .describe(
       'Absolute working directory; defaults to the chat directory. Writers require an explicit root authorized by verified exact-turn filesystem metadata.',
     ),
-  access: workerAccessSchema
+  access: z
+    .preprocess(
+      (value) => (typeof value === 'string' ? (accessAliases[value] ?? value) : value),
+      workerAccessSchema,
+    )
     .optional()
     .describe(
       'Defaults to read-only. Authorized edits require workspace-write; Plan mode rejects writes.',

@@ -26,7 +26,7 @@ export function resolveAgentV2(value: JsonValue, run: RunRecord): JsonValue {
 }
 
 export function resolveLeadV2(value: JsonValue, run: RunRecord): JsonValue {
-  const { objective, evidence } = leadV2Schema.parse(value);
+  const { objective, evidence } = leadV2Schema.parse(leadCall(value));
   const spec: LeadHandoffSpec = {
     kind: run.authority.context.collaborationMode === 'plan' ? 'planning' : 'action',
     phase: phase(run, 'Lead review'),
@@ -40,6 +40,40 @@ export function resolveLeadV2(value: JsonValue, run: RunRecord): JsonValue {
     })),
   };
   return spec as unknown as JsonValue;
+}
+
+/** Forgive the shapes a chat-authored script commonly uses for lead(). */
+function leadCall(value: JsonValue): JsonValue {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  let { objective, evidence } = value;
+  if (objective && typeof objective === 'object' && !Array.isArray(objective)) {
+    evidence = objective.evidence ?? evidence;
+    objective = objective.objective ?? null;
+  }
+  if (!Array.isArray(evidence)) return { objective, evidence } as JsonValue;
+  return {
+    objective,
+    evidence: evidence.map((item, index) => artifact(item, index)),
+  } as JsonValue;
+}
+
+function artifact(item: JsonValue, index: number): JsonValue {
+  if (
+    item &&
+    typeof item === 'object' &&
+    !Array.isArray(item) &&
+    typeof item.id === 'string' &&
+    typeof item.description === 'string'
+  )
+    return item;
+  const id = `evidence-${index + 1}`;
+  if (item === null || item === undefined)
+    return { id, description: 'Worker result unavailable: terminal failure or null' };
+  const description = (typeof item === 'string' ? item : JSON.stringify(item)).trim();
+  return {
+    id,
+    description: description ? description.slice(0, 32_768) : 'Worker returned empty output',
+  };
 }
 
 function normalizedAgent(

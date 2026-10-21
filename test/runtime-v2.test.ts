@@ -102,7 +102,7 @@ it('prevalidates syntax, blocks plan writes and accepts bounded structured logs'
 
 it('retains invalid access as a failed run without launching a worker', async () => {
   const { engine, calls } = harness();
-  const run = engine.start(request('return await agent("Edit source", {access:"write"});'), host);
+  const run = engine.start(request('return await agent("Edit source", {access:"rw"});'), host);
   await until(() => engine.status(owner)[0]?.state === 'failed');
   expect(calls).toHaveLength(0);
   expect(engine.result(owner, run.id)).toMatchObject({

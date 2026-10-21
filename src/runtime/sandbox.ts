@@ -33,11 +33,12 @@ const prelude = `
 const preludeV2 = prelude
   .replace(
     "const agent = spec => __call('agent', JSON.stringify(spec)).then(JSON.parse);",
-    "const agent = (prompt, options) => __call('agent', JSON.stringify({prompt, options})).then(JSON.parse);",
+    'const __pending = new Set(); const __track = promise => { __pending.add(promise); promise.then(() => __pending.delete(promise), () => __pending.delete(promise)); return promise; };\n' +
+      "const agent = (prompt, options) => __track(__call('agent', JSON.stringify({prompt, options})).then(JSON.parse));",
   )
   .replace(
     "const lead = spec => __call('lead', JSON.stringify(spec)).then(JSON.parse);",
-    "const lead = (objective, evidence) => __call('lead', JSON.stringify({objective, evidence})).then(JSON.parse);",
+    "let __lastLead; const lead = (objective, evidence) => __track(__call('lead', JSON.stringify({objective, evidence})).then(JSON.parse).then(value => (__lastLead = value)));",
   )
   .replace(
     'const pipeline = (items, fn) => Promise.all(items.map((item, index) => fn(item, index)));',
@@ -94,7 +95,9 @@ export class ScriptMachine {
         this.vm.evalCode(`(async () => { 'use strict';
         ${version === 2 ? preludeV2 : prelude}
         const args = freeze(JSON.parse(${JSON.stringify(JSON.stringify(args))}));
-        return await (async () => { ${script}\n })();
+        const __value = await (async () => { ${script}\n })();
+        ${version === 2 ? 'while (__pending.size) await Promise.all([...__pending]); if (__value === undefined) return __lastLead === undefined ? null : __lastLead;' : ''}
+        return __value;
       })()`),
       );
       this.pump();
